@@ -2,78 +2,110 @@
 
 ## Why LSP Plugins Need Complementary Rules
 
-LSP plugins are **pure configuration shims** — they tell Claude Code which language server to use for which file types. Unlike other plugins (skills, agents, MCP) which are self-describing, LSP plugins add **zero behavioral guidance**. Without explicit rules in `.claude/rules/lsp-guidance.md`, Claude defaults to Grep for symbol analysis even when LSP would give precise, type-aware results.
-
-## When to Use LSP vs Grep
-
-| Use LSP for | Use Grep for |
-|-------------|-------------|
-| "What uses this symbol?" (type-aware) | String literals, config keys |
-| "Where is this defined?" | Regex patterns |
-| "What implements this interface?" | Cross-language search |
-| "What type is this?" | Comments, log messages |
-| "What symbols are in this file?" | Partial name matches |
-
-LSP requires an exact position (file, line, character). Use Grep/Glob to locate the symbol first, then LSP to analyze it.
+LSP plugins are pure configuration shims — they tell Claude Code how to
+start and communicate with a language server, but they provide zero
+behavioral guidance. Without rules, Claude Code will have access to LSP
+operations but no instruction on when to use them, how to interpret results,
+or when to prefer other approaches (like Grep). Complementary rules bridge
+this gap.
 
 ## LSP Operations
 
-| Operation | Purpose | Best for |
+| Operation | Purpose | Best For |
 |-----------|---------|----------|
-| `goToDefinition` | Jump to where a symbol is defined | Understanding unfamiliar code |
-| `findReferences` | All usages of a symbol (type-aware) | Impact analysis, refactoring |
-| `goToImplementation` | Concrete implementations of interfaces | Interface-heavy languages (C#, Java) |
-| `hover` | Type info and documentation | Dynamic languages (Python), complex generics (Rust) |
-| `documentSymbol` | All symbols in a file | File structure overview |
-| `workspaceSymbol` | Search symbols by name across project | Finding symbols without knowing their file |
-| `prepareCallHierarchy` | Establish call graph entry point | Pre-step for incoming/outgoing calls |
-| `incomingCalls` | Which functions call this function | Tracing callers, blast radius |
-| `outgoingCalls` | Which functions this function calls | Understanding dependencies |
+| `goToDefinition` | Jump to where a symbol is defined | Understanding implementation, navigating to source |
+| `findReferences` | Find all usages of a symbol | Impact analysis, refactoring safety checks |
+| `goToImplementation` | Jump to concrete implementations of an interface/abstract | Understanding polymorphism, finding actual behavior |
+| `hover` | Get type information and documentation for a symbol | Quick type checks, reading inline docs |
+| `documentSymbol` | List all symbols in a file | File structure overview, finding functions/classes |
+| `workspaceSymbol` | Search symbols across the entire workspace | Finding symbols by name project-wide |
+| `prepareCallHierarchy` | Initialize call hierarchy analysis for a symbol | Setting up incoming/outgoing call analysis |
+| `incomingCalls` | Find all callers of a function | Understanding who depends on a function |
+| `outgoingCalls` | Find all functions called by a function | Understanding a function's dependencies |
 
 ## Language Server Capabilities Matrix
 
 | Operation | C# | Python | TS/JS | Go | Rust | Java | C/C++ |
 |-----------|-----|--------|-------|-----|------|------|-------|
-| `goToDefinition` | Excellent | Good | Excellent | Excellent | Excellent | Excellent | Good* |
-| `findReferences` | Excellent | Good | Excellent | Excellent | Excellent | Excellent | Good* |
-| `goToImplementation` | Excellent | Limited | Good | Limited** | Good | Excellent | Weak |
-| `hover` | Good | Excellent | Good | Good | Excellent | Good | Good |
-| `documentSymbol` | Good | Good | Good | Good | Good | Good | Good |
-| `workspaceSymbol` | Good | Good | Good | Fast | Good | Good | Good* |
-| `incomingCalls` | Good | Incomplete | Good | Partial | Unstable | Good | Good* |
-| `outgoingCalls` | Good | Incomplete | Good | Partial | Unstable | Good | Good* |
+| goToDefinition | Excellent | Good | Excellent | Excellent | Excellent | Good | Good* |
+| findReferences | Excellent | Good | Excellent | Excellent | Excellent | Good | Good* |
+| goToImplementation | Excellent | Limited^1 | Good | Excellent | Good | Good | Limited^2 |
+| hover | Excellent | Good | Excellent | Excellent | Excellent | Good | Good |
+| documentSymbol | Excellent | Good | Excellent | Excellent | Excellent | Good | Good |
+| workspaceSymbol | Good | Good | Good | Excellent | Good | Good | Limited^3 |
+| prepareCallHierarchy | Good | Limited^4 | Good | Excellent | Good | Good | Limited |
+| incomingCalls | Good | Limited^4 | Good | Excellent | Good | Good | Limited |
+| outgoingCalls | Good | Limited^4 | Good | Excellent | Good | Good | Limited |
 
-\* Requires `compile_commands.json` — without it, many operations fail **silently**
-\** Go has implicit interfaces — satisfying types aren't explicitly linked
+**Footnotes:**
+1. Python: Dynamic typing limits implementation resolution. Duck typing
+   means Pyright cannot always resolve concrete implementations.
+2. C/C++: Requires compile_commands.json for accurate cross-TU resolution.
+   Without it, results are incomplete.
+3. C/C++: Workspace symbol search depends heavily on index quality and
+   compile_commands.json completeness.
+4. Python: Call hierarchy support is limited in Pyright. Results may be
+   incomplete for dynamically dispatched calls.
+
+\* C/C++ operations marked with asterisk require compile_commands.json —
+without it, many operations fail silently.
 
 ## Performance Characteristics
 
-| Server | Startup | Memory | Reliability | Notes |
-|--------|---------|--------|-------------|-------|
-| Go (gopls) | Fast | Low | Excellent | Fastest, most reliable overall |
-| TypeScript (vtsls) | Medium | Medium | Excellent | Slower on 10k+ file projects |
-| C# (csharp-ls) | Medium | Medium | Excellent | Best `goToImplementation` |
-| Python (pyright) | Medium | High | Good | Call hierarchy incomplete |
-| Java (jdtls) | ~8s | 1GB+ | Good | JVM warmup delay |
-| Rust (rust-analyzer) | Slow | 500MB+ | Good | Compiles project on first init |
-| C/C++ (clangd) | Medium | Medium | Good | Needs compile_commands.json |
+| Metric | Fastest | Slowest |
+|--------|---------|---------|
+| Startup time | Go (gopls) — near instant | Java (jdtls) — ~8 seconds |
+| Memory usage | Go (~100MB) | Java (~1GB+), Rust (~500MB+) |
+| Query response | Go, TypeScript | Java (initial queries) |
+| Most reliable | Go, TypeScript, C# | C/C++ (depends on build config) |
 
 ## Workspace Requirements
 
-Language servers fail **silently** without these config files:
+Language servers fail silently without proper workspace configuration.
+Ensure these files exist before expecting LSP to function:
 
-| Language | Required file | Notes |
-|----------|--------------|-------|
-| C# | `.sln` or `.csproj` | Must be in or above workspace root |
-| TypeScript | `tsconfig.json` | Monorepos need per-workspace configs |
-| Python | `pyproject.toml` or `pyrightconfig.json` | For best type inference |
-| Go | `go.mod` | Must be in workspace root |
-| Rust | `Cargo.toml` | Must be in workspace root |
-| Java | `pom.xml`, `build.gradle`, or `.classpath` | Maven, Gradle, or Eclipse |
-| C/C++ | `compile_commands.json` | Generate via `cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON` or `bear make` |
+| Language | Required Files | Notes |
+|----------|---------------|-------|
+| TypeScript/JS | `tsconfig.json` or `jsconfig.json` | Without this, TS server uses default config |
+| Python | `pyrightconfig.json` or `pyproject.toml` with [tool.pyright] | Virtual env must be detectable |
+| Go | `go.mod` | Must be at workspace root or parent |
+| C# | `.sln` or `.csproj` | OmniSharp needs a project entry point |
+| Rust | `Cargo.toml` | Must be at workspace root |
+| Java | `pom.xml`, `build.gradle`, or `.project` | jdtls needs a build system |
+| C/C++ | `compile_commands.json` | Generate with CMake, Bear, or compiledb |
+| Ruby | `Gemfile` | ruby-lsp needs Bundler context |
+| Swift | `Package.swift` or `.xcodeproj` | sourcekit-lsp needs project structure |
+| Lua | `.luarc.json` | Server uses defaults without it |
+| Kotlin | `build.gradle.kts` or `pom.xml` | JVM build system required |
+| PHP | `composer.json` | Intelephense works without it but with reduced accuracy |
 
-## Multi-Language Projects
+## When to Use LSP vs Grep
 
-- Each language server operates independently — LSP operations only work within their language boundary
-- For cross-language references (e.g., TypeScript calling a Python API), use Grep
-- When a symbol exists in multiple languages, specify the file path to disambiguate
+### Use LSP When
+- You need **type-aware symbol analysis** — findReferences returns semantic
+  references, not string matches
+- You need **goToDefinition** — follows imports, resolves aliases, handles
+  re-exports
+- You need **call hierarchy** — who calls this function, what does this
+  function call
+- You need **hover information** — type signatures, documentation, parameter
+  info
+- You are working within a **single language** with a running server
+
+### Use Grep When
+- Searching for **string literals**, config keys, or environment variables
+- Searching with **regex patterns** that are not symbol-based
+- Searching **cross-language** (e.g., a constant used in both Python and JS)
+- Searching **comments**, log messages, or documentation
+- The language server is **not running** or not installed
+- You need results **fast** without waiting for server initialization
+
+### Combined Approach
+LSP requires exact file positions — it cannot search. The standard workflow
+is:
+
+1. **Grep/Glob** to locate the symbol or file
+2. **LSP** to analyze it (find references, check types, trace calls)
+
+This two-step pattern gives you both breadth (Grep finds candidates across
+the codebase) and depth (LSP provides semantic understanding of each match).
