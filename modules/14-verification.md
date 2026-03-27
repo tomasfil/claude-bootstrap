@@ -117,7 +117,7 @@ find ~/.claude/plugins/cache/ -name "*.json" -exec grep -l "UserPromptSubmit" {}
   {
     "type": "prompt",
     "matcher": "",
-    "prompt": "SKILL ROUTING: Before responding, check if any skill below applies to this message. If one applies, invoke it via the Skill tool BEFORE any other action.\n\nSkills and triggers:\n{SKILLS_LIST}\n\nAgents available for dispatch:\n{AGENTS_LIST}\n\nIf NO skill applies (git status, simple questions, file reads), respond normally.\nIf UNSURE, invoke the skill — false positives are cheap, false negatives waste time."
+    "prompt": "SKILL ROUTING: Check if any skill below applies to this message. If one applies, invoke it via the Skill tool before taking other action. If NO skill applies, respond to the user normally — NEVER refuse, block, or decline to answer.\n\nSkills and triggers:\n{SKILLS_LIST}\n\nAgents available for dispatch:\n{AGENTS_LIST}\n\nIMPORTANT: This routing check must NEVER prevent you from responding. If no skill matches, just answer the user's question directly. Simple questions, git commands, meta-questions about the setup, and general conversation do NOT need skills."
   }
 ]
 ```
