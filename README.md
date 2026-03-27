@@ -138,8 +138,15 @@ claude-bootstrap.md                  # Root orchestrator (120 lines)
 │   ├── 01-discovery.md              # Project analysis + user preferences
 │   ├── 02-claude-md.md              # CLAUDE.md generation
 │   ├── 03-rules.md                  # Per-language code standards
-│   ├── 04-hooks.md                  # Hooks + automatic skill routing
-│   ├── 05-15                        # Skills, agents, plugins, verification, sync
+│   ├── 04-hooks.md                  # Deterministic hooks (env detection, git guard, agent tracking)
+│   ├── 05-07                        # Skills: reflect, audit, write-prompt
+│   ├── 08-09                        # Local config, scoped CLAUDE.md files
+│   ├── 10-agents.md                 # Base agents (quick-check, researcher)
+│   ├── 11-learnings.md              # Self-improvement log
+│   ├── 12-mcp-plugins.md            # MCP servers + connector plugin recommendations
+│   ├── 13-plugin-replacements.md    # 9 skills replacing methodology plugins
+│   ├── 14-verification.md           # Wiring verification + generates skill routing hook
+│   ├── 15-companion-repo.md         # Companion repo sync (conditional)
 │   ├── 16-code-writer.md            # Code writer agents (web research)
 │   ├── 17-test-writer.md            # Test writer agent (web research)
 │   └── 18-code-reviewer.md          # Code reviewer (web research)
