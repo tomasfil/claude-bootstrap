@@ -71,10 +71,16 @@ Read `.claude/settings.json` and verify deterministic hooks:
 - [ ] PreToolUse hook references `guard-git.sh` with matcher "Bash"
 - [ ] SubagentStop hook references `track-agent.sh`
 
-### Generate Skill Routing Hook (CRITICAL — do this now)
+### Generate Skill Routing Hook (MANDATORY — do this now, do not skip)
 
 The UserPromptSubmit hook was NOT created in Module 04 because it depends on what
 Modules 05-18 actually created. Generate it NOW by scanning what exists.
+
+⚠️ **This hook is NOT redundant with Claude Code's native skill detection.**
+Native `user-invocable: true` only triggers when users type the exact `/slash-command`.
+The routing hook catches **natural language** ("add a field to Division", "debug this test failure")
+and nudges toward the matching skill. Without it, users must remember exact slash command
+names, and Claude will often do the work directly instead of dispatching to the specialist skill.
 
 ⚠️ **MUST use `"type": "command"` with `echo`, NOT `"type": "prompt"`.**
 Prompt-type hooks are evaluated by a small fast model that misinterprets routing

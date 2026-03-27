@@ -32,9 +32,10 @@ Read the project to understand what the reviewer needs to check:
 4. **Read CLAUDE.md gotchas** — things that catch Claude off guard
 5. **Analyze architecture layers** — identify dependency direction rules
 
-## Phase 2 — Web Research
+## Phase 2 — Web Research (MANDATORY — do not skip or abbreviate)
 
-Research project-specific review patterns:
+Research project-specific review patterns. Before proceeding to Phase 3, print how many searches were conducted and key findings.
+
 
 | Topic | Search Query |
 |-------|-------------|

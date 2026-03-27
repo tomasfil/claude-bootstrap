@@ -236,17 +236,79 @@ For features requiring 3+ file changes:
 
 ---
 
+## 9. Claim-Evidence Ledger (for Research-to-Output Skills)
+
+Use when a skill researches external data and synthesizes it into output (reports,
+recommendations, competitive analysis, audits that cite external sources). This is
+the most dangerous hallucination surface — fabricated statistics and false citations
+look authoritative and are hard to catch after the fact.
+
+**Template:**
+
+```markdown
+## Claim-Evidence Ledger
+
+Every external claim discovered during research gets a tracked entry:
+
+| Field | Required | Purpose |
+|-------|----------|---------|
+| claim | yes | The specific factual assertion |
+| source_url | yes | Where it was found |
+| source_name | yes | Human-readable source name |
+| source_date | yes | When the source was published |
+| confidence | yes | high / medium / low |
+| corroborated | yes | true if independently confirmed by a second source |
+| corroboration_source | if corroborated | Name of the second source |
+
+### Rules
+1. **No ledger entry = claim banned from output.** No exceptions.
+2. **Statistics require corroboration.** Any %, number, or date needs a second
+   independent source. Uncorroborated stats: prefix with "~" and name the single source.
+3. **Low-confidence + uncorroborated = DROPPED.** Move to GAPS section in output.
+4. **Absence ≠ fact.** Never assert "X doesn't exist." Instead: document exact
+   search queries and state "searches returned no results."
+5. **Previous outputs are not verified facts.** Re-verify anything material.
+6. **No gap-filling from training data.** If search returns nothing, write
+   "no current data found" — do not invent from memory.
+
+### Mandatory Audit Phase (insert BEFORE synthesis)
+Before writing the final output:
+1. Categorize all claims: ✓ (high + corroborated), ⚡ (high + single-source),
+   DROPPED (medium/low + uncorroborated)
+2. Remove any output text that references DROPPED claims
+3. State: "Claim audit complete: {N} total, {X} corroborated, {Y} single-source, {Z} dropped"
+
+### Output Format
+- Inline attribution: `[Claim] — [Source, Date] [✓ / ⚡ single source]`
+- GAPS section: `[Topic — queries tried — why it matters]`
+
+### Hallucination Ban-List (include project-specific BAD/GOOD examples)
+- Never fabricate a statistic — cite exact source or omit
+- Never combine two sources into one stat — report each separately with own source
+- Never assert "not found" as "doesn't exist" — document search queries
+- Never present single case study as universal — label scope explicitly
+- Never fill gaps from training data — "no current data found" instead
+- Never confuse dates (release vs deprecation, announced vs deployed) — verify against primary sources
+```
+
+**When to include:** Any skill whose output contains external claims — market reports,
+technology recommendations, audit findings that cite docs, competitive analysis. NOT
+needed for code-writing agents (those use read-before-write + build verification instead).
+
+---
+
 ## Integration Into Generated Agents
 
 When the bootstrap generates an agent, include these sections based on the agent's role:
 
 | Agent Type | Must Include |
 |-----------|-------------|
-| Code writer | All 8 patterns |
+| Code writer | Patterns 1-8 |
 | Code reviewer | Patterns 1, 3, 4, 7 |
 | Test writer | Patterns 1, 2, 3, 5, 6 |
 | Quick-check / researcher | Patterns 3, 7 |
 | Orchestrator skill | Patterns 2, 7, 8 |
+| Research-to-output skill | Pattern 9 (Claim-Evidence Ledger) + Patterns 3, 7 |
 
 ---
 

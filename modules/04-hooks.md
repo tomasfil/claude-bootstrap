@@ -13,6 +13,26 @@ IF helper scripts exist → UPDATE if they differ from current template
 IF missing → CREATE all
 ```
 
+## Why Separate Script Files (not inline hooks)
+
+Each hook script MUST be a separate `.sh` file, NOT inlined into `settings.json` as a one-liner.
+
+**Reasons:**
+- **Maintainability:** A 200-character bash one-liner in a JSON string is unreadable and impossible to debug. A separate `.sh` file has syntax highlighting, proper formatting, and comments.
+- **Reusability:** Scripts can be tested independently (`bash .claude/hooks/guard-git.sh < test-input.json`).
+- **Idempotency:** `/reflect` and future bootstrap re-runs can update script files without parsing JSON-embedded bash.
+- **Debuggability:** When a hook fails, `bash -x .claude/hooks/guard-git.sh` shows exactly what happened. Inline hooks give you a wall of escaped quotes.
+
+**Anti-pattern (DO NOT DO THIS):**
+```json
+"command": "bash -c 'input=$(cat); cmd=$(echo \"$input\" | bash scripts/json-val.sh tool_input.command); if echo \"$cmd\" | grep -qE \"git\\s+push\"; then echo BLOCKED >&2; exit 2; fi'"
+```
+
+**Correct pattern:**
+```json
+"command": "bash .claude/hooks/guard-git.sh"
+```
+
 ## Create Directories
 
 ```bash

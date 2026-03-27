@@ -125,9 +125,16 @@ Identify the project's error handling approach:
 
 ---
 
-## Phase 2: Online Research
+## Phase 2: Online Research (MANDATORY — do not skip or abbreviate)
 
 Research current best practices for the specific stack discovered in Phase 1. Do NOT skip this — testing ecosystems evolve fast and cached knowledge goes stale.
+
+**Enforcement:** Before proceeding to Phase 3, you MUST print:
+```
+Phase 2 complete — {N} searches conducted across {M} topic categories
+Key findings: {3-5 bullet points of most impactful discoveries}
+Gaps: {any topics where search failed after 2 attempts}
+```
 
 ### 2.1 Language-Specific Testing Best Practices
 

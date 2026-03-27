@@ -157,9 +157,19 @@ Per language/framework, identify:
 
 ---
 
-## Phase 2 — Web Research (MUST NOT SKIP)
+## Phase 2 — Web Research (MANDATORY — do not skip or abbreviate)
 
 For EACH detected language/framework combination, research current best practices. This grounds the agents in verified knowledge rather than training data assumptions.
+
+**Why this phase exists:** Your training data contains patterns from many framework versions. This project uses a specific version. Searching confirms which patterns are current for THAT version, and surfaces gotchas/deprecations you wouldn't know about. Skipping research means the generated agents may contain outdated or incorrect patterns.
+
+**Enforcement:** Before proceeding to Phase 3, you MUST print:
+```
+Phase 2 complete — {N} searches conducted across {M} topic categories
+Key findings: {3-5 bullet points of most impactful discoveries}
+Gaps: {any topics where search failed after 2 attempts}
+```
+If N < 10 per language, explain which categories were skipped and why.
 
 ### Search Matrix (per language/framework)
 

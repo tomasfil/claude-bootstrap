@@ -81,6 +81,61 @@ Every agent that writes code must include:
 
 See `techniques/anti-hallucination.md` for complete patterns.
 
+### Claim-Evidence Ledger (for research-heavy skills)
+
+When building skills that research external data and synthesize it into output
+(reports, recommendations, competitive analysis, audits referencing docs), add a
+**Claim-Evidence Ledger** phase. This prevents the most common research hallucination:
+presenting unverified or fabricated claims as facts.
+
+**When to apply:** Any skill where the output contains external claims — statistics,
+dates, quotes, competitive findings, API behaviors, framework features. NOT needed
+for pure code-writing agents (those use read-before-write instead).
+
+**Structure — each claim gets a tracked entry:**
+```json
+{
+  "id": 1,
+  "claim": "The specific external claim",
+  "source_url": "https://...",
+  "source_name": "Name of source",
+  "source_date": "2026-03-10",
+  "confidence": "high|medium|low",
+  "corroborated": true,
+  "corroboration_source": "Second independent source (if any)"
+}
+```
+
+**Integrate into skill workflow as 3 additions:**
+
+1. **During research phase** — every external claim gets a ledger entry as discovered.
+   No entry = claim cannot appear in output. No exceptions.
+
+2. **Mandatory audit phase** (insert BEFORE synthesis/output):
+   - Categorize: high-confidence corroborated (✓), high-confidence single-source (⚡),
+     medium/low uncorroborated (DROPPED)
+   - Statistics (any %, number, date) require corroboration. Uncorroborated stats
+     get prefixed with "~" and the single source name.
+   - Low-confidence + uncorroborated = banned from output → move to GAPS section.
+   - State: "This step exists to catch hallucinations BEFORE they enter the output."
+
+3. **In output format** — require source attribution inline:
+   - Each claim shows: `[Claim] — [Source, Date] [✓ corroborated / ⚡ single source]`
+   - GAPS section for searched-but-not-found: `[Topic — queries tried — why it matters]`
+
+**Hallucination ban-list (include concrete BAD/GOOD examples in the skill):**
+- Never fabricate a statistic — cite exact source or don't include it
+- Never combine two sources into one stat — report each separately
+- Never assert absence as fact — document search queries that returned nothing
+- Never present single case study results as universal — label scope explicitly
+- Never fill gaps from training data — write "no current data found" instead
+- Never confuse dates — verify against primary/official sources
+
+**Absence documentation:** When searches return nothing, the skill must document
+what was searched and state "no results found" rather than inventing from memory.
+This is the single most important rule — the temptation to fill gaps is strongest
+when the output would look incomplete without them.
+
 ### Model Selection
 
 | Purpose | Model | Effort |

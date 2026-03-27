@@ -29,6 +29,13 @@ MANDATORY RULES — VIOLATIONS CAUSE SETUP FAILURE:
 10. After 2 failed troubleshooting attempts, **search the web** before trying more fixes.
 11. Apply anti-hallucination patterns from `techniques/anti-hallucination.md` to every generated agent.
 12. Apply RCCF framework from `techniques/prompt-engineering.md` to every generated skill/agent.
+
+ANTI-SHORTCUT RULES — do not rationalize around these:
+
+13. **Create the files the module specifies.** If a module says to create `guard-git.sh` as a separate script file, create it as a separate script file. Do NOT inline script logic into settings.json one-liners. Separate files exist for maintainability, readability, and debuggability — a 200-character bash one-liner in JSON is unmaintainable.
+14. **Do not skip the UserPromptSubmit routing hook.** Claude Code's native `user-invocable: true` detection only works when the user types the exact slash command. The routing hook catches natural language ("add a field to X") and nudges toward the right skill. These are complementary, not redundant. Module 14 MUST generate it.
+15. **Do not skip or abbreviate web research in Modules 16-18.** The research phase exists because training data goes stale and projects use specific framework versions. You MUST conduct the searches, print how many you ran and key findings, BEFORE generating agents. "I'll do the research later" or "8 out of 15 is enough" are not acceptable.
+16. **Do not decide a module's output is "not needed".** Every module was designed as part of an integrated system. If you believe something is unnecessary, flag it to the user and let THEM decide — do not skip it silently or with a one-line justification.
 </rules>
 
 ---
