@@ -90,7 +90,7 @@ effort: medium
 | `model` | No | `haiku`, `sonnet`, `opus`. Default: inherit from parent |
 | `effort` | No | `low`, `medium`, `high`, `max`. Default: inherit |
 | `isolation` | No | `worktree` for isolated git worktree |
-| `background` | No | `true` to run non-blocking |
+| `background` | No | **Do not use.** Always dispatch foreground. See "Foreground-Only Dispatch" section |
 | `maxTurns` | No | Limit agent iterations |
 
 ### Model Selection Guidelines
@@ -105,6 +105,28 @@ Model assignment depends on the user's preference (asked in Module 01 discovery)
 | Code review | opus | sonnet | sonnet |
 | Research / exploration | opus | sonnet | haiku |
 | Orchestration | opus | sonnet | sonnet |
+
+---
+
+## Foreground-Only Dispatch (Critical)
+
+**Always dispatch agents in foreground. Never use `run_in_background: true`.**
+
+Background agents cannot prompt the user for permission. Any tool that requires permission approval (Write, Edit, Bash, WebSearch, WebFetch) will **silently block** a background agent forever. Even read-only tools like WebSearch require permission, making background dispatch unreliable for most agents.
+
+Foreground agents can run in parallel — launch multiple Agent tool calls in a single message for concurrency. This gives the same performance benefit as background dispatch without the permission problem.
+
+### Why Not Background?
+1. **Permission prompts silently block** — the agent hangs, wastes tokens, returns nothing
+2. **No progress visibility** — you cannot see what a background agent is doing
+3. **Foreground parallel works** — multiple foreground Agent calls in one message run concurrently
+4. **No real benefit** — background only helps if you need to do other work while waiting, but in practice the orchestrator should wait for agent results before proceeding
+
+### Permission-Gated Tools (any of these block background agents)
+`Write`, `Edit`, `Bash`, `NotebookEdit`, `Agent`, `WebSearch`, `WebFetch`
+
+### Auto-Allowed Tools (never prompt)
+`Read`, `Grep`, `Glob`, `LSP`
 
 ---
 
