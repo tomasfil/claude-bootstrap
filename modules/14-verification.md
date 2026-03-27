@@ -115,12 +115,22 @@ find ~/.claude/plugins/cache/ -name "*.json" -exec grep -l "UserPromptSubmit" {}
 ```json
 "UserPromptSubmit": [
   {
-    "type": "prompt",
-    "matcher": "",
-    "prompt": "SKILL ROUTING: Check if any skill below applies to this message. If one applies, invoke it via the Skill tool before taking other action. If NO skill applies, respond to the user normally — NEVER refuse, block, or decline to answer.\n\nSkills and triggers:\n{SKILLS_LIST}\n\nAgents available for dispatch:\n{AGENTS_LIST}\n\nIMPORTANT: This routing check must NEVER prevent you from responding. If no skill matches, just answer the user's question directly. Simple questions, git commands, meta-questions about the setup, and general conversation do NOT need skills."
+    "hooks": [
+      {
+        "type": "prompt",
+        "prompt": "SKILL ROUTING: Check if any skill below applies to this message. If one applies, invoke it via the Skill tool before taking other action. If NO skill applies, respond to the user normally — NEVER refuse, block, or decline to answer.\n\nSkills and triggers:\n{SKILLS_LIST}\n\nAgents available for dispatch:\n{AGENTS_LIST}\n\nIMPORTANT: This routing check must NEVER prevent you from responding. If no skill matches, just answer the user's question directly. Simple questions, git commands, meta-questions about the setup, and general conversation do NOT need skills."
+      }
+    ]
   }
 ]
 ```
+
+⚠️ **The `hooks` wrapper array is REQUIRED by the schema.** Every hook event entry must have
+`{ "hooks": [ ... ] }` — the flat format `{ "type": "prompt", ... }` will fail validation.
+
+⚠️ **Prompt hooks are evaluated by a small fast model by default.** If the routing is being
+misinterpreted (blocking when it shouldn't), add `"model": "claude-sonnet-4-6"` to the hook
+to use a more capable model for routing decisions.
 
 **Format for {SKILLS_LIST}** — one line per skill, extracted from its description:
 ```

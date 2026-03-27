@@ -215,26 +215,41 @@ Create with ONLY the deterministic hooks — hooks that don't depend on what mod
 
 The **skill routing hook** (UserPromptSubmit) is NOT created here. It is generated in Module 14 (verification) AFTER all skills and agents have been created, by scanning what actually exists.
 
+⚠️ **Schema requirement:** Every hook event entry MUST use the nested `{ "hooks": [...] }` format.
+The flat format `{ "type": "command", ... }` directly in the array will fail validation.
+
 ```json
 {
   "hooks": {
     "SessionStart": [
       {
-        "type": "command",
-        "command": "bash .claude/hooks/detect-env.sh"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/detect-env.sh"
+          }
+        ]
       }
     ],
     "PreToolUse": [
       {
-        "type": "command",
         "matcher": "Bash",
-        "command": "bash .claude/hooks/guard-git.sh"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/guard-git.sh"
+          }
+        ]
       }
     ],
     "SubagentStop": [
       {
-        "type": "command",
-        "command": "bash .claude/hooks/track-agent.sh"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/track-agent.sh"
+          }
+        ]
       }
     ]
   }
