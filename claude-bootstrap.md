@@ -37,13 +37,27 @@ MANDATORY RULES — VIOLATIONS CAUSE SETUP FAILURE:
 
 Every module follows this protocol for each file it creates:
 
+**For rules, CLAUDE.md, hooks, scripts, config files:**
 ```
 IF file exists AND has project-specific customizations → PRESERVE, note what's there
 IF file exists AND matches a previous bootstrap template → UPDATE to current version
 IF file doesn't exist → CREATE from template
 ```
 
-No mode detection needed. Run the bootstrap any time — it brings everything to spec without destroying customizations.
+**For agents and skills (`.claude/agents/`, `.claude/skills/`):**
+```
+IF file exists → READ it, then REGENERATE with:
+  - Project-specific content EXTRACTED from the existing file (conventions, patterns, examples, gotchas)
+  - PLUS all required sections from the current bootstrap template (anti-hallucination, model preference, pipeline traces, verification)
+  - This is a MERGE, not a preserve — old content is used as INPUT, not kept as-is
+IF file doesn't exist → CREATE from template with full research
+```
+
+Agents and skills must always meet the current bootstrap standard. An agent from a previous
+bootstrap version that's missing anti-hallucination sections or model preference is OUTDATED,
+not customized — it should be upgraded while keeping the project-specific knowledge it contains.
+
+No mode detection needed. Run the bootstrap any time — it brings everything to spec.
 
 ---
 

@@ -22,7 +22,7 @@ The generated system is **not generic** — it encodes your project's specific a
 
 Six phases, executed in order:
 
-1. **Project Analysis** — Deep-read the codebase: detect all languages, classify component types per language, map architecture layers, trace file co-occurrence patterns, extract conventions from existing code
+1. **Project Analysis** — Deep-read the codebase AND any existing code-writer agents. If `.claude/agents/code-writer-*.md` already exist, read them to extract project-specific knowledge (component types, patterns, gotchas) as input for regeneration. Then detect all languages, classify component types, map architecture layers, trace file co-occurrence patterns, extract conventions
 2. **Web Research** — Search for current best practices per detected language/framework combo (~15-20 searches per language) — architecture, idioms, DI, error handling, performance, security, LSP tools, MCP servers
 3. **Generate Orchestrator** — Create the `/code-write` skill with pipeline traces, layer dependencies, and specialist dispatch logic
 4. **Generate Specialists** — Create per-language agents with 8 required sections, each grounded in research findings and project patterns

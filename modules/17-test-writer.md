@@ -19,7 +19,7 @@ The generated test writer is **not a generic template** — it encodes your proj
 
 Three phases, executed in order:
 
-1. **Project Analysis** — Deep-read the codebase: detect stack, classify component types, extract patterns from existing tests, map dependency injection strategies, identify error handling conventions
+1. **Project Analysis** — Deep-read the codebase AND any existing test-writer agent. If `.claude/agents/test-writer.md` already exists, read it to extract project-specific knowledge (test patterns, mocking strategies, gotchas) as input for regeneration. Then detect stack, classify component types, extract patterns from existing tests, map dependency injection strategies, identify error handling conventions
 2. **Online Research** — Search for current best practices specific to the detected stack (test frameworks, mocking libraries, integration testing, coverage tooling) — never rely on cached knowledge alone
 3. **Generation** — Produce all output files grounded in findings from phases 1-2, with every code example matching the actual project
 

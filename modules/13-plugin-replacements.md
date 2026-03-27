@@ -7,7 +7,9 @@
 
 ## Idempotency
 
-Per skill: preserve if customized, update if stale, create if missing.
+Per skill: if it exists, READ it to extract project-specific content, then REGENERATE
+with that content PLUS all required sections from the current template. Skills from a
+previous bootstrap version are upgraded, not preserved as-is.
 
 ## Create Skills
 

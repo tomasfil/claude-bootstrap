@@ -149,19 +149,25 @@ TOOL=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_name")
 
 CMD=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_input.command")
 
-# Block force push
+# Allow companion repo operations (sync-config.sh push/pull operates on ~/.claude-configs/)
+if echo "$CMD" | grep -qE 'sync-config\.sh|claude-configs'; then
+  exit 0
+fi
+
+# Allow pushes that explicitly target a non-main/master branch or a different repo
+# Block force push (in the PROJECT repo)
 if echo "$CMD" | grep -qE 'git\s+push\s+.*--force|git\s+push\s+.*-f\b'; then
   echo "❌ BLOCKED: Force push is not allowed. Use --force-with-lease if you must."
   exit 2
 fi
 
-# Block push to main/master
+# Block push to main/master (in the PROJECT repo)
 if echo "$CMD" | grep -qE 'git\s+push\s+.*\b(main|master)\b|git\s+push\s+-u\s+(origin\s+)?(main|master)'; then
   echo "❌ BLOCKED: Direct push to main/master is not allowed. Use a feature branch."
   exit 2
 fi
 
-# Block push from main branch
+# Block push from main branch (in the PROJECT repo)
 CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "")
 if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ]; then
   if echo "$CMD" | grep -qE 'git\s+push\b'; then
