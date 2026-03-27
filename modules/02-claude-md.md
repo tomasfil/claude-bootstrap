@@ -74,9 +74,22 @@ When context is compacted, PRESERVE:
 - Any unresolved errors or blockers
 
 ## Effort Scaling
-- Trivial (typo, rename, config change): model=haiku, effort=low
-- Standard (feature, bugfix, test writing): model=sonnet, effort=medium
-- Complex (architecture, multi-file refactor, debugging): model=opus, effort=high
+{Use the model preference from Module 01 discovery to set these values:}
+
+If model_preference == "max-quality":
+- Trivial (typo, rename, config): model=sonnet, effort=low
+- Standard (feature, bugfix, test): model=opus, effort=medium
+- Complex (architecture, refactor): model=opus, effort=high
+
+If model_preference == "balanced":
+- Trivial (typo, rename, config): model=haiku, effort=low
+- Standard (feature, bugfix, test): model=sonnet, effort=medium
+- Complex (architecture, refactor): model=opus, effort=high
+
+If model_preference == "cost-efficient":
+- Trivial (typo, rename, config): model=haiku, effort=low
+- Standard (feature, bugfix, test): model=sonnet, effort=medium
+- Complex (architecture, refactor): model=opus, effort=high
 
 ## Communication
 {User preference: "Direct — no fluff, lead with the answer" or "Diplomatic — explain reasoning"}

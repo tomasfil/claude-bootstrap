@@ -74,7 +74,7 @@ description: >
   a feature works, tracing execution paths, analyzing dependencies, or
   investigating unfamiliar code areas. Thorough but slower than quick-check.
 tools: Read, Grep, Glob, LSP, WebSearch
-model: sonnet
+model: {opus for max-quality, sonnet for balanced, haiku for cost-efficient — from Module 01 model preference}
 effort: medium
 ---
 ```

@@ -95,13 +95,16 @@ effort: medium
 
 ### Model Selection Guidelines
 
-| Agent Purpose | Recommended Model | Reasoning |
-|--------------|-------------------|-----------|
-| Quick lookup / search | haiku | Simple retrieval, fast, cheap |
-| Code generation | sonnet | Good balance of quality and cost |
-| Complex architecture | opus | Needs deep reasoning |
-| Code review | sonnet | Pattern matching, not deep reasoning |
-| Orchestration | sonnet/opus | Depends on complexity of dispatch logic |
+Model assignment depends on the user's preference (asked in Module 01 discovery):
+
+| Agent Purpose | Max Quality | Balanced | Cost Efficient |
+|--------------|-------------|----------|----------------|
+| Quick lookup / search | haiku | haiku | haiku |
+| Code generation | opus | sonnet | sonnet |
+| Test writing | opus | sonnet | sonnet |
+| Code review | opus | sonnet | sonnet |
+| Research / exploration | opus | sonnet | haiku |
+| Orchestration | opus | sonnet | sonnet |
 
 ---
 
