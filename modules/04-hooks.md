@@ -322,9 +322,13 @@ Add to settings.json:
 ```json
 "PostToolUse": [
   {
-    "type": "command",
-    "matcher": "Edit|Write",
-    "command": "bash .claude/hooks/auto-format.sh"
+    "hooks": [
+      {
+        "type": "command",
+        "matcher": "Edit|Write",
+        "command": "bash .claude/hooks/auto-format.sh"
+      }
+    ]
   }
 ]
 ```
@@ -336,6 +340,6 @@ Add to settings.json:
   - SessionStart: env detection + companion auto-import
   - PreToolUse: git guard (blocks force push, push to main, hard reset)
   - SubagentStop: agent usage tracking
-  - UserPromptSubmit: skill auto-routing ({N} skills routed)
+  - UserPromptSubmit: deferred to Module 14 (needs full skill inventory)
   {- PostToolUse: auto-format (if enabled)}
 ```

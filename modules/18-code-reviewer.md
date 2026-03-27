@@ -27,10 +27,10 @@ Read the project to understand what the reviewer needs to check:
 
 1. **Read existing reviewer** — if `.claude/agents/project-code-reviewer.md` exists, extract project-specific checklists, gotchas, and patterns as input for regeneration
 2. **Read all rules** from `.claude/rules/` — these are the standards to enforce
-2. **Read pipeline traces** from `.claude/skills/code-write/references/pipeline-traces.md` — for completeness checks
-3. **Read .learnings/log.md** — past mistakes are the best review checklist
-4. **Read CLAUDE.md gotchas** — things that catch Claude off guard
-5. **Analyze architecture layers** — identify dependency direction rules
+3. **Read pipeline traces** from `.claude/skills/code-write/references/pipeline-traces.md` — for completeness checks
+4. **Read .learnings/log.md** — past mistakes are the best review checklist
+5. **Read CLAUDE.md gotchas** — things that catch Claude off guard
+6. **Analyze architecture layers** — identify dependency direction rules
 
 ## Phase 2 — Web Research (MANDATORY — do not skip or abbreviate)
 

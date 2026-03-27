@@ -11,7 +11,7 @@ These are architectural constraints in Claude Code — not suggestions:
 1. **Subagents CANNOT spawn other subagents** — Agent tool is removed at spawn time
 2. **Subagents CANNOT ask the user questions** — AskUserQuestion tool removed
 3. **Subagents CANNOT enter plan mode** — EnterPlanMode tool removed
-4. **Each subagent gets its own isolated context window** (~200K tokens)
+4. **Each subagent gets its own isolated context window** (size depends on model)
 5. **Subagent system prompt = the .md file body** (NOT the full Claude Code system prompt)
 6. **On Windows, very long agent .md files may fail** via `--agents` CLI flag (8191 char limit) — use file-based agents instead
 

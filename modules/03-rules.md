@@ -28,7 +28,7 @@ mkdir -p .claude/rules
 # General Rules
 
 ## Git
-- Never commit directly to main/master — use feature branches
+- {Adapt to project branching strategy: feature branches for team projects, direct main for solo/personal}
 - Every commit must leave the project in a buildable state
 - Use conventional commit messages: type(scope): description
 - Never force push to shared branches

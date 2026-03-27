@@ -10,8 +10,8 @@
 | Output | Path | Purpose |
 |--------|------|---------|
 | Test writer agent | `.claude/agents/test-writer.md` | Autonomous agent that writes comprehensive tests matching your project's exact stack, patterns, and conventions |
-| Coverage skill | `.claude/skills/coverage/skill.md` | `/coverage` command to run coverage and display summary |
-| Coverage gaps skill | `.claude/skills/coverage-gaps/skill.md` | `/coverage-gaps` command to identify uncovered lines per class |
+| Coverage skill | `.claude/skills/coverage/SKILL.md` | `/coverage` command to run coverage and display summary |
+| Coverage gaps skill | `.claude/skills/coverage-gaps/SKILL.md` | `/coverage-gaps` command to identify uncovered lines per class |
 
 The generated test writer is **not a generic template** — it encodes your project's specific mocking strategies, DI patterns, error handling idioms, framework quirks, and integration test infrastructure. The goal is an agent that writes tests a senior engineer on your team would recognize as idiomatic.
 
@@ -275,7 +275,7 @@ A section for library-specific mocking pitfalls discovered in Phase 2.2 and any 
 
 ## Phase 4: Generate Coverage Skill
 
-Create `.claude/skills/coverage/skill.md`:
+Create `.claude/skills/coverage/SKILL.md`:
 
 ```yaml
 ---
@@ -294,7 +294,7 @@ Content must include:
 
 ## Phase 5: Generate Coverage Gaps Skill
 
-Create `.claude/skills/coverage-gaps/skill.md`:
+Create `.claude/skills/coverage-gaps/SKILL.md`:
 
 ```yaml
 ---
@@ -330,7 +330,7 @@ Print final summary:
 Test Writer Bootstrap Complete
 ==============================
 Agent: .claude/agents/test-writer.md
-Skills: .claude/skills/coverage/skill.md, .claude/skills/coverage-gaps/skill.md
+Skills: .claude/skills/coverage/SKILL.md, .claude/skills/coverage-gaps/SKILL.md
 Language: {detected}
 Test framework: {detected}
 Mock library: {detected}
