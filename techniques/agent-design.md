@@ -220,6 +220,28 @@ When tasks have NO dependencies and NO shared files:
 
 ---
 
+## Agent Teams (Multi-Session Coordination)
+
+Agent Teams allow multiple independent Claude sessions to coordinate on parallel work.
+Unlike subagents (which run within the main conversation), team members are full sessions
+with their own context, tool access, and user interaction.
+
+### When to Use Teams vs Subagents
+| Criteria | Subagents | Agent Teams |
+|----------|-----------|-------------|
+| Task scope | Focused, single-purpose | Complex, multi-faceted |
+| Context needs | <50% of window | Full window per member |
+| Coordination | Sequential/parallel dispatch | Shared task list, messaging |
+| Token cost | 4-7x standard | ~15x standard |
+| Isolation | Shared repo (or worktree) | Each member can use worktree |
+
+### When NOT to Use Teams
+- Simple tasks that a single subagent can handle
+- Cost-sensitive workflows (15x token multiplier)
+- Tasks requiring tight sequential coordination
+
+---
+
 ## Invocation Quality (Critical)
 
 Most subagent failures come from poor invocations, not execution failures.
@@ -274,6 +296,10 @@ For agents >300 lines, use the reference file pattern:
 Agent reads references on demand rather than having everything in the system prompt.
 
 ---
+
+## See Also
+- `techniques/prompt-engineering.md` — RCCF framework (required for all agents)
+- `techniques/anti-hallucination.md` — verification patterns (required in all agents)
 
 ## Sources
 - Claude Code Docs: sub-agents, agent-teams, tools-reference

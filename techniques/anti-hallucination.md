@@ -312,6 +312,10 @@ When the bootstrap generates an agent, include these sections based on the agent
 
 ---
 
+## See Also
+- `techniques/prompt-engineering.md` — RCCF framework for structuring agent prompts
+- `techniques/agent-design.md` — agent constraints and tool restrictions
+
 ## Sources
 - Chain-of-Verification: Meta Research / arXiv 2309.11495
 - Anthropic Claude Documentation — reducing hallucinations

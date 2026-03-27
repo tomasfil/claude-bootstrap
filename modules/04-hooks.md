@@ -283,6 +283,81 @@ skills and agents are created. It uses `"type": "command"` with `echo` (NOT `"ty
 Prompt-type hooks are evaluated by a small fast model that misinterprets routing instructions
 and blocks normal messages. Command-type echo hooks simply prepend text — they never block.
 
+## 5b. PreCompact Hook (state preservation)
+
+Fires before context compaction. Writes critical state to disk so it survives compression.
+
+Create `.claude/hooks/pre-compact.sh`:
+
+```bash
+#!/usr/bin/env bash
+# pre-compact.sh — PreCompact hook
+# Saves working state before context is compressed
+
+set -euo pipefail
+
+STATE_FILE=".claude/compact-state.md"
+
+{
+  echo "# Compact State — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo ""
+  echo "## Modified Files"
+  git diff --name-only 2>/dev/null || echo "(not a git repo)"
+  echo ""
+  echo "## Staged Files"
+  git diff --cached --name-only 2>/dev/null || echo "(none)"
+  echo ""
+  echo "## Current Branch"
+  git branch --show-current 2>/dev/null || echo "(unknown)"
+} > "$STATE_FILE"
+
+exit 0
+```
+
+Add to settings.json template in the hooks section — add a PreCompact entry:
+```json
+"PreCompact": [
+  {
+    "hooks": [
+      {
+        "type": "command",
+        "command": "bash .claude/hooks/pre-compact.sh"
+      }
+    ]
+  }
+]
+```
+
+## 5c. Stop Hook — Session Summary (optional)
+
+Fires when Claude's response completes. Can capture session learnings.
+Note: The Stop hook fires frequently (every response), so keep it lightweight.
+Only log when significant work was done.
+
+Create `.claude/hooks/session-summary.sh`:
+
+```bash
+#!/usr/bin/env bash
+# session-summary.sh — Stop hook (optional)
+# Lightweight session tracking — only logs when files were changed
+
+set -euo pipefail
+
+# Only log if files were modified since last check
+CHANGED=$(git diff --name-only 2>/dev/null | wc -l)
+[ "$CHANGED" -eq 0 ] && exit 0
+
+# Increment session work counter
+COUNTER=".learnings/.session-work-count"
+mkdir -p .learnings
+COUNT=$(cat "$COUNTER" 2>/dev/null || echo 0)
+echo $((COUNT + 1)) > "$COUNTER"
+
+exit 0
+```
+
+Mark this hook as **optional** — some users may find it noisy.
+
 ## 6. Optional: Auto-Format Hook
 
 Only add if user said "yes" to auto-format in Module 01 discovery.

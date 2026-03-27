@@ -216,6 +216,10 @@ For complex decisions, provide a hierarchical taxonomy:
 
 ---
 
+## See Also
+- `techniques/anti-hallucination.md` — verification patterns for every agent
+- `techniques/agent-design.md` — agent YAML templates and dispatch patterns
+
 ## Sources
 - RCCF Framework: Internal framework — Role, Context, Constraints, Format
 - Structured outputs: General pattern — multiple sources
