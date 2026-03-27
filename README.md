@@ -4,23 +4,28 @@ A modular, self-improving bootstrap system for [Claude Code](https://claude.ai/c
 
 ## Quick Start
 
-### Method 1: Run directly from GitHub (no clone needed)
+### Method 1: Just paste the URL (simplest)
 
 ```bash
 cd your-project
 claude
 ```
 
-Then paste this into the session:
+Then paste:
 
 ```
-Fetch and execute the Claude Code bootstrap from https://github.com/tomasfil/claude-bootstrap.
-Read the orchestrator at modules/01 through 18 using:
-  gh api repos/tomasfil/claude-bootstrap/contents/{path} --jq '.content' | base64 -d
-Execute each module in order against this project.
+https://github.com/tomasfil/claude-bootstrap
 ```
 
-Claude will fetch the orchestrator and all 18 modules directly from GitHub — nothing to clone or download.
+Claude will fetch the orchestrator and all 18 modules directly from GitHub and execute them against your project. Nothing to clone or download.
+
+### Method 2: One-liner from terminal
+
+```bash
+cd your-project
+gh api repos/tomasfil/claude-bootstrap/contents/claude-bootstrap.md --jq '.content' \
+  | base64 -d | claude -p "Execute this bootstrap for the current project"
+```
 
 ### Method 2: Clone and pipe
 

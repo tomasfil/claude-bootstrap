@@ -70,6 +70,29 @@ No mode detection needed. Run the bootstrap any time — it brings everything to
 
 ---
 
+## Remote Execution
+
+If modules are not available locally (user pasted a GitHub URL or only this file), fetch them from the public repository:
+
+```
+REPO: https://github.com/tomasfil/claude-bootstrap
+BASE: https://raw.githubusercontent.com/tomasfil/claude-bootstrap/main
+```
+
+To fetch any module or technique file:
+```bash
+gh api repos/tomasfil/claude-bootstrap/contents/{path} --jq '.content' | base64 -d
+```
+
+For example: `gh api repos/tomasfil/claude-bootstrap/contents/modules/01-discovery.md --jq '.content' | base64 -d`
+
+If `gh` is not available, use WebFetch with the raw URL:
+`https://raw.githubusercontent.com/tomasfil/claude-bootstrap/main/modules/01-discovery.md`
+
+**Check local first**: If the file exists locally (e.g., `modules/01-discovery.md`), read it with the Read tool. Only fetch from GitHub if the local file doesn't exist.
+
+---
+
 ## Module Execution
 
 Read and execute each module file in order. Each module is self-contained with full instructions.
