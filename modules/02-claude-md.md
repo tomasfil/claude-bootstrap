@@ -8,10 +8,11 @@
 ## Idempotency
 
 ```
-IF CLAUDE.md exists AND has project-specific customizations → READ it, MERGE new sections, PRESERVE customizations
-IF CLAUDE.md exists AND matches old bootstrap template → UPDATE to v5 template
+IF CLAUDE.md exists → READ it, EXTRACT all project-specific content (gotchas, conventions, commands, architecture), MERGE with bootstrap template, REGENERATE with both project knowledge and bootstrap improvements
 IF CLAUDE.md doesn't exist → CREATE from template below
 ```
+
+The goal is never "preserve the old file" — it's "carry forward all project-specific knowledge into the improved template." Generic boilerplate gets replaced; project-specific rules, gotchas, and conventions survive.
 
 ## Instruction Placement Framework
 
