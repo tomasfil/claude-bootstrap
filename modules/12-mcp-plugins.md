@@ -72,9 +72,53 @@ for name in data.get('plugins', {}):
 | `pr-review-toolkit` | Replaced by /pr skill |
 | `frontend-design` | Replaced by code-writer-frontend specialist |
 
+### Detect & Suggest Uninstalling Replaced Plugins
+
+Check if any methodology plugins from the "Do NOT Recommend" list are currently installed:
+
+```bash
+# Check installed plugins for methodology plugins that should be replaced
+REPLACED_PLUGINS="superpowers claude-md-management feature-dev code-review commit-commands code-simplifier pr-review-toolkit frontend-design"
+
+for plugin in $REPLACED_PLUGINS; do
+  if cat ~/.claude/plugins/installed_plugins.json 2>/dev/null | grep -q "\"$plugin@"; then
+    echo "⚠️  INSTALLED: $plugin — replaced by project-local equivalent"
+  fi
+done
+```
+
+For each found, present the user with:
+
+```
+The following installed plugins are now replaced by project-specific alternatives
+created by this bootstrap. Keeping them active may cause conflicts (duplicate skills,
+competing hooks, wasted context tokens).
+
+⚠️  superpowers — replaced by: /brainstorm, /write-plan, /execute-plan, /tdd, /debug,
+    /verify, /review + skill routing hook
+⚠️  code-review — replaced by: project-code-reviewer agent (Module 18)
+⚠️  commit-commands — replaced by: /commit, /pr skills
+{...etc for each found}
+
+Recommended action — disable for this project:
+  claude plugins disable superpowers --scope project
+  claude plugins disable code-review --scope project
+  {...etc}
+
+Or uninstall globally if you don't use them in other projects:
+  claude plugins uninstall superpowers
+  {...etc}
+
+Would you like me to disable them for this project? (y/n)
+```
+
+Wait for the user's answer. If yes, run the disable commands. If no, note the potential conflicts and continue.
+
+**IMPORTANT:** Use `disable --scope project` (not uninstall) by default — the user may use these plugins in other projects that haven't been bootstrapped yet.
+
 ### Conflict Check
 
-If any recommended plugin has an agent/skill/hook name that collides with a project-local one:
+If any recommended connector plugin has an agent/skill/hook name that collides with a project-local one:
 1. The project-local version takes precedence
 2. Note the collision in the output
 3. Suggest renaming if needed
@@ -102,7 +146,8 @@ If prerequisite is missing, note it in recommendations.
 
 MCP servers configured: {list or "none"}
 Plugins recommended (connectors): {list}
-Plugins NOT recommended (replaced by project-local): {list}
+Replaced plugins found installed: {list or "none"}
+  Disabled: {list or "user declined"}
 Conflicts detected: {list or "none"}
 LSP prerequisites: {status}
 
