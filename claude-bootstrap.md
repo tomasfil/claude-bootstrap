@@ -25,7 +25,7 @@ MANDATORY RULES — VIOLATIONS CAUSE SETUP FAILURE:
 6. Do not invent files or structures not specified in the modules.
 7. Hooks receive JSON on **stdin** — there is no `$CLAUDE_TOOL_INPUT` env var.
 8. All skill files: YAML frontmatter with `name` and `description` between `---` markers.
-9. All agent files: YAML frontmatter with `name`, `description`, `tools`, `model`, `effort`.
+9. All agent files: YAML frontmatter with `name`, `description`, `tools`, `model`, `effort`, `maxTurns`.
 10. After 2 failed troubleshooting attempts, **search the web** before trying more fixes.
 11. Apply anti-hallucination patterns from `techniques/anti-hallucination.md` to every generated agent.
 12. Apply RCCF framework from `techniques/prompt-engineering.md` to every generated skill/agent.
@@ -79,8 +79,8 @@ No mode detection needed. Run the bootstrap any time — it brings everything to
 - [ ] Module 07: `/write-prompt` skill created
 - [ ] Module 08: `CLAUDE.local.md` created, .gitignore updated
 - [ ] Module 09: Scoped CLAUDE.md files (only if needed — skip is valid)
-- [ ] Module 10: `.claude/agents/` with base agents (reviewer, quick-check, researcher)
-- [ ] Module 11: `.learnings/` initialized
+- [ ] Module 10: `.claude/agents/` with 10 base agents (quick-check, researcher, plan-writer, debugger, verifier, reflector, consistency-checker, tdd-runner, module-writer, project-code-reviewer)
+- [ ] Module 11: `.learnings/` initialized (log, instincts, patterns, decisions, environment, tracking)
 - [ ] Module 12: MCP servers + external plugin recommendations (connectors only)
 - [ ] Module 13: Plugin replacement skills generated (replaces superpowers, feature-dev, etc.)
 - [ ] Module 14: Wiring verification — all checks pass
