@@ -12,8 +12,8 @@ Every agent/skill file should be structured with these four components:
 Define WHO the agent is. Be specific — expertise area, seniority, mindset.
 ```markdown
 <role>
-You are a senior .NET engineer specializing in FastEndpoints API design
-with deep knowledge of EF Core, DI patterns, and clean architecture.
+You are a senior {language} engineer specializing in {framework}
+with deep knowledge of {key_patterns}.
 </role>
 ```
 
@@ -22,11 +22,10 @@ Ground the agent in WHAT it's working with. Reference real project state.
 ```markdown
 <context>
 This project uses:
-- .NET 10.0 / C# 14 with file-scoped namespaces
-- FastEndpoints 7.x with REPR pattern (Request-Endpoint-Response)
-- EF Core 10.0 with SQL Server, fluent configurations in separate files
-- ErrorOr pattern for business logic errors
-- IDataService<AppDbContext> for all data access (never inject DbContext directly)
+- {framework} {version} with {architecture_pattern}
+- {data_layer} with {database}, {configuration_approach}
+- {error_handling_pattern} for business logic errors
+- {service_abstraction} for all data access
 </context>
 ```
 
@@ -34,11 +33,10 @@ This project uses:
 Define boundaries — what NOT to do is as important as what to do.
 ```markdown
 <constraints>
-- NEVER inject AppDbContext directly — always use IDataService<AppDbContext>
-- NEVER set audit fields manually — managed by IDataService interceptors
-- Max function length: 50 lines. Split if longer.
-- Use guard clauses over nested if-else
-- Use collection expressions over .ToList()
+- NEVER {common_anti_pattern} — always use {correct_pattern}
+- NEVER {unsafe_operation} — managed by {automation_layer}
+- Max function length: {max_lines} lines. Split if longer.
+- Prefer {preferred_style} over {discouraged_style}
 </constraints>
 ```
 
@@ -46,12 +44,11 @@ Define boundaries — what NOT to do is as important as what to do.
 Specify expected output structure — reduces hallucination by constraining generation.
 ```markdown
 <format>
-For each new endpoint, generate:
-1. Request record (in Contracts project): `{Entity}{Action}Request.cs`
-2. Response record (in Contracts project): `{Entity}{Action}Response.cs`
-3. Endpoint class (in Api/Endpoints/{Entity}/): `{Action}.cs`
-4. Mapper extension (in Api/Mappers/): update `{Entity}Mapper.cs`
-Each file must use file-scoped namespace matching its directory path.
+For each new {component_type}, generate:
+1. {file_type_1} in {directory_1}: `{naming_convention_1}`
+2. {file_type_2} in {directory_2}: `{naming_convention_2}`
+3. {file_type_3} in {directory_3}: `{naming_convention_3}`
+Each file must follow {file_convention}.
 </format>
 ```
 
@@ -67,29 +64,58 @@ Use decision trees for component-type routing. Structure as nested conditions:
 
 Determine component type BEFORE writing code:
 
-1. **Is it a data entity?** → Entity Pattern
-   - New entity → Create Entity + Configuration + Migration + DTO + Mapper
-   - Modify entity → Update Entity + Migration + DTO + Mapper
+1. **Is it a {data_component}?** → {Data Pattern}
+   - New → Create {data_artifact_1} + {data_artifact_2} + {data_artifact_3}
+   - Modify → Update {data_artifact_1} + {data_artifact_3}
 
-2. **Is it an API endpoint?** → Endpoint Pattern
-   - CRUD operation → Use CrudServiceBase + standard endpoint template
-   - Custom operation → Use typed Endpoint<TRequest, TResponse>
+2. **Is it a {handler_component}?** → {Handler Pattern}
+   - Standard operation → Use {base_class} + {standard_template}
+   - Custom operation → Use {custom_approach}
 
-3. **Is it a service?** → Service Pattern
-   - Simple (IDataService only) → Type A: direct mock IDataService
-   - Complex (multiple deps) → Type B: mock all dependencies
-   - Extends CrudServiceBase → Type C: use real ServiceCollection
+3. **Is it a {service_component}?** → {Service Pattern}
+   - Simple (single dependency) → Type A: {simple_strategy}
+   - Complex (multiple deps) → Type B: {complex_strategy}
+   - Extends base → Type C: {inherited_strategy}
 ```
 
 ### Enum-Based Routing
 When a decision maps to a finite set of options, enumerate them:
 
 ```markdown
-Determine the error handling strategy:
-- `ErrorOr<T>` → Use for business logic errors (return result.Errors)
-- `Exception` → Use only for truly exceptional conditions (throw)
-- `HTTP status` → Use for API-layer validation (AddError + SendErrorsAsync)
+Determine the {decision_category}:
+- `{option_a}` → Use for {scenario_a} ({action_a})
+- `{option_b}` → Use for {scenario_b} ({action_b})
+- `{option_c}` → Use for {scenario_c} ({action_c})
 ```
+
+---
+
+## Chain-of-Thought Prompting
+
+For complex reasoning tasks, instruct the agent to think step-by-step:
+- "Before implementing, list the files that will be affected and why"
+- "Think through edge cases before writing the code"
+- "Explain your approach before starting"
+
+When to use: multi-file changes, architectural decisions, debugging
+When NOT to use: simple lookups, single-file edits, formatting
+
+---
+
+## Positive vs Negative Rules
+
+Negative rules ("DO NOT...") are weaker at high context depth — the model
+may ignore them when they're far from the active focus area.
+
+| Use Case | Framing | Example |
+|----------|---------|---------|
+| Critical safety constraint | Negative (top of prompt) | "NEVER inject DbContext directly" |
+| Style preference | Positive | "Prefer guard clauses over nested if-else" |
+| Convention guidance | Positive | "Use collection expressions instead of .ToList()" |
+| Security boundary | Negative (top of prompt) | "DO NOT commit secrets or credentials" |
+
+Rule of thumb: Reserve "NEVER/DO NOT" for safety-critical constraints placed at the top
+of the instruction. Use "Prefer X over Y" for everything else.
 
 ---
 
@@ -102,36 +128,19 @@ Determine the error handling strategy:
 
 ### Template
 ```markdown
-### Example: Create a new GET endpoint
+### Example: {task_description}
 
-**Input:** "Get all active divisions for a brand"
+**Input:** "{natural_language_request}"
 
 **Output:**
-```csharp
-namespace MyProject.Api.Endpoints.Divisions;
+- File: `{output_file_path}`
+- Pattern followed: {pattern_name} from {reference_file}
+- Key decisions: {why_this_approach}
 
-public class GetByBrand : AuthenticatedEndpoint<GetDivisionsByBrandRequest, GetDivisionsByBrandResponse>
-{
-    private readonly IDivisionService _divisionService;
-
-    public GetByBrand(IDivisionService divisionService)
-    {
-        _divisionService = divisionService;
-    }
-
-    public override void Configure()
-    {
-        Get(GetDivisionsByBrandResponse.Path);
-    }
-
-    protected override async Task HandleAuthenticatedAsync(GetDivisionsByBrandRequest req, CancellationToken ct)
-    {
-        var divisions = await _divisionService.GetActiveByBrandAsync(req.BrandId);
-        await Send.OkAsync(new GetDivisionsByBrandResponse(divisions.Select(d => d.MapToDto()).ToList()), ct);
-    }
-}
-```(triple backtick)
+{code block in project language showing the generated output}
 ```
+
+Provide 1-2 examples per component type the agent generates frequently.
 
 ---
 
@@ -187,22 +196,22 @@ For complex decisions, provide a hierarchical taxonomy:
 ## Decision Taxonomy
 
 ### Level 1: What layer?
-├── Data Layer → go to Level 2A
-├── Service Layer → go to Level 2B
-├── API Layer → go to Level 2C
-└── Client Layer → go to Level 2D
+├── {Layer A} → go to Level 2A
+├── {Layer B} → go to Level 2B
+├── {Layer C} → go to Level 2C
+└── {Layer D} → go to Level 2D
 
-### Level 2A: Data Layer — What operation?
-├── New entity → Entity + Configuration + Migration
-├── Modify entity → Migration + update Configuration if needed
-├── New relationship → Both entity Configurations + Migration
-└── Query optimization → Add index via Migration
+### Level 2A: {Layer A} — What operation?
+├── New {component} → {artifact_1} + {artifact_2} + {artifact_3}
+├── Modify {component} → {artifact_3} + update {artifact_2} if needed
+├── New {relationship} → Both {configurations} + {artifact_3}
+└── {Optimization} → Add {optimization_artifact}
 
-### Level 2B: Service Layer — What type?
-├── CRUD service → Extend CrudServiceBase<Context, Entity, Guid>
-├── Business logic → Standalone service with IDataService injection
-├── External integration → Wrapper service with HttpClient/SDK
-└── Event handler → IDomainEventHandler<TEvent>
+### Level 2B: {Layer B} — What type?
+├── CRUD → Extend {base_class}
+├── Business logic → Standalone with {service_abstraction}
+├── External integration → Wrapper with {http_client}
+└── Event handler → {event_handler_interface}
 ```
 
 ---

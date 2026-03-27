@@ -199,6 +199,27 @@ When tasks have NO dependencies and NO shared files:
 
 ---
 
+## Agent Error Handling
+
+### Common Failure Modes
+- Context overflow: agent runs out of context mid-task
+- Tool errors: file not found, build failures, permission denied
+- Hallucination: agent invents files or patterns that don't exist
+- Silent failure: agent claims success without verifying
+
+### Orchestrator Recovery
+1. Check agent output for error indicators ("not found", "failed", empty result)
+2. If agent failed: provide more context and retry ONCE
+3. If retry fails: surface error to user with agent's output
+4. Never silently swallow agent failures
+
+### Prevention
+- Include verification steps in every agent prompt
+- Set maxTurns to prevent runaway agents
+- Include "if unsure, say so" in agent instructions
+
+---
+
 ## Invocation Quality (Critical)
 
 Most subagent failures come from poor invocations, not execution failures.

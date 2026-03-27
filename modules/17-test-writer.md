@@ -331,15 +331,14 @@ After generating all files, verify:
 
 Print final summary:
 ```
-Test Writer Bootstrap Complete
-==============================
-Agent: .claude/agents/test-writer.md
-Skills: .claude/skills/coverage/SKILL.md, .claude/skills/coverage-gaps/SKILL.md
-Language: {detected}
-Test framework: {detected}
-Mock library: {detected}
-Component types covered: {count}
-Project-specific gotchas documented: {count}
+✅ Module 17 complete — Test writer agent, coverage skills, and test infrastructure created
+  Agent: .claude/agents/test-writer.md
+  Skills: .claude/skills/coverage/SKILL.md, .claude/skills/coverage-gaps/SKILL.md
+  Language: {detected}
+  Test framework: {detected}
+  Mock library: {detected}
+  Component types covered: {count}
+  Project-specific gotchas documented: {count}
 ```
 
 ---
