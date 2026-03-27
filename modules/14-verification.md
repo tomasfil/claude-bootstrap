@@ -73,106 +73,83 @@ Read `.claude/settings.json` and verify deterministic hooks:
 
 ### Generate Skill Routing Hook (CRITICAL — do this now)
 
-The UserPromptSubmit skill routing hook was intentionally NOT created in Module 04 because
-it depends on what was actually created in Modules 05-18. Generate it NOW by scanning
-what exists:
+The UserPromptSubmit hook was NOT created in Module 04 because it depends on what
+Modules 05-18 actually created. Generate it NOW by scanning what exists.
 
-**Step 1: Discover all created skills**
+⚠️ **MUST use `"type": "command"` with `echo`, NOT `"type": "prompt"`.**
+Prompt-type hooks are evaluated by a small fast model that misinterprets routing
+instructions and BLOCKS normal messages. Command-type hooks with `echo` simply
+prepend the output text to the conversation — they never block (exit 0).
+
+**Step 1: Discover all created skills and agents**
 ```bash
-# List all skills that actually exist
-ls -d .claude/skills/*/SKILL.md 2>/dev/null | sed 's|.claude/skills/||;s|/SKILL.md||' | sort
+echo "=== SKILLS ==="
+for d in .claude/skills/*/SKILL.md; do
+  name=$(echo "$d" | sed 's|.claude/skills/||;s|/SKILL.md||')
+  desc=$(head -10 "$d" 2>/dev/null | grep "description:" | sed 's/.*description: *//')
+  echo "- /$name: $desc"
+done
+
+echo "=== AGENTS ==="
+for f in .claude/agents/*.md; do
+  name=$(head -5 "$f" 2>/dev/null | grep "name:" | head -1 | sed 's/.*name: *//')
+  desc=$(head -10 "$f" 2>/dev/null | grep "description:" | head -1 | sed 's/.*description: *//')
+  echo "- $name: $desc"
+done
 ```
 
-**Step 2: Discover all created agents**
-```bash
-# List all agents that actually exist
-ls .claude/agents/*.md 2>/dev/null | sed 's|.claude/agents/||;s|\.md||' | sort
+**Step 2: Build the routing text**
+
+Using the discovered skills and agents, build a single echo command. Format:
+```
+- /skill-name → trigger words extracted from description (dispatches agent-name if applicable)
 ```
 
-**Step 3: Read each skill's description to build trigger words**
-For each skill found, read its YAML frontmatter `description` field to extract what triggers it.
+**Step 3: Inject the hook into `.claude/settings.json`**
 
-**Step 4: Generate and inject the routing hook**
-
-Add the `UserPromptSubmit` hook to `.claude/settings.json` using this template.
-Replace `{SKILLS_LIST}` and `{AGENTS_LIST}` with what was actually discovered:
-
-⚠️ **CRITICAL: This MUST be `"type": "prompt"`, NOT `"type": "command"`.
-A prompt hook PREPENDS text to the user's message — it NEVER blocks.
-A command hook RUNS A SCRIPT that can BLOCK messages (exit code 2).
-Using "command" type here will block normal conversations. NEVER do that.**
-
-⚠️ **Also check for OTHER UserPromptSubmit hooks** (e.g., from the superpowers plugin).
-If another hook exists with `"type": "command"` that evaluates skill applicability,
-it WILL block normal messages. Remove or disable it:
-```bash
-# Check for conflicting hooks
-cat .claude/settings.json | grep -A5 "UserPromptSubmit"
-# Also check plugin hooks
-find ~/.claude/plugins/cache/ -name "*.json" -exec grep -l "UserPromptSubmit" {} \; 2>/dev/null
-```
+Add this to the hooks object. The `echo` command outputs routing text that gets
+prepended to the user's message. The main Claude model sees it and routes accordingly.
 
 ```json
 "UserPromptSubmit": [
   {
     "hooks": [
       {
-        "type": "prompt",
-        "prompt": "SKILL ROUTING: Check if any skill below applies to this message. If one applies, invoke it via the Skill tool before taking other action. If NO skill applies, respond to the user normally — NEVER refuse, block, or decline to answer.\n\nSkills and triggers:\n{SKILLS_LIST}\n\nAgents available for dispatch:\n{AGENTS_LIST}\n\nIMPORTANT: This routing check must NEVER prevent you from responding. If no skill matches, just answer the user's question directly. Simple questions, git commands, meta-questions about the setup, and general conversation do NOT need skills."
+        "type": "command",
+        "command": "echo 'SKILL ROUTING: Check if any skill below applies to this message. If one applies, invoke it via the Skill tool BEFORE doing any work yourself. Skills orchestrate specialized agents — do NOT bypass them by doing the work directly.\n\nSkills:\n{GENERATED_SKILLS_LIST}\n\nAgents (dispatched by skills, not directly):\n{GENERATED_AGENTS_LIST}\n\nIf NO skill matches, respond normally. NEVER refuse or block — just answer directly.'"
       }
     ]
   }
 ]
 ```
 
-⚠️ **The `hooks` wrapper array is REQUIRED by the schema.** Every hook event entry must have
-`{ "hooks": [ ... ] }` — the flat format `{ "type": "prompt", ... }` will fail validation.
-
-⚠️ **Prompt hooks are evaluated by a small fast model by default.** If the routing is being
-misinterpreted (blocking when it shouldn't), add `"model": "claude-sonnet-4-6"` to the hook
-to use a more capable model for routing decisions.
-
-**Format for {SKILLS_LIST}** — one line per skill, extracted from its description:
+Replace `{GENERATED_SKILLS_LIST}` with one line per skill discovered in Step 1:
 ```
-- /code-write → implement, create, build, add, write code/feature/component/endpoint/service/entity
-- /reflect → review learnings, improve setup, audit config, evolve agents
-- /brainstorm → design a feature, explore an idea, think through architecture
-- /tdd → write tests first then implementation (red-green-refactor)
-- /debug → investigate a bug, test failure, or unexpected behavior
-- /verify → verify work is complete before claiming done, run build+tests+checks
-- /review → review code for quality/security/standards
-- /commit → commit changes with project conventions
-- /pr → create pull request with project template
-- /sync → save config, backup, export/import claude setup
-- /audit-file → review/audit a specific source file against code standards
-- /audit-memory → check project memory health
-- /write-prompt → create new skills, agents, or LLM instruction files
-- /write-plan → create implementation plan from a design or spec
-- /execute-plan → execute a written plan with review checkpoints
+- /code-write → implement, create, build, add code (dispatches code-writer agent)
+- /brainstorm → design, explore, think through architecture
+- /tdd → test-driven development, red-green-refactor
+- /debug → investigate bug, test failure, unexpected behavior
+...etc for every skill found
 ```
-(The above is an EXAMPLE. Use the ACTUAL skills discovered in Step 1. Each skill's
-trigger words come from its YAML `description` field.)
 
-**Format for {AGENTS_LIST}** — one line per agent:
+Replace `{GENERATED_AGENTS_LIST}` with one line per agent discovered in Step 1:
 ```
-- quick-check: fast lookups (haiku) — file search, existence checks, simple questions
-- researcher: deep exploration (sonnet) — trace execution paths, analyze dependencies
-- project-code-reviewer: deep review (sonnet) — pipeline completeness, security, architecture
-- code-writer-{lang}: code writing (sonnet) — dispatched by /code-write orchestrator
-- test-writer: test writing (sonnet) — dispatched when writing tests
+- code-writer (opus): C# code writing
+- test-writer (opus): test writing
+- project-code-reviewer (opus): deep review
+...etc for every agent found
 ```
-(The above is an EXAMPLE. Use the ACTUAL agents discovered in Step 2. Each agent's
-description comes from its YAML `description` field.)
 
-**Step 5: Verify the hook was injected correctly**
+**Step 4: Verify**
 ```bash
-# Confirm UserPromptSubmit exists in settings.json
-grep -q "UserPromptSubmit" .claude/settings.json && echo "✅ Skill routing hook injected" || echo "❌ Skill routing hook MISSING"
+grep -q "UserPromptSubmit" .claude/settings.json && echo "✅ Routing hook injected" || echo "❌ MISSING"
+grep -q '"type": "command"' .claude/settings.json && echo "✅ Uses command type" || echo "❌ Wrong hook type"
 ```
 
-- [ ] UserPromptSubmit hook exists with dynamically generated skill/agent list
-- [ ] Every skill found in Step 1 is listed in the routing prompt
-- [ ] Every agent found in Step 2 is listed in the routing prompt
+- [ ] UserPromptSubmit hook exists with `"type": "command"` (NOT "prompt")
+- [ ] Echo text lists every skill found in Step 1
+- [ ] Echo text lists every agent found in Step 1
+- [ ] Hook output includes "NEVER refuse or block"
 
 ### Anti-Hallucination Coverage
 
