@@ -97,6 +97,21 @@ For each skill found, read its YAML frontmatter `description` field to extract w
 Add the `UserPromptSubmit` hook to `.claude/settings.json` using this template.
 Replace `{SKILLS_LIST}` and `{AGENTS_LIST}` with what was actually discovered:
 
+⚠️ **CRITICAL: This MUST be `"type": "prompt"`, NOT `"type": "command"`.
+A prompt hook PREPENDS text to the user's message — it NEVER blocks.
+A command hook RUNS A SCRIPT that can BLOCK messages (exit code 2).
+Using "command" type here will block normal conversations. NEVER do that.**
+
+⚠️ **Also check for OTHER UserPromptSubmit hooks** (e.g., from the superpowers plugin).
+If another hook exists with `"type": "command"` that evaluates skill applicability,
+it WILL block normal messages. Remove or disable it:
+```bash
+# Check for conflicting hooks
+cat .claude/settings.json | grep -A5 "UserPromptSubmit"
+# Also check plugin hooks
+find ~/.claude/plugins/cache/ -name "*.json" -exec grep -l "UserPromptSubmit" {} \; 2>/dev/null
+```
+
 ```json
 "UserPromptSubmit": [
   {
