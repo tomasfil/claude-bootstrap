@@ -5,6 +5,10 @@
 
 ---
 
+## Idempotency
+
+Discovery is read-only — always runs fresh, no files to preserve.
+
 ## Actions
 
 ### 1. Detect the Environment (Dynamic — detected every session)
@@ -147,31 +151,10 @@ I've analyzed your project. Before I set up the environment, a few questions:
 
 7. **Any directories that should be read-only?** (e.g., vendor/, generated/)
 
-8. **Agent model preference:**
-   A) Maximum quality — use Opus for code writing, reviewing, and test writing; Sonnet for research; Haiku for quick lookups (higher cost, best results)
-   B) Balanced — use Sonnet for most agents, Haiku for quick lookups (good balance of quality and cost)
-   C) Cost efficient — use Sonnet for code writing only, Haiku for everything else (lowest cost)
 ```
 
-### Model Assignment Based on Preference
-
-Use the user's choice to set the `model` field in all generated agents:
-
-| Agent | A) Max Quality | B) Balanced | C) Cost Efficient |
-|-------|---------------|-------------|-------------------|
-| code-writer-{lang} | opus | sonnet | sonnet |
-| test-writer | opus | sonnet | sonnet |
-| project-code-reviewer | opus | sonnet | sonnet |
-| researcher | opus | sonnet | haiku |
-| quick-check | haiku | haiku | haiku |
-
-Also update the Effort Scaling section in CLAUDE.md (Module 02):
-
-| Tier | A) Max Quality | B) Balanced | C) Cost Efficient |
-|------|---------------|-------------|-------------------|
-| Trivial | sonnet | haiku | haiku |
-| Standard | opus | sonnet | sonnet |
-| Complex | opus | opus | opus |
+Model selection is automatic — each agent uses the optimal model for its task complexity.
+See `techniques/agent-design.md` for the decision rule. Override in CLAUDE.local.md if needed.
 
 ### 8. Output Discovery Summary
 
@@ -188,8 +171,6 @@ Pipeline traces: {N} common patterns detected
 Existing .claude/: {what exists}
 Companion repo: {found / not found / N/A}
 Git strategy: {track / companion / ephemeral}
-Model preference: {max-quality / balanced / cost-efficient}
-
 Commands:
   Build: {command}
   Test (single): {command}

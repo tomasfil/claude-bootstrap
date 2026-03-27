@@ -4,6 +4,10 @@
 
 ---
 
+## Idempotency
+
+Per skill file: if exists, extract project-specific content, merge with bootstrap template, regenerate. If missing, create from template.
+
 ## Create Skill
 
 ```bash

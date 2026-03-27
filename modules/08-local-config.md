@@ -24,6 +24,12 @@ IF missing → CREATE with user preferences from Module 01
 - {e.g., "Always show me the diff before committing"}
 - {e.g., "I prefer to review agent output before it's applied"}
 
+## Model Override (optional)
+To force a specific model for cost or quality reasons:
+- All agents on sonnet: set model: sonnet in each agent's frontmatter
+- All agents on haiku: set model: haiku (not recommended — degrades code generation quality)
+Default model assignments are optimized per-agent. Only override if you have a specific reason.
+
 ## Notes
 {Space for personal notes that shouldn't be in the shared CLAUDE.md}
 ```

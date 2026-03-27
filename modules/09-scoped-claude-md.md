@@ -5,6 +5,10 @@
 
 ---
 
+## Idempotency
+
+Per directory: if scoped CLAUDE.md exists, extract project-specific rules, merge with bootstrap conventions, regenerate. If missing and conditions met, create.
+
 ## When to Create
 
 Scan for directories that have distinctly different conventions from the root:

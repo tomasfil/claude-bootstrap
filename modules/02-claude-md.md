@@ -13,6 +13,21 @@ IF CLAUDE.md exists AND matches old bootstrap template → UPDATE to v5 template
 IF CLAUDE.md doesn't exist → CREATE from template below
 ```
 
+## Instruction Placement Framework
+
+Where to put each type of instruction:
+
+| Instruction Type | Where | Why |
+|-----------------|-------|-----|
+| Always-on broad rules | CLAUDE.md | Loaded every conversation (~80% adherence) |
+| File-type constraints | `.claude/rules/` | Loaded contextually by file type |
+| Domain workflows | Skills | Loaded only when triggered (saves context) |
+| Must-happen-100% | Hooks | Deterministic — not subject to LLM interpretation |
+| Reusable references | `@import` files | Loaded on demand, not always |
+
+Budget: CLAUDE.md has ~100-150 effective instruction slots (system prompt uses ~50).
+If a linter or formatter can enforce it, use a hook instead of a CLAUDE.md rule.
+
 ## Template
 
 Generate CLAUDE.md using this template. Fill in `{placeholders}` from Module 01 discovery.
@@ -74,22 +89,10 @@ When context is compacted, PRESERVE:
 - Any unresolved errors or blockers
 
 ## Effort Scaling
-{Use the model preference from Module 01 discovery to set these values:}
-
-If model_preference == "max-quality":
-- Trivial (typo, rename, config): model=sonnet, effort=low
-- Standard (feature, bugfix, test): model=opus, effort=medium
-- Complex (architecture, refactor): model=opus, effort=high
-
-If model_preference == "balanced":
-- Trivial (typo, rename, config): model=haiku, effort=low
-- Standard (feature, bugfix, test): model=sonnet, effort=medium
-- Complex (architecture, refactor): model=opus, effort=high
-
-If model_preference == "cost-efficient":
-- Trivial (typo, rename, config): model=haiku, effort=low
-- Standard (feature, bugfix, test): model=sonnet, effort=medium
-- Complex (architecture, refactor): model=opus, effort=high
+Model selection is automatic per-agent (see `techniques/agent-design.md`).
+- Trivial (typo, rename, config): effort=low
+- Standard (feature, bugfix, test): effort=medium
+- Complex (architecture, refactor): effort=high
 
 ## Communication
 {User preference: "Direct — no fluff, lead with the answer" or "Diplomatic — explain reasoning"}

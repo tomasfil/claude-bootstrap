@@ -208,9 +208,9 @@ For complex decisions, provide a hierarchical taxonomy:
 ---
 
 ## Sources
-- RCCF Framework: Thomas Wiegold (2026)
-- Structured outputs: Red Hat Developer, Parasoft
+- RCCF Framework: Internal framework — Role, Context, Constraints, Format
+- Structured outputs: General pattern — multiple sources
 - Context caching: Anthropic Prompt Caching docs
-- Taxonomy-guided: Springer, Emergent Mind
-- Few-shot patterns: SUSE AI Documentation
-- Front-loading: Microsoft Tech Community
+- Taxonomy-guided: General pattern — multiple sources
+- Few-shot patterns: General pattern — multiple sources
+- Front-loading: General pattern — multiple sources

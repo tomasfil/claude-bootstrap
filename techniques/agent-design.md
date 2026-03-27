@@ -93,18 +93,27 @@ effort: medium
 | `background` | No | **Do not use.** Always dispatch foreground. See "Foreground-Only Dispatch" section |
 | `maxTurns` | No | Limit agent iterations |
 
-### Model Selection Guidelines
+### Automatic Model Selection
 
-Model assignment depends on the user's preference (asked in Module 01 discovery):
+Model is assigned based on task complexity — no user preference needed.
 
-| Agent Purpose | Max Quality | Balanced | Cost Efficient |
-|--------------|-------------|----------|----------------|
-| Quick lookup / search | haiku | haiku | haiku |
-| Code generation | opus | sonnet | sonnet |
-| Test writing | opus | sonnet | sonnet |
-| Code review | opus | sonnet | sonnet |
-| Research / exploration | opus | sonnet | haiku |
-| Orchestration | opus | sonnet | sonnet |
+**Decision rule:** If the agent GENERATES code or catches SUBTLE errors → `opus`. If it ANALYZES → `sonnet`. If it CHECKS or LOOKS UP → `haiku`.
+
+| Agent | Model | Reasoning |
+|-------|-------|-----------|
+| code-writer-{lang} | opus | Generates code — needs maximum quality |
+| test-writer | opus | Generates code + catches subtle bugs |
+| project-code-reviewer | opus | Catches subtle issues, judgment-heavy |
+| debugger | opus | Traces complex bugs, generates fixes |
+| tdd-runner | opus | Generates tests + implementation code |
+| reflector | opus | Judgment: promote/demote instincts |
+| plan-writer | sonnet | Analyzes codebase, structures plans |
+| researcher | sonnet | Analyzes patterns, explores code |
+| consistency-checker | sonnet | Analyzes cross-references |
+| verifier | sonnet | Runs checks, analyzes results |
+| quick-check | haiku | Fast lookups, existence checks |
+
+Override in `CLAUDE.local.md` if cost is a concern. Comment: `## Model Override — set model: sonnet in agent frontmatter`
 
 ---
 

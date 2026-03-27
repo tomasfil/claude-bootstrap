@@ -112,7 +112,7 @@ After generating or modifying code, run these LSP checks:
 
 If LSP reports errors:
 - Fix immediately — don't present code with LSP errors
-- If error is in a .razor.cs file, verify with `dotnet build` (LSP false positives common)
+- If error is in a {framework-specific files with known LSP false positives}, verify with build command (LSP false positives common)
 ```
 
 **Template for agents WITHOUT LSP access (fallback):**
@@ -167,7 +167,7 @@ Code-specific hallucination where LLMs invent plausible package names.
 
 Before adding ANY new package/dependency:
 
-1. Verify it exists: search NuGet/npm/PyPI (or use context7 MCP)
+1. Verify it exists: search NuGet/npm/PyPI (or use {package registry search tool or MCP})
 2. Verify the exact version is compatible with the project's framework version
 3. Check if the project already has a similar package (avoid duplicates)
 4. If you're unsure whether a package exists, say so — don't guess
@@ -314,7 +314,7 @@ When the bootstrap generates an agent, include these sections based on the agent
 
 ## Sources
 - Chain-of-Verification: Meta Research / arXiv 2309.11495
-- Anthropic's 3 anti-hallucination prompts: Claude API Docs
+- Anthropic Claude Documentation — reducing hallucinations
 - Read-before-write: Medium / Design Bootcamp
 - Spec-driven workflow: DEV Community (samhath03)
 - Package hallucination: USENIX

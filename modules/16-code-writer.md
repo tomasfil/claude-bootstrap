@@ -5,6 +5,10 @@
 
 ---
 
+## Idempotency
+
+Per agent file: read existing content, merge project-specific knowledge with current template, regenerate.
+
 ## What This Produces
 
 | Output | Path | Purpose |

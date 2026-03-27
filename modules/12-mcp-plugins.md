@@ -5,6 +5,10 @@
 
 ---
 
+## Idempotency
+
+Per config file: if .mcp.json exists, read existing servers, add missing entries from bootstrap, preserve custom entries. If missing, create from template.
+
 ## 1. MCP Servers
 
 If the user requested MCP servers in Module 01, or if the project uses services that have MCP integrations, create `.mcp.json`:
