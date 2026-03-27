@@ -88,6 +88,20 @@ When context is compacted, PRESERVE:
 - Active branch and what it's for
 - Any unresolved errors or blockers
 
+If SessionStart reports CONSOLIDATE_DUE=true, run /consolidate before starting work.
+If SessionStart reports REFLECT_DUE=true, run /reflect before starting work.
+
+## Skill Automation
+These skills run automatically — never invoke manually unless you want to force them:
+- /verify, /review → auto-run before /commit
+- /consolidate → auto-run on session start when due (5+ sessions, 24h elapsed)
+- /reflect → auto-run on session start when due (3+ new learnings)
+
+These skills are for active development work:
+- /brainstorm, /spec, /write-plan, /execute-plan, /tdd, /debug
+- /commit, /pr, /write-ticket, /ci-triage
+- /write-prompt, /module-write, /review (manual override)
+
 ## Effort Scaling
 Model selection is automatic per-agent (see `techniques/agent-design.md`).
 - Trivial (typo, rename, config): effort=low

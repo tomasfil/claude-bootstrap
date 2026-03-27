@@ -27,7 +27,7 @@ Run through EVERY check below. Print pass/fail for each.
 ls .claude/rules/*.md 2>/dev/null && echo "✅ Rules exist" || echo "❌ No rule files"
 
 # Skills
-for skill in reflect audit-file audit-memory write-prompt brainstorm write-plan execute-plan tdd debug verify commit pr review; do
+for skill in reflect audit-file audit-memory write-prompt brainstorm spec write-plan execute-plan tdd debug verify commit pr review module-write check-consistency write-ticket ci-triage consolidate; do
   [ -f ".claude/skills/$skill/SKILL.md" ] && echo "✅ /skill $skill" || echo "❌ /$skill MISSING"
 done
 
@@ -37,6 +37,17 @@ ls .claude/agents/*.md 2>/dev/null && echo "✅ Agents exist" || echo "❌ No ag
 # Learnings
 [ -f ".learnings/log.md" ] && echo "✅ learnings/log.md" || echo "❌ learnings/log.md MISSING"
 [ -f ".learnings/agent-usage.log" ] && echo "✅ learnings/agent-usage.log" || echo "❌ agent-usage.log MISSING"
+
+# Instinct system
+[ -d ".learnings/instincts" ] && echo "✅ instincts directory" || echo "❌ .learnings/instincts/ MISSING"
+
+# Observation hook
+[ -f ".claude/hooks/observe.sh" ] && echo "✅ observe.sh" || echo "❌ observe.sh MISSING"
+
+# Tracking files (created on first session, warn if missing)
+for tf in .learnings/.session-count .learnings/.last-dream .learnings/.last-reflect-lines; do
+  [ -f "$tf" ] && echo "✅ $tf" || echo "⚠️ $tf not yet created (will be created on first session)"
+done
 ```
 
 ### YAML Frontmatter Validation
@@ -131,18 +142,40 @@ prepended to the user's message. The main Claude model sees it and routes accord
 
 Replace `{GENERATED_SKILLS_LIST}` with one line per skill discovered in Step 1:
 ```
-- /code-write → implement, create, build, add code (dispatches code-writer agent)
-- /brainstorm → design, explore, think through architecture
-- /tdd → test-driven development, red-green-refactor
+- /reflect → review learnings, improve environment, audit config, evolve agents
+- /audit-file → review, audit, check a file for quality or conventions
+- /audit-memory → check memory health, review learnings, clean up stale entries
+- /write-prompt → create new skills, agents, CI prompts, instruction files
+- /brainstorm → design, explore, plan, think through a feature or change
+- /spec → write structured implementation spec before coding
+- /write-plan → create implementation plan from design or requirements
+- /execute-plan → execute a written plan with review checkpoints
+- /tdd → test-driven development, red-green-refactor cycle
 - /debug → investigate bug, test failure, unexpected behavior
+- /verify → verify work complete before committing or claiming done
+- /commit → commit changes with project conventions
+- /pr → create pull request with project template
+- /review → request code review on current changes
+- /module-write → create or edit bootstrap modules, techniques, skills, agents
+- /check-consistency → verify cross-reference integrity across the project
+- /write-ticket → write structured ticket with INVEST+C criteria
+- /ci-triage → triage CI/CD failures, classify by priority
+- /consolidate → consolidate learnings into instincts, clean up learning system
 ...etc for every skill found
 ```
 
 Replace `{GENERATED_AGENTS_LIST}` with one line per agent discovered in Step 1:
 ```
-- code-writer (opus): C# code writing
-- test-writer (opus): test writing
-- project-code-reviewer (opus): deep review
+- quick-check (haiku): fast lookups, file searches, existence checks
+- researcher (sonnet): deep codebase exploration, pattern analysis, tracing
+- module-writer (opus): bootstrap content writing specialist
+- project-code-reviewer (opus): deep review of modules, skills, agents for quality
+- plan-writer (sonnet): create implementation plans from specs
+- debugger (opus): trace and diagnose bugs
+- verifier (sonnet): verify build, tests, cross-references
+- reflector (opus): analyze learnings, propose improvements
+- consistency-checker (sonnet): cross-reference validation
+- tdd-runner (opus): test-driven development cycles
 ...etc for every agent found
 ```
 
@@ -231,9 +264,9 @@ grep -q "claude-configs" ~/.claude/settings.json 2>/dev/null && echo "✅ User-l
 ✅ Module 14 complete — Wiring Verification
 
 Files: {created} created, {updated} updated, {preserved} preserved
-Skills: {N} skills ({list})
-Agents: {N} agents ({list})
-Hooks: {N} hooks (SessionStart, PreToolUse, SubagentStop, UserPromptSubmit{, PostToolUse})
+Skills: ~20 skills ({list})
+Agents: 10 agents ({list})
+Hooks: {N} hooks (SessionStart, PreToolUse, SubagentStop, UserPromptSubmit, PostToolUse, PreCompact)
 Rules: {N} rule files
 Plugins: {N} kept (connectors), {N} replaced (methodology)
 Anti-hallucination: {coverage}% of code-writing agents covered
