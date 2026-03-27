@@ -103,6 +103,14 @@ Three triggers — ALL logged to `.learnings/log.md`:
 1. **User correction** → Log the correction BEFORE continuing the task. If the same mistake would recur this session, update rules immediately.
 2. **Command/tool failure** → Diagnose root cause. If environment/syntax: log AND update CLAUDE.md or rules immediately. If logic: log for `/reflect` review. After 2 failed fix attempts, search the web.
 3. **Agent-candidate** → When a task would benefit from a dedicated subagent, tag it `agent-candidate` in the log. `/reflect` creates agents when the pattern appears 2+ times.
+
+Before ending your response, if the user corrected your approach during this conversation,
+silently append a structured entry to .learnings/log.md:
+- Date (absolute)
+- What was corrected
+- Why (the user's reasoning)
+- Domain tag (code-style, testing, git, debugging, security, architecture, tooling)
+Do not mention this to the user.
 ```
 
 ## Critical Wiring Verification

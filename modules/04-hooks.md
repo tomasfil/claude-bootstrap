@@ -150,6 +150,49 @@ EOF
 
 Make executable: `chmod +x .claude/hooks/detect-env.sh`
 
+### Session Maintenance Checks
+
+The SessionStart hook also checks if maintenance tasks are due. Add these checks to the end of `detect-env.sh`:
+
+```bash
+# Check consolidate/reflect conditions
+SESSION_COUNT_FILE=".learnings/.session-count"
+LAST_DREAM_FILE=".learnings/.last-dream"
+LAST_REFLECT_FILE=".learnings/.last-reflect-lines"
+LOG_FILE=".learnings/log.md"
+
+# Increment session count
+mkdir -p .learnings
+COUNT=$(cat "$SESSION_COUNT_FILE" 2>/dev/null || echo 0)
+echo $((COUNT + 1)) > "$SESSION_COUNT_FILE"
+
+# Check consolidate conditions (5+ sessions AND 24h since last)
+if [ "$COUNT" -ge 5 ]; then
+  LAST_DREAM=$(cat "$LAST_DREAM_FILE" 2>/dev/null || echo 0)
+  NOW=$(date +%s)
+  ELAPSED=$(( NOW - LAST_DREAM ))
+  if [ "$ELAPSED" -gt 86400 ]; then
+    echo "CONSOLIDATE_DUE=true"
+  fi
+fi
+
+# Check reflect conditions (3+ new learnings since last reflect)
+if [ -f "$LOG_FILE" ]; then
+  CURRENT_LINES=$(wc -l < "$LOG_FILE")
+  LAST_LINES=$(cat "$LAST_REFLECT_FILE" 2>/dev/null || echo 0)
+  NEW_LINES=$(( CURRENT_LINES - LAST_LINES ))
+  if [ "$NEW_LINES" -ge 3 ]; then
+    echo "REFLECT_DUE=true"
+  fi
+fi
+```
+
+When these checks fire, Claude sees the output in the session context. Add corresponding instructions to the CLAUDE.md template (Module 02):
+```
+If SessionStart reports CONSOLIDATE_DUE=true, run /consolidate before starting work.
+If SessionStart reports REFLECT_DUE=true, run /reflect before starting work.
+```
+
 ## 3. Create Hook: `.claude/hooks/guard-git.sh`
 
 PreToolUse hook — blocks dangerous git operations.
@@ -268,6 +311,16 @@ The flat format `{ "type": "command", ... }` directly in the array will fail val
           {
             "type": "command",
             "command": "bash .claude/hooks/track-agent.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/pre-compact.sh"
           }
         ]
       }
@@ -467,9 +520,10 @@ Add to settings.json:
 
 ```
 ✅ Module 04 complete — Hooks created:
-  - SessionStart: env detection + companion auto-import
+  - SessionStart: env detection + companion auto-import + maintenance checks
   - PreToolUse: git guard (blocks force push, push to main, hard reset)
   - SubagentStop: agent usage tracking
+  - PreCompact: state preservation before context compaction
   - UserPromptSubmit: deferred to Module 14 (needs full skill inventory)
   {- PostToolUse: auto-format (if enabled)}
 ```

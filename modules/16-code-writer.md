@@ -24,8 +24,9 @@ The generated system is **not generic** — it encodes your project's specific a
 
 ## How It Works
 
-Six phases, executed in order:
+Seven phases (0-6), executed in order:
 
+0. **Capability Scan** — Check what agents and skills already exist, identify coverage gaps
 1. **Project Analysis** — Deep-read the codebase AND any existing code-writer agents. If `.claude/agents/code-writer-*.md` already exist, read them to extract project-specific knowledge (component types, patterns, gotchas) as input for regeneration. Then detect all languages, classify component types, map architecture layers, trace file co-occurrence patterns, extract conventions
 2. **Web Research** — Search for current best practices per detected language/framework combo (~15-20 searches per language) — architecture, idioms, DI, error handling, performance, security, LSP tools, MCP servers
 3. **Generate Orchestrator** — Create the `/code-write` skill with pipeline traces, layer dependencies, and specialist dispatch logic
@@ -67,6 +68,34 @@ Execute ALL phases below to produce a complete, project-specific code writing sy
 9. Reference techniques/ docs for prompt engineering and anti-hallucination patterns.
 10. When web research fails after 2 attempts on a topic, move on — don't block on a single search.
 </rules>
+
+---
+
+## Phase 0 — Capability Scan
+
+Before creating anything, check what already exists:
+
+1. Scan `.claude/agents/` for existing code-writer agents (`code-writer-*.md`)
+2. Scan `.claude/skills/` for existing code-write skill (`code-write/SKILL.md`)
+3. If capability index exists at `.claude/skills/code-write/references/capability-index.md`, read it
+4. Record existing capabilities to avoid duplicating work
+
+Store the index at `.claude/skills/code-write/references/capability-index.md`:
+
+```markdown
+# Code Writer Capability Index
+
+## Existing Agents
+- {agent name} — {language/purpose} — last updated {date}
+
+## Existing Skills
+- {skill name} — {purpose}
+
+## Coverage Gaps
+- {language/area not yet covered}
+```
+
+**Checkpoint:** `Phase 0 complete — {N} existing agents found, {M} coverage gaps identified`
 
 ---
 
