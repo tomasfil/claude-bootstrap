@@ -358,6 +358,61 @@ exit 0
 
 Mark this hook as **optional** — some users may find it noisy.
 
+## 5d. PostToolUse Observation Hook (instinct system)
+
+Captures tool usage patterns for the instinct learning system.
+Fires on Edit, Write, and Bash tool uses — lightweight, must not delay tool execution.
+
+Create `.claude/hooks/observe.sh`:
+
+```bash
+#!/usr/bin/env bash
+# observe.sh — PostToolUse hook
+# Captures tool usage for instinct system observation pipeline
+
+set -euo pipefail
+
+INPUT=$(cat)
+TOOL=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_name" 2>/dev/null || echo "unknown")
+
+# Only observe write-type tools
+[[ "$TOOL" != "Edit" && "$TOOL" != "Write" && "$TOOL" != "Bash" ]] && exit 0
+
+# Skip if observations file exceeds 10MB
+OBS_FILE=".learnings/observations.jsonl"
+mkdir -p .learnings
+if [ -f "$OBS_FILE" ] && [ $(stat -f%z "$OBS_FILE" 2>/dev/null || stat -c%s "$OBS_FILE" 2>/dev/null || echo 0) -gt 10485760 ]; then
+  # Rotate: archive and start fresh
+  mv "$OBS_FILE" "$OBS_FILE.$(date +%Y%m%d).bak"
+fi
+
+# Append JSONL record
+FILE=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_input.file_path" 2>/dev/null || echo "")
+echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"tool\":\"$TOOL\",\"file\":\"$FILE\"}" >> "$OBS_FILE"
+
+exit 0
+```
+
+Add to settings.json template:
+```json
+"PostToolUse": [
+  {
+    "hooks": [
+      {
+        "type": "command",
+        "matcher": "Edit|Write|Bash",
+        "command": "bash .claude/hooks/observe.sh"
+      }
+    ]
+  }
+]
+```
+
+Important guardrails:
+- 10MB cap with daily rotation prevents unbounded growth
+- Filter: only Edit, Write, Bash (skip Read events — too noisy)
+- Never let Claude read raw JSONL directly — use /reflect to analyze
+
 ## 6. Optional: Auto-Format Hook
 
 Only add if user said "yes" to auto-format in Module 01 discovery.

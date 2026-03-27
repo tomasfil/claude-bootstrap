@@ -61,7 +61,8 @@ description: >
   before committing, or when asked to review. Knows architecture layers,
   pipeline traces, security patterns, and common project bugs.
 tools: Read, Grep, Glob, LSP
-model: {opus for max-quality, sonnet for balanced/cost-efficient — from Module 01}
+model: opus
+# Model is fixed based on task complexity. Override in CLAUDE.local.md if needed.
 effort: medium
 ---
 ```

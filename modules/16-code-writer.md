@@ -380,7 +380,8 @@ description: >
   code for {list component types}. Knows project conventions, DI patterns,
   error handling, and framework-specific gotchas.
 tools: Read, Write, Edit, Bash, Grep, Glob, LSP, WebSearch
-model: {opus for max-quality, sonnet for balanced/cost-efficient — from Module 01}
+model: opus
+# Model is fixed based on task complexity. Override in CLAUDE.local.md if needed.
 effort: medium
 ---
 ```
