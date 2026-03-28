@@ -216,6 +216,262 @@ For complex decisions, provide a hierarchical taxonomy:
 
 ---
 
+## Token Optimization
+
+Techniques for reducing token cost. Three levers: compress what you send,
+cache what repeats, architect pipelines to minimize redundancy.
+
+### Format Selection
+
+Data shape determines optimal format — not habit:
+
+| Format | Savings vs JSON | Best For |
+|--------|----------------|----------|
+| Markdown | 16-38% fewer | Prose instructions, mixed content |
+| YAML | 11-20% fewer | Hierarchical config, structured data |
+| TOON | 30-60% fewer | Flat/tabular arrays, uniform records |
+| TSV/CSV | Highest | Pure tabular, no nesting |
+
+No universal winner. JSON is always the most verbose for structured data.
+Default to YAML or Markdown unless the consumer explicitly needs JSON.
+
+### Manual Compression
+
+When prompts are agent-consumed (include files, reference docs, system
+instructions), human readability is optional. Compress aggressively:
+
+**Strip filler** (15-30% savings):
+```markdown
+# Before (38 tokens)
+You should always make sure to verify that the sources you are
+citing actually exist and are accessible before including them.
+
+# After (14 tokens)
+Verify all cited sources exist & accessible before including.
+```
+
+**Abbreviate repeated keys** — define legend once, use codes:
+```markdown
+## Legend: S=source R=reliability(1-5) T=type(pri|sec|opinion)
+- S:reuters.com R:5 T:pri
+- S:blog.example R:2 T:opinion
+```
+
+**Symbol substitution**: `->` results in, `|` separator, `&` and,
+`~` approximately, `=>` therefore, `!` negation/never.
+
+**Restructure prose -> structured** (up to 70% savings):
+```markdown
+# Before
+When you encounter a topic that has legal implications, you need to
+be very careful about making definitive claims. Instead, you should
+use hedging language and cite specific legal sources.
+
+# After
+Legal topics:
+- Hedge all claims, cite legal sources
+- Ongoing cases -> require source, no unsourced claims
+```
+
+### Shared Reference Compression
+
+For pipelines loading shared files across multiple jobs:
+
+1. **Compress shared docs once** — rewrite reference files in telegram-style.
+   15K doc compressed 30% = 4,500 tokens saved per job.
+   At 20 jobs/day = 90K tokens/day from one file.
+
+2. **Tier includes by job type** — not every job needs every file.
+   Create slim/full variants:
+   - `brand-guidelines-slim.md` (~3K) for triage/routing jobs
+   - `brand-guidelines-full.md` (~10K) for writer/QC jobs
+
+3. **Deduplicate includes** — if preamble AND include_files load the
+   same file, it's sent twice. Deduplicate at orchestrator level.
+
+4. **Merge small files** — 5 files x 500 tokens each have wrapping
+   overhead (headers, fences). One 2,500-token merged file is cheaper.
+
+### Compression Quality Thresholds
+
+| Task Type | Safe Compression | Behavior Under Compression |
+|-----------|-----------------|---------------------------|
+| RAG / document QA | Up to 4-6x | Often *improves* (noise removal) |
+| Article writing | Keep >80% | Gradual quality decline |
+| Code generation | Keep >65% | Sharp cliff below threshold |
+| Chain-of-thought | Keep >80% | Linear decline, no cliff |
+| Classification / routing | Up to 5-10x | Very tolerant |
+
+Rule of thumb: start at 2-3x, measure quality, increase only if it holds.
+Code generation has a hard cliff at 55-65% retention — below this, output
+collapses abruptly.
+
+### Algorithmic Compression
+
+For programmatic compression of large variable contexts (RAG chunks,
+research outputs, inter-stage data):
+
+| Method | Compression | Quality | Requirements |
+|--------|------------|---------|--------------|
+| LLMLingua-2 | 4-6x | 95-98% retained | Python, XLM-RoBERTa |
+| LongLLMLingua | 4-6x | Often improves QA | Best for 10k+ contexts |
+| CompactPrompt | ~60% reduction | <5% loss | Production pipeline |
+
+Best fit: compress variable per-request content (research results, trend
+data) before injection. Static reference files -> manual compression
+(one-time effort, no tooling dependency).
+
+---
+
+## Prompt Caching Economics
+
+### Pricing
+
+| Model | Input | Cache Write (5m TTL) | Cache Write (1h TTL) | Cache Read |
+|-------|-------|---------------------|---------------------|------------|
+| Sonnet 4.6 | $3.00/M | $3.75/M (1.25x) | $6.00/M (2x) | $0.30/M (0.1x) |
+| Opus 4.6 | $5.00/M | $6.25/M (1.25x) | $10.00/M (2x) | $0.50/M (0.1x) |
+| Haiku 4.5 | $0.80/M | $1.00/M (1.25x) | $1.60/M (2x) | $0.08/M (0.1x) |
+
+Cache read is **10x cheaper** than uncached input. Cache write is 1.25x.
+Break-even: 2+ reads per write = net savings.
+
+### TTL Behavior
+
+- **5-minute default TTL** — refreshes on every cache hit
+- **1-hour extended TTL** — 2x write cost, refreshes on hit
+- Cache is keyed on **exact byte-identical prefix**, not session ID
+- Cross-session: if Job B starts within TTL of Job A with identical
+  prefix, Job B gets cache hits
+- **Cache-busting**: adding MCP tools, timestamps in system prompt,
+  or switching models mid-session invalidates entire cache
+
+### Cross-Session Cache Math
+
+Example: 6 sequential jobs, 20K shared context, Sonnet 4.6:
+
+**Cache hits (all jobs within 5-min TTL)**:
+```
+Job 1: 20K × $3.75/M = $0.075  (cache write)
+Jobs 2-6: 5 × 20K × $0.30/M = $0.030  (cache read)
+Total: $0.105
+```
+
+**Cache misses (TTL expired between jobs)**:
+```
+6 × 20K × $3.00/M = $0.360  (uncached)
+Total: $0.360  (3.4x more expensive)
+```
+
+**Implication for sequential pipelines**: keep inter-job gaps under 5 min
+to maintain cache. If orchestrator has scheduling gaps, use 1-hour TTL
+for shared prefixes.
+
+### Cache + Compress Stack
+
+Use both — they target different content:
+
+| Strategy | Target | Savings | Quality Impact |
+|----------|--------|---------|---------------|
+| Prompt caching | Static prefix (preamble, includes) | 90% off reads | Zero |
+| Manual compression | Reference docs, guidelines | 15-40% fewer tokens | Minimal |
+| Format optimization | Structured data payloads | 20-60% fewer tokens | Zero to positive |
+| Algorithmic compression | Variable contexts (research, data) | 50-80% fewer tokens | 2-5% typical loss |
+
+Combined: **50-70% total cost reduction** reported by production teams.
+
+Optimal prompt ordering for cache + compress:
+```
+[CACHED — identical across all jobs]
+  System prompt (compressed)
+  Shared reference files (compressed, merged)
+[CACHED — identical per job type]
+  Job-type-specific includes
+[NOT CACHED — variable per run]
+  Pre-command outputs (format-optimized)
+  Prior stage results (algorithmically compressed if large)
+  Task-specific instructions
+```
+
+---
+
+## Pipeline Architecture: Multi-Session vs Single-Session
+
+### The Trade-Off
+
+For multi-phase content pipelines (research -> write -> QC -> style ->
+images -> publish), two architecture options exist:
+
+| Factor | Separate Sessions (current) | Single Orchestrator + Subagents |
+|--------|---------------------------|-------------------------------|
+| **Reliability** | Isolated failures, each phase starts clean | One failure can cascade; subagent silent failures |
+| **QC effectiveness** | Fresh context = independent verification | Shared context = confirmation bias risk |
+| **Cache cost** | Cache write per session (mitigated by TTL) | Cache write once, reads throughout |
+| **Context window** | Full window per phase | Shared window, risk of filling on long pipelines |
+| **Token overhead** | Redundant include loading | ~15x overhead for multi-agent coordination |
+| **Parallelism** | Fully independent | Subagents can parallelize within session |
+
+### When Separate Sessions Win
+
+- **Quality-critical sequential pipelines** — QC must independently verify
+  writer output. Fresh context prevents confirmation bias where the model
+  "remembers" its own reasoning and fails to catch its own errors.
+- **Reliability-sensitive content** — web articles, public-facing content
+  where errors are costly. Isolated failures don't cascade.
+- **Phase outputs feed next phase** — each phase writes structured output
+  (JSON/files), next phase reads it fresh. Clean data contract.
+
+### When Single Session Wins
+
+- **Parallel independent tasks** — image sourcing + style lint can run
+  simultaneously as subagents within one session
+- **Short pipelines** (2-3 phases) where context window isn't a concern
+- **Exploratory/research tasks** where shared context improves quality
+- **Cost-dominated scenarios** where cache savings outweigh reliability risk
+
+### Recommendation for Content Pipelines
+
+**Keep separate sessions for the core pipeline.** The QC independence is
+worth more than the cache savings. A style lint that catches issues because
+it evaluates the article fresh (without the writer's reasoning polluting
+context) is the whole point of multi-layer QC.
+
+**Optimize within the separate-session architecture:**
+1. Compress shared reference files (one-time effort, permanent savings)
+2. Keep inter-job scheduling gaps <5 min for cache TTL reuse
+3. Tier includes — triage/routing jobs get slim files, writer/QC get full
+4. Format-optimize inter-stage data (research output -> YAML not verbose JSON)
+5. Use 1-hour cache TTL if scheduling gaps are unpredictable
+
+**Consider single-session only for parallelizable sub-tasks:**
+- Image sourcing + social media draft can run as parallel subagents
+- SEO metadata + schema markup generation in parallel
+- These are independent tasks where shared context doesn't hurt quality
+
+### Subagent Constraints (Claude Agent SDK)
+
+- Subagents get **fresh context** — no parent conversation history
+- Only data bridge: the task description string passed to Agent tool
+- **One level deep** — subagents cannot spawn sub-subagents
+- Each subagent can specify its own model (cost optimization)
+- Dominant failure mode: **silent wrong output** (plausible but incorrect),
+  not crashes. Harder to detect than clean errors.
+
+### Sources — Token Optimization & Pipeline Architecture
+- LLMLingua / LLMLingua-2: Microsoft Research (EMNLP 2023, ACL 2024)
+- LongLLMLingua: ACL 2024
+- CompactPrompt: arXiv 2025
+- TOON format: toonformat.dev
+- Compression quality thresholds: NAACL 2025 survey (Li et al.)
+- Prompt caching: Anthropic docs, Claude Code Camp analysis
+- Cache pricing: Anthropic pricing page (2026)
+- Multi-agent trade-offs: Anthropic engineering blog
+- Agent SDK subagents: Anthropic Agent SDK docs
+- GSD Framework: MindStudio / The New Stack
+- Multi-agent failure modes: arXiv 2503.13657
+
+---
+
 ## See Also
 - `techniques/anti-hallucination.md` — verification patterns for every agent
 - `techniques/agent-design.md` — agent YAML templates and dispatch patterns
