@@ -82,23 +82,25 @@ Read `.claude/settings.json` and verify deterministic hooks:
 - [ ] PreToolUse hook references `guard-git.sh` with matcher "Bash"
 - [ ] SubagentStop hook references `track-agent.sh`
 
-### Generate Skill Routing Hook (MANDATORY — do this now, do not skip)
+### Generate/Regenerate Skill Routing Hook (MANDATORY — always regenerate, never skip)
 
-The UserPromptSubmit hook was NOT created in Module 04 because it depends on what
-Modules 05-18 actually created. Generate it NOW by scanning what exists.
+The UserPromptSubmit routing hook MUST be regenerated every time Module 14 runs.
+It is built by scanning what actually exists on disk — not from a static list.
+This ensures new agents/skills added during Modules 16-18 (or by /reflect) are
+always included. **Never build the hook early and assume it stays current.**
 
 ⚠️ **This hook is NOT redundant with Claude Code's native skill detection.**
 Native `user-invocable: true` only triggers when users type the exact `/slash-command`.
-The routing hook catches **natural language** ("add a field to Division", "debug this test failure")
+The routing hook catches **natural language** ("add a field to X", "debug this test failure")
 and nudges toward the matching skill. Without it, users must remember exact slash command
-names, and Claude will often do the work directly instead of dispatching to the specialist skill.
+names, and Claude will often do the work directly instead of dispatching to the specialist.
 
 ⚠️ **MUST use `"type": "command"` with `echo`, NOT `"type": "prompt"`.**
 Prompt-type hooks are evaluated by a small fast model that misinterprets routing
-instructions and BLOCKS normal messages. Command-type hooks with `echo` simply
-prepend the output text to the conversation — they never block (exit 0).
+instructions and BLOCKS normal messages. Command-type echo hooks simply prepend
+text to the conversation — they never block (exit 0).
 
-**Step 1: Discover all created skills and agents**
+**Step 1: Discover ALL skills and agents on disk**
 ```bash
 echo "=== SKILLS ==="
 for d in .claude/skills/*/SKILL.md; do
@@ -110,22 +112,39 @@ done
 echo "=== AGENTS ==="
 for f in .claude/agents/*.md; do
   name=$(head -5 "$f" 2>/dev/null | grep "name:" | head -1 | sed 's/.*name: *//')
+  model=$(head -10 "$f" 2>/dev/null | grep "model:" | head -1 | sed 's/.*model: *//')
   desc=$(head -10 "$f" 2>/dev/null | grep "description:" | head -1 | sed 's/.*description: *//')
-  echo "- $name: $desc"
+  echo "- $name ($model): $desc"
 done
 ```
 
-**Step 2: Build the routing text**
+**Step 2: Detect drift — compare disk vs hook**
 
-Using the discovered skills and agents, build a single echo command. Format:
+If a UserPromptSubmit hook already exists, check if it lists every skill and agent
+found in Step 1. If ANY are missing, the hook is stale and MUST be regenerated.
+
+```bash
+SKILLS_ON_DISK=$(ls -d .claude/skills/*/SKILL.md 2>/dev/null | sed 's|.claude/skills/||;s|/SKILL.md||' | sort)
+AGENTS_ON_DISK=$(head -5 .claude/agents/*.md 2>/dev/null | grep "name:" | awk '{print $2}' | sort -u)
+
+MISSING=0
+for skill in $SKILLS_ON_DISK; do
+  grep -q "/$skill" .claude/settings.json 2>/dev/null || { echo "⚠️ DRIFT: /$skill missing from routing hook"; MISSING=$((MISSING+1)); }
+done
+for agent in $AGENTS_ON_DISK; do
+  grep -q "$agent" .claude/settings.json 2>/dev/null || { echo "⚠️ DRIFT: agent $agent missing from routing hook"; MISSING=$((MISSING+1)); }
+done
+
+[ "$MISSING" -eq 0 ] && echo "✅ Routing hook is current" || echo "❌ Routing hook is STALE — regenerating"
 ```
-- /skill-name → trigger words extracted from description (dispatches agent-name if applicable)
-```
 
-**Step 3: Inject the hook into `.claude/settings.json`**
+**Step 3: Build and inject the routing hook**
 
-Add this to the hooks object. The `echo` command outputs routing text that gets
-prepended to the user's message. The main Claude model sees it and routes accordingly.
+Using the discovered skills and agents from Step 1, build a single echo command.
+If the hook already exists, REPLACE it entirely (don't patch — regenerate from scratch).
+
+Format for skills: `- /skill-name → trigger words from description`
+Format for agents: `- agent-name (model): brief description`
 
 ```json
 "UserPromptSubmit": [
@@ -140,54 +159,23 @@ prepended to the user's message. The main Claude model sees it and routes accord
 ]
 ```
 
-Replace `{GENERATED_SKILLS_LIST}` with one line per skill discovered in Step 1:
-```
-- /reflect → review learnings, improve environment, audit config, evolve agents
-- /audit-file → review, audit, check a file for quality or conventions
-- /audit-memory → check memory health, review learnings, clean up stale entries
-- /write-prompt → create new skills, agents, CI prompts, instruction files
-- /brainstorm → design, explore, plan, think through a feature or change
-- /spec → write structured implementation spec before coding
-- /write-plan → create implementation plan from design or requirements
-- /execute-plan → execute a written plan with review checkpoints
-- /tdd → test-driven development, red-green-refactor cycle
-- /debug → investigate bug, test failure, unexpected behavior
-- /verify → verify work complete before committing or claiming done
-- /commit → commit changes with project conventions
-- /pr → create pull request with project template
-- /review → request code review on current changes
-- /module-write → create or edit bootstrap modules, techniques, skills, agents
-- /check-consistency → verify cross-reference integrity across the project
-- /write-ticket → write structured ticket with INVEST+C criteria
-- /ci-triage → triage CI/CD failures, classify by priority
-- /consolidate → consolidate learnings into instincts, clean up learning system
-...etc for every skill found
-```
-
-Replace `{GENERATED_AGENTS_LIST}` with one line per agent discovered in Step 1:
-```
-- quick-check (haiku): fast lookups, file searches, existence checks
-- researcher (sonnet): deep codebase exploration, pattern analysis, tracing
-- module-writer (opus): bootstrap content writing specialist
-- project-code-reviewer (opus): deep review of modules, skills, agents for quality
-- plan-writer (sonnet): create implementation plans from specs
-- debugger (opus): trace and diagnose bugs
-- verifier (sonnet): verify build, tests, cross-references
-- reflector (opus): analyze learnings, propose improvements
-- consistency-checker (sonnet): cross-reference validation
-- tdd-runner (opus): test-driven development cycles
-...etc for every agent found
-```
-
-**Step 4: Verify**
+**Step 4: Verify completeness**
 ```bash
-grep -q "UserPromptSubmit" .claude/settings.json && echo "✅ Routing hook injected" || echo "❌ MISSING"
+grep -q "UserPromptSubmit" .claude/settings.json && echo "✅ Routing hook exists" || echo "❌ MISSING"
 grep -q '"type": "command"' .claude/settings.json && echo "✅ Uses command type" || echo "❌ Wrong hook type"
+
+# Re-run drift check — must pass now
+for skill in $SKILLS_ON_DISK; do
+  grep -q "/$skill" .claude/settings.json || echo "❌ STILL MISSING: /$skill"
+done
+for agent in $AGENTS_ON_DISK; do
+  grep -q "$agent" .claude/settings.json || echo "❌ STILL MISSING: $agent"
+done
 ```
 
 - [ ] UserPromptSubmit hook exists with `"type": "command"` (NOT "prompt")
-- [ ] Echo text lists every skill found in Step 1
-- [ ] Echo text lists every agent found in Step 1
+- [ ] Hook lists EVERY skill found on disk (zero drift)
+- [ ] Hook lists EVERY agent found on disk (zero drift)
 - [ ] Hook output includes "NEVER refuse or block"
 
 ### Anti-Hallucination Coverage
