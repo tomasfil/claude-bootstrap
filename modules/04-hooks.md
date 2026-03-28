@@ -8,7 +8,7 @@
 ## Idempotency
 
 ```
-IF .claude/settings.json exists → MERGE hooks (preserve existing, add missing)
+IF .claude/settings.json exists → READ, MERGE hooks (upgrade existing, add missing, remove obsolete)
 IF helper scripts exist → UPDATE if they differ from current template
 IF missing → CREATE all
 ```

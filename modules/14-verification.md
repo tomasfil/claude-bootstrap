@@ -263,7 +263,7 @@ grep -q "claude-configs" ~/.claude/settings.json 2>/dev/null && echo "✅ User-l
 ```
 ✅ Module 14 complete — Wiring Verification
 
-Files: {created} created, {updated} updated, {preserved} preserved
+Files: {created} created, {upgraded} upgraded, {deleted} obsolete removed
 Skills: ~20 skills ({list})
 Agents: 10 agents ({list})
 Hooks: {N} hooks (SessionStart, PreToolUse, SubagentStop, UserPromptSubmit, PostToolUse, PreCompact)

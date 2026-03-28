@@ -6,7 +6,7 @@
 
 ## Idempotency
 
-Per skill: preserve if customized, update if stale, create if missing.
+Per skill: READ existing, EXTRACT project-specific content, REGENERATE with current template + extracted knowledge. Create if missing. Delete if obsolete/superseded.
 
 ## Create Directories
 

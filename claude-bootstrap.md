@@ -44,27 +44,23 @@ ANTI-SHORTCUT RULES — do not rationalize around these:
 
 Every module follows this protocol for each file it creates:
 
-**For rules, CLAUDE.md, hooks, scripts, config files:**
+**For ALL files (rules, CLAUDE.md, hooks, scripts, agents, skills):**
 ```
-IF file exists AND has project-specific customizations → PRESERVE, note what's there
-IF file exists AND matches a previous bootstrap template → UPDATE to current version
+IF file exists → READ it, EXTRACT project-specific knowledge, then REGENERATE:
+  - Project-specific content (conventions, patterns, gotchas, commands) carried forward
+  - All required sections from current bootstrap template added/updated
+  - Outdated boilerplate replaced with current version
+  - This is always a MERGE+UPGRADE — never a blind preserve
 IF file doesn't exist → CREATE from template
+IF file is obsolete/superseded → DELETE it (e.g., old agent replaced by new one, dead skill)
 ```
 
-**For agents and skills (`.claude/agents/`, `.claude/skills/`):**
-```
-IF file exists → READ it, then REGENERATE with:
-  - Project-specific content EXTRACTED from the existing file (conventions, patterns, examples, gotchas)
-  - PLUS all required sections from the current bootstrap template (anti-hallucination, model preference, pipeline traces, verification)
-  - This is a MERGE, not a preserve — old content is used as INPUT, not kept as-is
-IF file doesn't exist → CREATE from template with full research
-```
+Every file must meet the current bootstrap standard after every run. A file from a previous
+bootstrap that's missing sections, uses old patterns, or has stale content is OUTDATED — it
+gets upgraded while carrying forward the project-specific knowledge it contains. Nothing is
+preserved just because it exists.
 
-Agents and skills must always meet the current bootstrap standard. An agent from a previous
-bootstrap version that's missing anti-hallucination sections or model preference is OUTDATED,
-not customized — it should be upgraded while keeping the project-specific knowledge it contains.
-
-No mode detection needed. Run the bootstrap any time — it brings everything to spec.
+No mode detection needed. Run the bootstrap any time — it brings everything to current spec.
 
 ---
 

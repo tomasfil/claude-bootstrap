@@ -9,9 +9,9 @@
 
 Per rule file:
 ```
-IF exists AND has project-specific content → PRESERVE
-IF exists AND matches old template → UPDATE
+IF exists → READ, EXTRACT project-specific content, REGENERATE with current template + extracted knowledge
 IF doesn't exist → CREATE
+IF obsolete/superseded → DELETE
 ```
 
 ## Create Directory

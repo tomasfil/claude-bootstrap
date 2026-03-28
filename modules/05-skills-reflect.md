@@ -7,9 +7,9 @@
 ## Idempotency
 
 ```
-IF .claude/skills/reflect/SKILL.md exists AND has customizations → PRESERVE
-IF exists AND matches old template → UPDATE
+IF exists → READ, EXTRACT project-specific content, REGENERATE with current template + extracted knowledge
 IF missing → CREATE
+IF obsolete/superseded → DELETE
 ```
 
 ## Create Skill
