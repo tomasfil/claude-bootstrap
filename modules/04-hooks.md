@@ -176,12 +176,13 @@ if [ "$COUNT" -ge 5 ]; then
   fi
 fi
 
-# Check reflect conditions (3+ new learnings since last reflect)
+# Check reflect conditions (3+ new learning entries since last reflect)
+# Count actual entries (## or ### dated headers), not raw line count
 if [ -f "$LOG_FILE" ]; then
-  CURRENT_LINES=$(wc -l < "$LOG_FILE")
-  LAST_LINES=$(cat "$LAST_REFLECT_FILE" 2>/dev/null || echo 0)
-  NEW_LINES=$(( CURRENT_LINES - LAST_LINES ))
-  if [ "$NEW_LINES" -ge 3 ]; then
+  CURRENT_ENTRIES=$(grep -c '^##\+ [0-9]\{4\}-' "$LOG_FILE" 2>/dev/null || echo 0)
+  LAST_ENTRIES=$(cat "$LAST_REFLECT_FILE" 2>/dev/null || echo 0)
+  NEW_ENTRIES=$(( CURRENT_ENTRIES - LAST_ENTRIES ))
+  if [ "$NEW_ENTRIES" -ge 3 ]; then
     echo "REFLECT_DUE=true"
   fi
 fi
@@ -439,9 +440,18 @@ if [ -f "$OBS_FILE" ] && [ $(stat -f%z "$OBS_FILE" 2>/dev/null || stat -c%s "$OB
   mv "$OBS_FILE" "$OBS_FILE.$(date +%Y%m%d).bak"
 fi
 
-# Append JSONL record
-FILE=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_input.file_path" 2>/dev/null || echo "")
-echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"tool\":\"$TOOL\",\"file\":\"$FILE\"}" >> "$OBS_FILE"
+# Extract tool-specific fields
+if [[ "$TOOL" == "Bash" ]]; then
+  CMD=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_input.command" 2>/dev/null || echo "")
+  # Skip low-signal read-only commands
+  [[ "$CMD" =~ ^(ls|cat|pwd|echo|head|tail|wc|which|type|file)( |$) ]] && exit 0
+  # Truncate long commands to 200 chars
+  CMD="${CMD:0:200}"
+  echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"tool\":\"$TOOL\",\"cmd\":\"$CMD\"}" >> "$OBS_FILE"
+else
+  FILE=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_input.file_path" 2>/dev/null || echo "")
+  echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"tool\":\"$TOOL\",\"file\":\"$FILE\"}" >> "$OBS_FILE"
+fi
 
 exit 0
 ```
@@ -450,10 +460,10 @@ Add to settings.json template:
 ```json
 "PostToolUse": [
   {
+    "matcher": "Edit|Write|Bash",
     "hooks": [
       {
         "type": "command",
-        "matcher": "Edit|Write|Bash",
         "command": "bash .claude/hooks/observe.sh"
       }
     ]
@@ -464,6 +474,8 @@ Add to settings.json template:
 Important guardrails:
 - 10MB cap with daily rotation prevents unbounded growth
 - Filter: only Edit, Write, Bash (skip Read events — too noisy)
+- Bash captures `cmd` field (truncated to 200 chars); Edit/Write capture `file` field
+- Low-signal read-only commands (`ls`, `cat`, `pwd`, etc.) are skipped for Bash
 - Never let Claude read raw JSONL directly — use /reflect to analyze
 
 ## 6. Optional: Auto-Format Hook
