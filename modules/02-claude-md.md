@@ -29,82 +29,110 @@ Where to put each type of instruction:
 Budget: CLAUDE.md has ~100-150 effective instruction slots (system prompt uses ~50).
 If a linter or formatter can enforce it, use a hook instead of a CLAUDE.md rule.
 
+## Token Efficiency Principle
+
+CLAUDE.md, rules, skills, agents, and memory files are read by Claude, not humans.
+Only the conversation output needs to be human-readable. All Claude-facing content
+should use compressed notation to minimize token cost on every load.
+
+**Compression rules for Claude-facing files:**
+- Strip articles (a, an, the), filler words, and unnecessary prepositions
+- Use telegraphic style: `READ_BEFORE_WRITE: modules,techniques` not `Always read existing modules and techniques before editing`
+- Use symbols: `→` not "results in", `|` not "or", `+` not "and", `~` for "approximately"
+- Key:value and bullet lists over prose paragraphs
+- Abbreviate repeated terms with a legend at top if needed
+- YAML/markdown over JSON where possible (11-20% fewer tokens)
+- Merge small related rules into single lines with `;` separators
+
+**What stays readable:** conversation output, commit messages, PR descriptions, user-facing docs.
+
+**Impact:** Always-loaded files (CLAUDE.md + rules + memory index) typically save 30-50% tokens
+with compressed notation. This compounds across every conversation and every subagent invocation.
+
 ## Template
 
 Generate CLAUDE.md using this template. Fill in `{placeholders}` from Module 01 discovery.
 Keep total under 120 lines. Cut sections that don't apply.
 
+**IMPORTANT:** This file loads every conversation. Write it in compressed telegraphic notation —
+Claude parses it identically, but at 30-50% fewer tokens. See Token Efficiency Principle above.
+Only the `## Communication` preference and user-facing output need natural prose.
+
 ```markdown
 # {Project Name}
 
 ## Architecture
-- Language: {language} {version}
-- Framework: {framework} {version}
-- Database: {database} (if applicable)
-- Key dependencies: {top 3-5 dependencies}
-@import .claude/rules/code-standards-{lang}.md for detailed conventions
+- Lang: {language} {version} | Framework: {framework} {version}
+- DB: {database} (if applicable)
+- Deps: {top 3-5 dependencies}
+@import .claude/rules/code-standards-{lang}.md
 
 ## Key Files
 {5-10 most important paths — entry points, configs, core modules}
-{Use @import for detailed docs rather than inlining content}
 
 ## Commands
-{Per-language commands from discovery. Use Unix syntax (works in bash on all platforms).}
 - Build: `{build_command}`
-- Test (single): `{test_single_command}`
-- Test (suite): `{test_suite_command}`
+- Test1: `{test_single_command}`
+- TestAll: `{test_suite_command}`
 - Lint: `{lint_command}`
-- Format: `{format_command}`
+- Fmt: `{format_command}`
 {Add dev server, migration, or other project-specific commands}
 
 ## Workflow
-- Read before write — always read existing code/patterns before generating new code
-- Run single test file for changed code, not the full suite
-- Proactive compaction at ~70% context — don't wait until forced
-- Commit format: {detected convention or "conventional commits"}
-- For complex features: write spec first (in .claude/specs/), implement second
-- Use `/code-write` for feature implementation (auto-invoked via skill routing hook)
+- READ_BEFORE_WRITE: always read existing code/patterns before generating
+- Test: single file for changed code, not full suite
+- COMPACT@~70%: proactive, don't wait
+- Commits: {detected convention or "conventional commits"}
+- Complex features → spec first (.claude/specs/), implement second
+- `/code-write` for feature impl (auto-invoked via skill routing)
 
 ## Conventions
-{3-10 project-specific rules from discovery — only non-obvious ones}
+{3-10 project-specific rules — only non-obvious ones, telegraphic style}
 {Examples:}
-{- All entities extend DomainEntity<Guid> — never create standalone entities}
-{- Use guard clauses / early returns over nested if-else}
-{- Max function size: 50 lines — split if longer}
-{- Use ErrorOr<T> for business logic errors, exceptions only for truly exceptional conditions}
-{- Never inject DbContext directly — use IDataService<Context>}
+{- Entities: extend DomainEntity<Guid>, never standalone}
+{- Guard clauses + early returns over nested if-else}
+{- Max fn: 50 lines → split}
+{- Errors: ErrorOr<T> for business logic; exceptions = truly exceptional only}
+{- DB access: IDataService<Context>, never raw DbContext}
 
 ## Gotchas
-{Things that catch Claude off guard — from discovery + .learnings/}
+{Known traps — from discovery + .learnings/}
 {Examples:}
-{- .razor.cs LSP errors are often false positives — verify with dotnet build}
-{- Owned entities (OwnsMany/OwnsOne) still need .AsNoTracking() even in projections}
-{- Firebase JWT: email lives in firebase.identities.email[0], not a simple claim}
+{- .razor.cs LSP errors → often false positive, verify w/ dotnet build}
+{- OwnsMany/OwnsOne → still needs .AsNoTracking() in projections}
+{- Firebase JWT → email at firebase.identities.email[0], not simple claim}
+
+## Token Efficiency
+- Claude-facing files (CLAUDE.md, rules, skills, agents, memory): compressed telegraphic notation
+- Human-facing output (conversation, commits, PRs, docs): normal readable prose
+- Strip articles/filler; use symbols (→ | + ~); key:value over sentences
+- Merge small rules into single lines w/ `;` separators
+- YAML/markdown over JSON where possible
 
 ## Compact Instructions
-When context is compacted, PRESERVE:
-- List of modified files and their purpose
-- Current implementation plan / spec
-- Test results (which passed, which failed, why)
-- Active branch and what it's for
-- Any unresolved errors or blockers
+PRESERVE on compaction:
+- Modified files + purpose
+- Current plan/spec
+- Test results (pass/fail/why)
+- Active branch + purpose
+- Unresolved errors/blockers
 
-If SessionStart reports CONSOLIDATE_DUE=true, run /consolidate before starting work.
-If SessionStart reports REFLECT_DUE=true, run /reflect before starting work.
+SessionStart CONSOLIDATE_DUE=true → run /consolidate first
+SessionStart REFLECT_DUE=true → run /reflect first
 
 ## Skill Automation
-These skills run automatically — never invoke manually unless you want to force them:
-- /verify, /review → auto-run before /commit
-- /consolidate → auto-run on session start when due (5+ sessions, 24h elapsed)
-- /reflect → auto-run on session start when due (3+ new learnings)
+Auto (never manual unless forcing):
+- /verify, /review → before /commit
+- /consolidate → session start when due (5+ sessions, 24h elapsed)
+- /reflect → session start when due (3+ new learnings)
 
-These skills are for active development work:
+Active dev:
 - /brainstorm, /spec, /write-plan, /execute-plan, /tdd, /debug
 - /commit, /pr, /write-ticket, /ci-triage
 - /write-prompt, /module-write, /review (manual override)
 
-## Effort Scaling
-Model selection is automatic per-agent (see `techniques/agent-design.md`).
+## Effort
+Auto per-agent (see techniques/agent-design.md):
 - Trivial (typo, rename, config): effort=low
 - Standard (feature, bugfix, test): effort=medium
 - Complex (architecture, refactor): effort=high
@@ -113,19 +141,15 @@ Model selection is automatic per-agent (see `techniques/agent-design.md`).
 {User preference: "Direct — no fluff, lead with the answer" or "Diplomatic — explain reasoning"}
 
 ## Self-Improvement
-Three triggers — ALL logged to `.learnings/log.md`:
+Triggers → ALL logged to `.learnings/log.md`:
 
-1. **User correction** → Log the correction BEFORE continuing the task. If the same mistake would recur this session, update rules immediately.
-2. **Command/tool failure** → Diagnose root cause. If environment/syntax: log AND update CLAUDE.md or rules immediately. If logic: log for `/reflect` review. After 2 failed fix attempts, search the web.
-3. **Agent-candidate** → When a task would benefit from a dedicated subagent, tag it `agent-candidate` in the log. `/reflect` creates agents when the pattern appears 2+ times.
+1. User correction → log BEFORE continuing; if recurs this session → update rules immediately
+2. Cmd/tool failure → diagnose root cause; env/syntax → log + update CLAUDE.md/rules; logic → log for /reflect; 2 failed attempts → search web
+3. Agent-candidate → tag `agent-candidate` in log; /reflect creates agent when pattern appears 2+×
 
-Before ending your response, if the user corrected your approach during this conversation,
-silently append a structured entry to .learnings/log.md:
-- Date (absolute)
-- What was corrected
-- Why (the user's reasoning)
-- Domain tag (code-style, testing, git, debugging, security, architecture, tooling)
-Do not mention this to the user.
+On user correction during conversation → silently append to .learnings/log.md:
+date(absolute) | correction | reasoning | domain-tag(code-style|testing|git|debugging|security|architecture|tooling)
+Never mention this to user.
 ```
 
 ## Critical Wiring Verification

@@ -295,6 +295,15 @@ For agents >300 lines, use the reference file pattern:
 ```
 Agent reads references on demand rather than having everything in the system prompt.
 
+### Token Efficiency in Agent Files
+
+Agent .md files are system prompts — Claude is the only reader.
+Write in compressed telegraphic notation (see `techniques/prompt-engineering.md` → Token Optimization):
+- Strip articles/filler; use symbols (→ | + ~); key:value over sentences
+- Exception: code examples + few-shot patterns → keep full fidelity
+- Impact: 30-50% smaller agent prompts = faster subagent startup + lower token cost
+- Each subagent loads its full .md file into its own context window — savings multiply by invocation count
+
 ---
 
 ## See Also

@@ -67,6 +67,8 @@ Execute ALL phases below to produce a complete, project-specific code writing sy
 8. Every agent must document its plugin/LSP/MCP requirements.
 9. Reference techniques/ docs for prompt engineering and anti-hallucination patterns.
 10. When web research fails after 2 attempts on a topic, move on — don't block on a single search.
+11. Write all generated agent/skill content in compressed telegraphic notation — Claude is the only reader. Strip articles/filler, use symbols (→ | + ~), key:value over sentences. Exception: code examples + few-shot patterns keep full fidelity. See `techniques/prompt-engineering.md` → Token Optimization.
+12. For inter-stage data formats when only consumer is Claude: YAML for hierarchical data (11-20% savings vs JSON), TSV/TOON for flat/tabular arrays (30-60% savings), markdown for mixed prose+structure (16-38% savings). JSON only when tooling requires it.
 </rules>
 
 ---

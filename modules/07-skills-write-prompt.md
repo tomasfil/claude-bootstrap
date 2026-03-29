@@ -164,6 +164,22 @@ Subagents can't ask for clarification. Every dispatch must include:
 - Build/test command to verify
 - What to do if something unexpected is found
 
+### Token Efficiency (MUST apply to all generated content)
+
+Skills, agents, rules, CLAUDE.md → read by Claude, not humans.
+Write Claude-facing content in compressed telegraphic notation:
+
+- Strip articles/filler/prepositions
+- Telegraphic: `READ_BEFORE_WRITE: target + 2-3 similar` not full sentences
+- Symbols: → | + ~ × w/
+- Key:value + bullets over prose; merge short rules w/ `;`
+- YAML/markdown over JSON (11-20% fewer tokens)
+- Legend at top for repeated abbreviations
+
+Stays readable: conversation output, commits, PRs, user docs, code comments.
+Impact: 30-50% savings on always-loaded files, compounds across sessions + subagents.
+Exception: code examples + few-shot patterns → keep full fidelity (quality cliff <65%).
+
 ### Principles
 
 1. **Explicit > implicit** — don't assume the agent remembers context
@@ -172,6 +188,7 @@ Subagents can't ask for clarification. Every dispatch must include:
 4. **Constrain the agent** — restrict tools, define boundaries
 5. **Handle the empty case** — what if there's nothing to do?
 6. **Match effort** — don't use opus for a simple search
+7. **Token-efficient** — compress Claude-facing content; keep user-facing readable
 ```
 
 ## Checkpoint

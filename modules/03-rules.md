@@ -202,6 +202,41 @@ find . -name "*.sh" -not -path "./.git/*" -not -path "./.claude/*" 2>/dev/null |
 - Prefer `printf` over `echo` for portability
 ```
 
+### 6. `token-efficiency.md` (always create)
+
+Writing standard for all Claude-facing content. Loaded contextually when editing
+rules, skills, agents, or CLAUDE.md files.
+
+```markdown
+# Token Efficiency Standards
+
+## Scope
+- Applies to: CLAUDE.md, .claude/rules/, .claude/skills/, .claude/agents/, memory files
+- Does NOT apply to: conversation output, commit messages, PR descriptions, user-facing docs
+
+## Compression Rules
+- Strip articles (a, an, the), filler, unnecessary prepositions
+- Telegraphic style: `READ_BEFORE_WRITE: modules,techniques` not full sentences
+- Symbols: → (then/results in) | (or) + (and) ~ (approximately) × (times) w/ (with)
+- Key:value + bullets over prose paragraphs
+- Merge related short rules onto single lines w/ `;` separators
+- YAML/markdown over JSON (11-20% fewer tokens)
+- Abbreviate repeated terms; add legend at top if needed
+- One concept per bullet — but multiple sub-points can share a bullet via `;`
+
+## What Stays Readable
+- Conversation replies to user
+- Git commit messages + PR descriptions
+- README and user-facing documentation
+- Code comments (explain WHY, still in English)
+
+## Why
+- CLAUDE.md + rules load every conversation; 30-50% savings compounds across all sessions
+- Skills/agents load on every invocation; savings multiply by usage frequency
+- Claude parses telegraphic notation identically to prose — no quality loss
+- Subagent prompts benefit doubly: smaller parent context + smaller child context
+```
+
 ## Checkpoint
 
 ```

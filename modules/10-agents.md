@@ -459,6 +459,18 @@ You are a TDD practitioner. You follow the red-green-refactor cycle strictly.
 - If a test fails unexpectedly, diagnose before continuing
 ```
 
+## Token Efficiency in Agent Files
+
+All agent .md files are system prompts — Claude is the only reader.
+Write in compressed telegraphic notation:
+- Strip articles/filler; use symbols (→ | + ~ w/)
+- Key:value + bullets over prose; merge short rules w/ `;`
+- Exception: code examples + few-shot patterns → keep full fidelity
+- Impact: 30-50% smaller prompts = faster startup + lower cost per invocation
+
+Apply to all agent templates above. The agent bodies shown use readable prose
+for template clarity — when instantiated, compress the prose sections.
+
 ## Checkpoint
 
 ```

@@ -221,6 +221,36 @@ For complex decisions, provide a hierarchical taxonomy:
 Techniques for reducing token cost. Three levers: compress what you send,
 cache what repeats, architect pipelines to minimize redundancy.
 
+### Writing Style: Claude-Facing vs Human-Facing
+
+All content consumed by Claude (CLAUDE.md, rules, skills, agents, memory files,
+cron job prompts, shared reference docs) should use compressed telegraphic notation.
+Only conversation output, commits, PRs, and user-facing docs stay in natural prose.
+
+**Compression techniques (apply to all Claude-facing files):**
+- Strip articles (a, an, the), filler words, unnecessary prepositions → 15-30% savings
+- Use symbols: → (then/results in) | (or) + (and) ~ (approx) × (times) w/ (with)
+- Key:value + bullet lists over prose paragraphs
+- Merge short related rules onto single lines w/ `;` separators
+- Abbreviate repeated terms; define legend at file top
+- Restructure prose → structured format → up to 70% savings
+
+**Example:**
+```markdown
+# Before (38 tokens)
+You should always make sure to verify that the sources you are
+citing actually exist and are accessible before including them.
+
+# After (14 tokens)
+Verify cited sources exist + accessible before including.
+```
+
+**Quality thresholds for compression:**
+- Code examples + few-shot patterns: keep full fidelity (quality cliff below 65%)
+- Classification/routing instructions: very tolerant (5-10× compression safe)
+- Chain-of-thought prompts: keep >80% tokens
+- Reference docs (brand guidelines, style rules): 2-3× compression safe
+
 ### Format Selection
 
 Data shape determines optimal format — not habit:
@@ -234,6 +264,20 @@ Data shape determines optimal format — not habit:
 
 No universal winner. JSON is always the most verbose for structured data.
 Default to YAML or Markdown unless the consumer explicitly needs JSON.
+
+**JSON replacement guidance:**
+- Config consumed only by Claude → YAML (11-20% savings, identical semantics)
+- Inter-stage pipeline data → YAML (Claude reads both equally well)
+- Data with arrays of uniform objects → TSV or TOON (30-60% savings)
+- Tooling-mandated JSON (settings.json, package.json, tsconfig.json) → keep JSON
+- Code-consumed JSON where runtime supports YAML → migrate gradually via TDD:
+  1. Check if runtime has YAML support (js-yaml for TS/Node, PyYAML for Python, etc.)
+  2. Write failing test expecting YAML input → make it pass → convert data file
+  3. Migrate one file at a time; keep JSON schema as validation reference during transition
+  4. Priority: largest files first (most token savings per migration)
+
+Rule: if the only consumer is Claude, JSON is never the right format.
+If the consumer is code that *can* handle YAML, plan a gradual TDD-driven migration.
 
 ### Manual Compression
 

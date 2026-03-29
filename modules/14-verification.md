@@ -146,6 +146,11 @@ If the hook already exists, REPLACE it entirely (don't patch — regenerate from
 Format for skills: `- /skill-name → trigger words from description`
 Format for agents: `- agent-name (model): brief description`
 
+Include a capabilities note after the agents list to guide Claude on specialized features:
+```
+\n\nCapabilities:\n- Token optimization: /write-prompt covers compressed notation for Claude-facing files; token-optimizer agent (if exists) audits for waste\n- Format selection: YAML for hierarchical data, TSV/TOON for flat arrays, JSON only when tooling requires — see techniques/prompt-engineering.md\n- TDD migration: use /tdd for gradual JSON→YAML format migration in code-consumed data
+```
+
 ```json
 "UserPromptSubmit": [
   {
