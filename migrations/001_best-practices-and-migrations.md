@@ -23,7 +23,7 @@ breaking: false
 5. Agent fields added: `color`, `memory`, `skills` to all base agent templates
 6. Skill frontmatter reference table added to `modules/13-plugin-replacements.md`
 7. Skill fields added: `context`, `agent`, `allowed-tools`, `model`, `effort` to all skill templates
-8. Turn optimization techniques added to bootstrap reference docs (techniques/agent-design.md, techniques/prompt-engineering.md) — these are baked into generated agents during bootstrap, not distributed to client projects
+8. Turn optimization patterns injected into existing agents (parallel execution, scope locks, search batching, verify-and-fix containment)
 9. Migration system: `/migrate-bootstrap` skill + `.claude/bootstrap-state.json` tracking
 
 ---
@@ -101,7 +101,52 @@ Rules:
 - Match `model` + `effort` to skill complexity (verify=sonnet/medium, commit=sonnet/low, review=opus/high, etc.)
 - `allowed-tools` = minimal set needed for that skill
 
-### Step 5 — Create /migrate-bootstrap skill
+### Step 5 — Inject turn optimization patterns into agents
+
+For each agent in `.claude/agents/` that writes code or uses tools (code-writer, researcher, debugger, tdd-runner, verifier), read the file and append these sections if not already present:
+
+**Append to all tool-using agents:**
+```markdown
+## Parallel Execution
+When multiple tool calls have no data dependencies → issue ALL in one message.
+- Multiple Reads → batch
+- Multiple Greps → batch
+- Multiple WebSearches → batch
+NEVER: Read A → respond → Read B → respond. INSTEAD: Read A + B → respond once.
+```
+
+**Append to code-writing agents (code-writer, tdd-runner):**
+```markdown
+## Scope Lock
+- Implement ONLY what's specified — no extras
+- Do NOT refactor adjacent code
+- Do NOT add abstractions for one-time operations
+- MINIMAL change that satisfies the spec
+
+## Self-Fix Protocol
+After changes, run build/test. If failure:
+1. Read error → fix in same turn → rebuild
+2. Up to 3 fix attempts
+3. Only report if still failing after 3 attempts
+```
+
+**Append to research agents (researcher):**
+```markdown
+## Search Planning
+Before executing ANY web search:
+1. Identify ALL information needs from the task
+2. Formulate ALL search queries at once
+3. Execute all searches in parallel (single message)
+4. Follow-up searches ONLY for specific identified gaps
+5. Maximum 2 search rounds total
+```
+
+Rules:
+- Read-before-write — check if agent already has these sections
+- Additive — append after existing content, before any closing markers
+- Skip agents that already contain "Parallel Execution" or "Scope Lock" sections
+
+### Step 6 — Create /migrate-bootstrap skill
 
 ```bash
 mkdir -p .claude/skills/migrate-bootstrap
@@ -189,7 +234,7 @@ Current state: migration {last_migration}
 - `.claude/bootstrap-state.json` always tracked — never gitignored
 ````
 
-### Step 6 — Create/update bootstrap-state.json
+### Step 7 — Create/update bootstrap-state.json
 
 Write `.claude/bootstrap-state.json`:
 
@@ -223,6 +268,9 @@ grep -l "color:" .claude/agents/*.md | wc -l  # should match agent count
 
 # Skill frontmatter updates
 grep -l "model:" .claude/skills/*/SKILL.md | wc -l  # should match skill count
+
+# Turn optimization injected into agents
+grep -rl "Parallel Execution" .claude/agents/*.md | wc -l  # should be > 0
 
 # Migration skill
 [[ -f ".claude/skills/migrate-bootstrap/SKILL.md" ]] && echo "✓ migrate-bootstrap skill" || echo "✗ missing"
