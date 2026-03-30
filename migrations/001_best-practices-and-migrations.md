@@ -138,14 +138,89 @@ Extract "Turn Optimization" section → append to local `techniques/prompt-engin
 
 ```bash
 mkdir -p .claude/skills/migrate-bootstrap
-gh api repos/tomasfil/claude-bootstrap/contents/.claude/skills/migrate-bootstrap/SKILL.md --jq '.content' | base64 -d > .claude/skills/migrate-bootstrap/SKILL.md
 ```
 
-WebFetch fallback:
+Create `.claude/skills/migrate-bootstrap/SKILL.md` with this content:
+
+````markdown
+---
+name: migrate-bootstrap
+description: >
+  Apply pending bootstrap migrations. Use when the bootstrap repo has been
+  updated and you need to bring this project to the latest migration level.
+  Also handles retrofit for pre-migration bootstrapped projects.
+argument-hint: "[migration-id]"
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch
+model: sonnet
+effort: medium
+---
+
+## /migrate-bootstrap — Apply Pending Migrations
+
+### Step 1: Read migration state
+
+Read `.claude/bootstrap-state.json`.
+
+**File exists:** extract `last_migration` + `applied[]`. Continue to Step 2.
+
+**File missing — retrofit detection:**
+- Check `.claude/settings.json` exists AND contains `"hooks"`
+- Check `CLAUDE.md` exists AND contains bootstrap fingerprints (any of: "self-improvement", ".learnings/log.md", "Module")
+- BOTH pass → project bootstrapped pre-migration. Create `.claude/bootstrap-state.json`:
+```json
+{
+  "bootstrap_repo": "tomasfil/claude-bootstrap",
+  "last_migration": "000",
+  "last_applied": "{current ISO-8601 timestamp}",
+  "applied": [
+    { "id": "000", "applied_at": "{current ISO-8601 timestamp}", "commit": "b622344" }
+  ]
+}
+```
+- Conditions DON'T pass → not bootstrapped. Tell user: "Run the full bootstrap first by executing `claude-bootstrap.md`."
+
+### Step 2: Fetch migration index
+
+```bash
+gh api repos/tomasfil/claude-bootstrap/contents/migrations --jq '[.[] | select(.name != "_template.md") | .name] | sort'
+```
+
+Fallback if `gh` unavailable — WebFetch:
+```
+https://api.github.com/repos/tomasfil/claude-bootstrap/contents/migrations
+```
+Filter out `_template.md`, sort by filename.
+
+### Step 3: Identify pending migrations
+
+Extract numeric IDs from filenames (e.g., `001_best-practices-and-migrations.md` → `"001"`).
+Filter to IDs > `last_migration`. Sort ascending.
+None pending → print "Already up to date at migration {last_migration}" and STOP.
+
+### Step 4: Apply each pending migration in order
+
+1. **Fetch** migration file: `gh api repos/tomasfil/claude-bootstrap/contents/migrations/{filename} --jq '.content' | base64 -d`
+   Fallback: `https://raw.githubusercontent.com/tomasfil/claude-bootstrap/main/migrations/{filename}`
+2. **If `breaking: true`** → warn user + STOP. Wait for explicit confirmation.
+3. **Print** `## Changes` summary to user.
+4. **Execute** `## Actions` — read-before-write for all file modifications.
+5. **Run** `## Verify` — any check fails → STOP. Do NOT update state file.
+6. **Update state**: append to `applied[]`, update `last_migration` + `last_applied`.
+7. **Print** `✅ Migration {id} applied — {description}`
+
+### Step 5: Report summary
 
 ```
-https://raw.githubusercontent.com/tomasfil/claude-bootstrap/main/.claude/skills/migrate-bootstrap/SKILL.md
+✅ Migrations complete: applied {N} migrations ({id_list})
+Current state: migration {last_migration}
 ```
+
+### Gotchas
+- Migrations apply in strict numeric order — never skip
+- Retrofit requires BOTH `.claude/settings.json` w/ hooks AND `CLAUDE.md` w/ fingerprints
+- Migration fails mid-apply → state NOT updated — safe to retry
+- `.claude/bootstrap-state.json` always tracked — never gitignored
+````
 
 ### Step 7 — Create/update bootstrap-state.json
 
