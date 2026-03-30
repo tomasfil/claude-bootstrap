@@ -9,8 +9,8 @@ breaking: false
 
 # Migration 003 — Companion Repo Auto-Sync
 
-> Adds a Stop hook that syncs `.claude/` to `~/.claude-configs/{project}/` with git commit+push.
-> Updates SessionStart import to match companion repo layout (flat, not nested `.claude/`).
+> Adds a Stop hook that syncs `.claude/` to `~/.claude-configs/{project}/.claude/` with git commit+push.
+> Adds SessionStart auto-import from companion repo on fresh clones.
 > No-op if `~/.claude-configs/` is not a git repo.
 
 ---
@@ -20,7 +20,7 @@ breaking: false
 | Action | Path | Summary |
 |--------|------|---------|
 | add | `.claude/hooks/sync-companion.sh` | Stop hook: export .claude/ → companion, commit+push |
-| modify | `.claude/hooks/detect-env.sh` | Fix companion import to use flat layout |
+| modify | `.claude/hooks/detect-env.sh` | Add companion auto-import on SessionStart |
 | modify | `.claude/settings.json` | Wire sync-companion.sh into Stop hooks |
 
 ---
@@ -74,20 +74,30 @@ exit 0
 
 Make executable: `chmod +x .claude/hooks/sync-companion.sh`
 
-### Step 2 — Update detect-env.sh companion import
+### Step 2 — Add companion auto-import to detect-env.sh
 
-In `.claude/hooks/detect-env.sh`, update the companion auto-import block to use flat layout. The companion mirrors `.claude/` contents directly (not nested under `.claude/`):
+In `.claude/hooks/detect-env.sh`, add a companion import block **before** the `cat <<EOF` environment output. This auto-imports from the companion repo on fresh clones where `.claude/` is empty:
 
-- Check `$COMPANION_DIR/.claude/settings.json` exists (nested layout)
-- Copy `$COMPANION_DIR/.claude/*` to `.claude/`
-- Copy `$COMPANION_DIR/.learnings/` to `.learnings/`
-- Copy `$COMPANION_DIR/CLAUDE.md` and `CLAUDE.local.md` to project root
+```bash
+# Auto-import from companion repo (if .claude/ is missing but companion exists)
+COMPANION_DIR="$HOME/.claude-configs/$PROJECT_NAME"
+COMPANION_STATUS=""
+if [ -d "$HOME/.claude-configs/.git" ]; then
+  if [ ! -f "$PROJECT_ROOT/.claude/settings.json" ] && [ -f "$COMPANION_DIR/.claude/settings.json" ]; then
+    mkdir -p "$PROJECT_ROOT/.claude"
+    cp -r "$COMPANION_DIR/.claude/"* "$PROJECT_ROOT/.claude/" 2>/dev/null
+    [ -d "$COMPANION_DIR/.learnings" ] && cp -r "$COMPANION_DIR/.learnings" "$PROJECT_ROOT/" 2>/dev/null
+    [ -f "$COMPANION_DIR/CLAUDE.md" ] && cp "$COMPANION_DIR/CLAUDE.md" "$PROJECT_ROOT/" 2>/dev/null
+    [ -f "$COMPANION_DIR/CLAUDE.local.md" ] && cp "$COMPANION_DIR/CLAUDE.local.md" "$PROJECT_ROOT/" 2>/dev/null
+    COMPANION_STATUS="COMPANION_IMPORTED=true"
+  fi
+fi
+```
 
-If no companion import block exists yet, add one before the environment output. It should:
-1. Set `COMPANION_DIR="$HOME/.claude-configs/$PROJECT_NAME"`
-2. Check `[ ! -f ".claude/settings.json" ] && [ -f "$COMPANION_DIR/.claude/settings.json" ]`
-3. `cp -r "$COMPANION_DIR/.claude/"* .claude/`
-4. Copy `.learnings/`, `CLAUDE.md`, `CLAUDE.local.md`
+After the `cat <<EOF` block, add:
+```bash
+[ -n "$COMPANION_STATUS" ] && echo "$COMPANION_STATUS"
+```
 
 ### Step 3 — Wire into settings.json
 
