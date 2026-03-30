@@ -23,9 +23,8 @@ breaking: false
 5. Agent fields added: `color`, `memory`, `skills` to all base agent templates
 6. Skill frontmatter reference table added to `modules/13-plugin-replacements.md`
 7. Skill fields added: `context`, `agent`, `allowed-tools`, `model`, `effort` to all skill templates
-8. Turn-efficient agent design section in `techniques/agent-design.md` (pre-computed context, scope locks, verify-and-fix containment, search batching, tool call batching, meta-tools, turn budgets)
-9. Turn optimization section in `techniques/prompt-engineering.md` (tool call batching, search planning, pre-computed context injection, scope locks, verify-and-fix containment, plan-then-act, meta-tools)
-10. Migration system: `/migrate-bootstrap` skill + `.claude/bootstrap-state.json` tracking
+8. Turn optimization techniques added to bootstrap reference docs (techniques/agent-design.md, techniques/prompt-engineering.md) — these are baked into generated agents during bootstrap, not distributed to client projects
+9. Migration system: `/migrate-bootstrap` skill + `.claude/bootstrap-state.json` tracking
 
 ---
 
@@ -102,39 +101,7 @@ Rules:
 - Match `model` + `effort` to skill complexity (verify=sonnet/medium, commit=sonnet/low, review=opus/high, etc.)
 - `allowed-tools` = minimal set needed for that skill
 
-### Step 5 — Fetch turn optimization content
-
-These sections are 100+ lines each. Fetch from bootstrap repo rather than inlining.
-
-**5a — Agent design turn optimization:**
-
-```bash
-gh api repos/tomasfil/claude-bootstrap/contents/techniques/agent-design.md --jq '.content' | base64 -d > /tmp/agent-design-source.md
-```
-
-WebFetch fallback:
-
-```
-https://raw.githubusercontent.com/tomasfil/claude-bootstrap/main/techniques/agent-design.md
-```
-
-Extract "Turn-Efficient Agent Design" section → append to local `techniques/agent-design.md` BEFORE "## Agent File Size Guidelines". If that heading doesn't exist, append at end.
-
-**5b — Prompt engineering turn optimization:**
-
-```bash
-gh api repos/tomasfil/claude-bootstrap/contents/techniques/prompt-engineering.md --jq '.content' | base64 -d > /tmp/prompt-eng-source.md
-```
-
-WebFetch fallback:
-
-```
-https://raw.githubusercontent.com/tomasfil/claude-bootstrap/main/techniques/prompt-engineering.md
-```
-
-Extract "Turn Optimization" section → append to local `techniques/prompt-engineering.md` BEFORE "## See Also". If that heading doesn't exist, append at end.
-
-### Step 6 — Create /migrate-bootstrap skill
+### Step 5 — Create /migrate-bootstrap skill
 
 ```bash
 mkdir -p .claude/skills/migrate-bootstrap
@@ -222,7 +189,7 @@ Current state: migration {last_migration}
 - `.claude/bootstrap-state.json` always tracked — never gitignored
 ````
 
-### Step 7 — Create/update bootstrap-state.json
+### Step 6 — Create/update bootstrap-state.json
 
 Write `.claude/bootstrap-state.json`:
 
