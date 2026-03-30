@@ -11,6 +11,27 @@ Per skill: if it exists, READ it to extract project-specific content, then REGEN
 with that content PLUS all required sections from the current template. Skills from a
 previous bootstrap version are upgraded, not preserved as-is.
 
+## Skill Frontmatter Reference
+
+All skills support these fields. Use what's relevant — omit fields that don't apply:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | No | Display name and `/slash-command` identifier |
+| `description` | Recommended | Trigger description — "Use when..." |
+| `argument-hint` | No | Autocomplete hint (e.g., `[filename]`) |
+| `allowed-tools` | No | Tools allowed without permission prompts |
+| `model` | No | Model override: `haiku`, `sonnet`, `opus` |
+| `effort` | No | Effort level: `low`, `medium`, `high`, `max` |
+| `context` | No | `fork` runs skill in isolated subagent context |
+| `agent` | No | Subagent type when `context: fork` |
+| `paths` | No | Glob patterns for auto-activation |
+
+**Key patterns:**
+- Orchestrator skills (dispatch agents): use `context: fork` to keep main context clean
+- Skills are folders (`SKILL.md` + `references/`) — use progressive disclosure
+- Add a `### Gotchas` section to every skill — highest-signal content, accumulates over time
+
 ## Create Skills
 
 Generate each skill below. Adapt templates using discovery context from Module 01.
@@ -30,6 +51,11 @@ description: >
   Explore and design features before implementing. Use when asked to design,
   plan, explore, or think through a feature, component, or change. Always
   brainstorm before implementing anything non-trivial.
+context: fork
+agent: general-purpose
+allowed-tools: Agent, Read, Grep, Glob, Skill, Write
+model: opus
+effort: high
 ---
 ```
 ```markdown
@@ -60,6 +86,10 @@ description: >
   Create a detailed implementation plan from a design or spec. Use after
   brainstorming, when you have requirements and need to break them into
   concrete implementation steps.
+argument-hint: "[spec-file-path]"
+allowed-tools: Agent, Read, Write, Grep, Glob
+model: opus
+effort: medium
 ---
 ```
 ```markdown
@@ -104,6 +134,12 @@ name: execute-plan
 description: >
   Execute a written implementation plan with review checkpoints. Use when
   you have a plan file and are ready to start implementing.
+argument-hint: "[plan-file-path]"
+context: fork
+agent: general-purpose
+allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob, Skill
+model: opus
+effort: high
 ---
 ```
 ```markdown
@@ -143,6 +179,11 @@ name: tdd
 description: >
   Test-driven development. Use when implementing a feature or bugfix where
   writing tests first would improve confidence. Red-green-refactor cycle.
+context: fork
+agent: general-purpose
+allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob
+model: opus
+effort: high
 ---
 ```
 ```markdown
@@ -181,6 +222,11 @@ name: debug
 description: >
   Systematic debugging. Use when encountering a bug, test failure, or unexpected
   behavior. Investigates root cause before proposing fixes.
+context: fork
+agent: general-purpose
+allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob
+model: opus
+effort: high
 ---
 ```
 ```markdown
@@ -229,6 +275,9 @@ name: verify
 description: >
   Verify work is complete before claiming done. Use before committing, creating
   PRs, or telling the user that work is finished. Runs build, tests, and checks.
+allowed-tools: Agent, Read, Bash, Grep, Glob
+model: sonnet
+effort: medium
 ---
 ```
 ```markdown
@@ -272,6 +321,9 @@ name: commit
 description: >
   Commit changes with project conventions. Use when asked to commit, save
   changes, or after completing a task that should be committed.
+allowed-tools: Agent, Read, Bash, Grep, Glob
+model: sonnet
+effort: medium
 ---
 ```
 ```markdown
@@ -308,6 +360,9 @@ name: pr
 description: >
   Create a pull request with project template. Use when asked to create a PR,
   submit changes for review, or after finishing a feature branch.
+allowed-tools: Read, Bash, Grep, Glob
+model: sonnet
+effort: medium
 ---
 ```
 ```markdown
@@ -348,6 +403,11 @@ description: >
   Request code review on current changes. Use when completing a task, before
   committing, or when you want to verify code quality. Dispatches the
   project-code-reviewer agent.
+context: fork
+agent: general-purpose
+allowed-tools: Agent, Read, Grep, Glob, Bash
+model: opus
+effort: medium
 ---
 ```
 ```markdown

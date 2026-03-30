@@ -27,6 +27,24 @@ If a collision is found (e.g., plugin already has `code-reviewer`), prefix with 
 mkdir -p .claude/agents
 ```
 
+## Agent Frontmatter Reference
+
+All agents support these fields. Use what's relevant — omit fields that don't apply:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Unique identifier, lowercase-hyphens |
+| `description` | Yes | When to invoke — write as trigger, not summary |
+| `tools` | No | Tool allowlist (inherits all if omitted) |
+| `model` | No | `haiku`, `sonnet`, `opus`, `inherit` |
+| `effort` | No | `low`, `medium`, `high`, `max` |
+| `maxTurns` | No | Max agentic turns |
+| `color` | No | CLI output color for visual distinction |
+| `memory` | No | Persistent scope: `user`, `project`, `local` |
+| `skills` | No | Skills preloaded into agent context at startup |
+| `isolation` | No | `worktree` for isolated git copy |
+| `permissionMode` | No | `default`, `acceptEdits`, `plan` |
+
 ## 1. quick-check.md (always create)
 
 ```yaml
@@ -40,6 +58,7 @@ tools: Read, Grep, Glob
 model: haiku
 effort: low
 maxTurns: 10
+color: gray
 ---
 ```
 
@@ -78,6 +97,8 @@ tools: Read, Grep, Glob, LSP, WebSearch
 model: {opus for max-quality, sonnet for balanced, haiku for cost-efficient — from Module 01 model preference}
 effort: medium
 maxTurns: 30
+memory: project
+color: cyan
 ---
 ```
 
@@ -140,6 +161,7 @@ tools: Read, Grep, Glob, LSP
 model: sonnet
 effort: medium
 maxTurns: 30
+color: blue
 ---
 ```
 
@@ -192,6 +214,8 @@ tools: Read, Grep, Glob, LSP, Bash
 model: opus
 effort: high
 maxTurns: 40
+memory: project
+color: red
 ---
 ```
 
@@ -249,6 +273,7 @@ tools: Read, Grep, Glob, Bash
 model: sonnet
 effort: medium
 maxTurns: 15
+color: green
 ---
 ```
 
@@ -301,6 +326,8 @@ tools: Read, Grep, Glob
 model: opus
 effort: high
 maxTurns: 30
+memory: project
+color: magenta
 ---
 ```
 
@@ -357,6 +384,7 @@ tools: Read, Grep, Glob
 model: sonnet
 effort: medium
 maxTurns: 20
+color: yellow
 ---
 ```
 
@@ -414,6 +442,7 @@ tools: Read, Grep, Glob, LSP, Bash
 model: opus
 effort: high
 maxTurns: 50
+color: green
 ---
 ```
 

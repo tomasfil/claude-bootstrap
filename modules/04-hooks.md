@@ -273,6 +273,28 @@ echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) | type=$AGENT_TYPE | id=$AGENT_ID" >> .lear
 
 Make executable: `chmod +x .claude/hooks/track-agent.sh`
 
+## 4b. Create Hook: `.claude/hooks/stop-verify.sh`
+
+Stop hook — nudges Claude to verify work before claiming done.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Stop hook: nudge Claude to verify work before claiming done
+INPUT=$(cat)
+STOP_REASON=$(echo "$INPUT" | jq -r '.stop_reason // "end_turn"' 2>/dev/null || echo "end_turn")
+
+if [[ "$STOP_REASON" == "end_turn" ]]; then
+  if git diff --quiet 2>/dev/null && git diff --cached --quiet 2>/dev/null; then
+    exit 0
+  fi
+  echo "STOP_HOOK: You have uncommitted changes. Before claiming done, consider: did you verify the changes work? Run /verify if you haven't already."
+fi
+```
+
+Make executable: `chmod +x .claude/hooks/stop-verify.sh`
+
 ## 5. Create `.claude/settings.json`
 
 Create with ONLY the deterministic hooks — hooks that don't depend on what modules 05-18 create.
@@ -312,6 +334,16 @@ The flat format `{ "type": "command", ... }` directly in the array will fail val
           {
             "type": "command",
             "command": "bash .claude/hooks/track-agent.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/stop-verify.sh"
           }
         ]
       }
@@ -535,6 +567,7 @@ Add to settings.json:
   - SessionStart: env detection + companion auto-import + maintenance checks
   - PreToolUse: git guard (blocks force push, push to main, hard reset)
   - SubagentStop: agent usage tracking
+  - Stop: verification nudge (reminds to verify before claiming done)
   - PreCompact: state preservation before context compaction
   - UserPromptSubmit: deferred to Module 14 (needs full skill inventory)
   {- PostToolUse: auto-format (if enabled)}

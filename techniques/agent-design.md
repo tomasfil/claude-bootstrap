@@ -47,6 +47,12 @@ description: >
   building components, or creating new files. Orchestrates language-specific
   code writers for cross-layer features. MUST be invoked for any code
   generation task.
+context: fork
+agent: general-purpose
+allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob, Skill
+model: opus
+effort: high
+paths: "src/**"
 ---
 ```
 
@@ -89,9 +95,15 @@ effort: medium
 | `disallowedTools` | No | Denylist. Alternative to `tools` |
 | `model` | No | `haiku`, `sonnet`, `opus`. Default: inherit from parent |
 | `effort` | No | `low`, `medium`, `high`, `max`. Default: inherit |
-| `isolation` | No | `worktree` for isolated git worktree |
-| `background` | No | **Do not use.** Always dispatch foreground. See "Foreground-Only Dispatch" section |
 | `maxTurns` | No | Limit agent iterations |
+| `color` | No | CLI output color for visual distinction (e.g., `green`, `red`, `cyan`) |
+| `memory` | No | Persistent memory scope: `user`, `project`, `local` |
+| `skills` | No | Skills preloaded into agent context at startup (full SKILL.md injected) |
+| `isolation` | No | `worktree` for isolated git worktree |
+| `permissionMode` | No | `default`, `acceptEdits`, `dontAsk`, `plan` |
+| `background` | No | **Do not use.** Always dispatch foreground. See "Foreground-Only Dispatch" section |
+| `hooks` | No | Lifecycle hooks scoped to this subagent |
+| `mcpServers` | No | MCP servers available to this subagent |
 
 ### Automatic Model Selection
 
@@ -276,6 +288,135 @@ Every subagent dispatch should include:
 - [ ] Reference files for pattern matching
 - [ ] Build/test command to verify
 - [ ] What to do if something unexpected is found
+
+---
+
+## Turn-Efficient Agent Design
+
+Turn count is the second cost axis after token size. Each turn re-reads the
+entire conversation prefix, so turn reduction and token compression are
+multiplicative. These patterns apply to both Claude Code subagents and
+Agent SDK orchestrator jobs (e.g., Tof Orchestrator cron pipelines).
+
+### Pre-Computed Context in Invocations
+
+Every tool call an agent makes to "discover" context the orchestrator already
+has is a wasted turn. Front-load it in the dispatch:
+
+**Bad — forces discovery turns:**
+```
+"Write an article about the trend in the database"
+```
+
+**Good — eliminates discovery turns:**
+```
+"Write an article about {trend_title}.
+
+Research data (pre-computed by researcher job):
+{yaml block with key_facts, sources, angles}
+
+Brand voice rules are pre-loaded in context (cron/shared/brand-voice-rules.md).
+Do NOT re-read them. Do NOT search for additional brand guidance.
+
+Target: 800-1200 words, Czech, publish-ready.
+Output: JSON with title, body, meta_description, slug."
+```
+
+For **orchestrator pipelines** (Agent SDK / Tof Orchestrator):
+- Use `pre_commands` to compute data before agent starts → inject via context
+- Use `include_files` for static references → agent never needs to Read them
+- Pipeline stage outputs should be structured (YAML) and injected directly
+- Rule: if the orchestrator can compute it, don't make the agent discover it
+
+### Scope Locks in Agent Prompts
+
+Models overbuild, triggering generate → simplify loops. Include scope locks
+in every code-writing agent:
+
+```markdown
+## Scope Lock
+- Implement ONLY what's specified — no extras
+- Do NOT refactor adjacent code
+- Do NOT add abstractions for one-time operations
+- MINIMAL change that satisfies the spec
+```
+
+### Verify-and-Fix Containment
+
+Agents should self-fix rather than report errors back to orchestrator:
+
+```markdown
+## Self-Fix Protocol
+After changes, run build/test. If failure:
+1. Read error → fix in same turn → rebuild
+2. Up to 3 fix attempts
+3. Only report if still failing after 3 attempts
+```
+
+This prevents the costly: agent fails → orchestrator retries → agent fixes →
+orchestrator validates cycle (4+ turns → 1 turn).
+
+### Search Batching for Research Agents
+
+Research-heavy agents (trend scouts, article researchers, QC with web checks)
+should plan all searches upfront:
+
+```markdown
+## Research Protocol
+1. Identify ALL information needs before searching
+2. Execute all WebSearch calls in ONE message (parallel)
+3. After receiving results, identify specific gaps
+4. At most ONE follow-up batch
+5. Maximum 2 search rounds total
+```
+
+For **pipeline jobs**: cap web searches per job in the instruction file.
+Example: "Maximum 5 WebSearch calls for competitive sweep. If key_facts >= 5
+from prior research, skip competitive sweep entirely."
+
+### Tool Call Batching Instruction
+
+Include in every agent that uses multiple tools:
+
+```markdown
+## Parallel Execution
+When tool calls have no data dependencies → issue ALL in one message.
+- Multiple Reads → batch
+- Multiple Greps → batch
+- Multiple WebSearches → batch
+NEVER: Read A → respond → Read B → respond. INSTEAD: Read A + B → respond.
+```
+
+### Meta-Tools / Pre-Commands for Predictable Sequences
+
+When agents consistently perform the same tool sequence, extract it:
+
+| Pattern | Solution |
+|---------|----------|
+| Agent greps for compliance rules → reads them → applies | pre_command runs compliance check, injects result |
+| Agent reads DB → filters → processes | pre_command runs SQL query, injects filtered data |
+| Agent reads 3 files to learn pattern | Inline pattern example in prompt |
+| Agent searches web for same reference each run | Cache result, inject as include_file |
+
+Rule: if a sequence appears in >50% of runs, make it a pre_command or
+include_file instead.
+
+### Turn Budget Guidelines (Pipeline Jobs)
+
+For Agent SDK orchestrator jobs, set expectations in the instruction file.
+Not a hard `maxTurns` (article writing isn't deterministic), but explicit
+guidance on efficiency:
+
+```markdown
+## Efficiency Expectations
+- Research phase: batch all searches (aim for 2 search rounds max)
+- Writing phase: produce complete draft in 1-2 turns
+- Verification phase: self-fix up to 3 attempts before reporting
+- Total: minimize turns. Every tool call should have clear purpose.
+```
+
+For **mechanical jobs** (metadata, uploads, routing): these CAN use hard
+`maxTurns` (5-10) since their behavior IS deterministic.
 
 ---
 

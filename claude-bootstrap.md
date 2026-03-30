@@ -24,8 +24,8 @@ MANDATORY RULES — VIOLATIONS CAUSE SETUP FAILURE:
 5. At the end (Module 14), run the WIRING VERIFICATION checklist. Fix failures before reporting.
 6. Do not invent files or structures not specified in the modules.
 7. Hooks receive JSON on **stdin** — there is no `$CLAUDE_TOOL_INPUT` env var.
-8. All skill files: YAML frontmatter with `name` and `description` between `---` markers.
-9. All agent files: YAML frontmatter with `name`, `description`, `tools`, `model`, `effort`, `maxTurns`.
+8. All skill files: YAML frontmatter with `name`, `description`, `model`, `effort`, `allowed-tools` between `---` markers. Orchestrator skills add `context: fork`, `agent`. Use `paths` for auto-activation, `argument-hint` for discoverability.
+9. All agent files: YAML frontmatter with `name`, `description`, `tools`, `model`, `effort`, `maxTurns`, `color`. Add `memory: project` for stateful agents, `skills` list for preloaded domain knowledge.
 10. After 2 failed troubleshooting attempts, **search the web** before trying more fixes.
 11. Apply anti-hallucination patterns from `techniques/anti-hallucination.md` to every generated agent.
 12. Apply RCCF framework from `techniques/prompt-engineering.md` to every generated skill/agent.

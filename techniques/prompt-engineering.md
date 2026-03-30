@@ -516,6 +516,191 @@ context) is the whole point of multi-layer QC.
 
 ---
 
+## Turn Optimization
+
+Turns are the second cost axis after tokens. Each turn re-reads the entire
+conversation prefix — so fewer turns = fewer re-sent tokens = multiplicative
+savings with compression. A 30% token compression + 40% turn reduction ≈ 58%
+total cost reduction.
+
+### Tool Call Batching
+
+When multiple tool calls have NO data dependencies, issue ALL in a single
+response. Infrastructure executes concurrently; latency = slowest call, not sum.
+
+**Prompt instruction template (include in agents that use tools):**
+
+```markdown
+## Parallel Execution Rule
+When multiple tool calls have no data dependencies, issue ALL in one response.
+
+Parallelizable:
+- Reading multiple files → one message, multiple Read calls
+- Searching different patterns → one message, multiple Grep/WebSearch calls
+- Dispatching independent subagents → one message, multiple Agent calls
+
+NOT parallelizable (must be sequential):
+- Read file → edit it (edit depends on read content)
+- Search → read found file (read depends on search result)
+
+NEVER do: Read file A → respond → Read file B → respond → Read file C
+INSTEAD: Read file A + Read file B + Read file C → respond once
+```
+
+### Search Planning Protocol
+
+**The anti-pattern:** search → read result → realize you need another search →
+search again → read → repeat. Each cycle = 2 wasted turns.
+
+**The fix — plan all queries upfront:**
+
+```markdown
+## Search Planning
+Before executing ANY web search:
+1. Identify ALL information needs from the task
+2. Formulate ALL search queries at once
+3. Execute all searches in parallel (single message, multiple WebSearch calls)
+4. Synthesize all results together
+5. Follow-up searches ONLY for specific identified gaps
+6. Maximum 2 search rounds total
+
+NEVER do iterative search-read-search loops. Plan first, execute in batch.
+```
+
+Best fit: research agents, trend scouts, competitive analysis jobs. Anthropic's
+own multi-agent research system uses this pattern — lead agent plans research,
+spawns parallel searchers, condenses results.
+
+### Pre-Computed Context Injection
+
+Every tool call an agent makes to "discover" something the orchestrator already
+knows is a wasted turn. Front-load known context into the prompt.
+
+**Patterns:**
+
+**a) File maps — eliminate directory exploration:**
+```markdown
+## Project Map (pre-loaded — do NOT search for these)
+- Endpoints: src/Api/Endpoints/{Entity}/
+- Services: src/Services/Data/{Entity}/
+- Configs: src/Data/Configurations/
+- Tests: tests/Unit/{Layer}.Tests/
+```
+
+**b) Pattern examples inline — eliminate "read similar files" turns:**
+```markdown
+## Pattern: New Endpoint (follow exactly, do NOT read other endpoints)
+public class Get{Entity}Endpoint : Endpoint<Get{Entity}Request, Get{Entity}Response> { ... }
+```
+
+**c) Pre-made decisions — eliminate deliberation turns:**
+```markdown
+## Decisions (pre-made — do not deliberate)
+- ORM: EF Core, AsNoTracking for reads
+- Validation: FluentValidation, one validator per endpoint
+- Error handling: ProblemDetails, never throw from services
+```
+
+**d) Pipeline stage outputs — inject what prior stages produced:**
+```markdown
+## Input from Prior Stage (already computed)
+{structured data from previous pipeline job — YAML/JSON}
+Do NOT re-derive this data. Use as-is.
+```
+
+**Anti-pattern:** Never instruct an agent to "explore the codebase" or
+"familiarize yourself." Every exploration step is a wasted turn.
+Give it the map instead.
+
+### Scope Locks (Anti-Overengineering)
+
+Models tend to overbuild, triggering generate → realize it's too much → simplify
+loops. Constrain scope to prevent this:
+
+```markdown
+## Scope Lock
+- Do NOT add abstractions not explicitly requested
+- Do NOT refactor adjacent code
+- Do NOT add error handling beyond what's specified
+- Do NOT add comments, docstrings, or type annotations to unchanged code
+- Make the MINIMAL change that satisfies the spec
+- Three similar lines > premature abstraction
+```
+
+### Verify-and-Fix Containment
+
+Keep fix loops inside the agent turn rather than bouncing back to orchestrator:
+
+```markdown
+## Self-Fix Protocol
+After implementation, run build/test command.
+If it fails:
+1. Read error output carefully
+2. Fix ALL errors in the SAME turn
+3. Re-run build/test
+4. Repeat up to 3 attempts
+5. If still failing after 3 → report errors with diagnosis
+
+Do NOT report build failures and wait. Fix them yourself first.
+```
+
+This eliminates the common pattern of: agent reports error → orchestrator
+re-dispatches → agent fixes → reports → orchestrator validates. Instead: agent
+fixes internally, returns clean result.
+
+### Plan-Then-Act Separation
+
+For multi-step tasks, explicit mode separation prevents false starts:
+
+```markdown
+## Protocol
+Phase 1 (PLAN): List every file to read/create/modify. List every command
+to run. Do NOT execute anything yet.
+Phase 2 (ACT): Execute the plan. Do not deviate unless blocking error.
+```
+
+Prevents: read file → realize wrong approach → start over → read different
+files. The planning phase catches these before any tool calls.
+
+### Meta-Tools for Predictable Sequences
+
+When agents consistently perform the same tool sequence (e.g., grep → read →
+edit), consider creating a composite tool or pre_command that handles the entire
+sequence. This eliminates intermediate LLM reasoning steps.
+
+**Pipeline examples:**
+- `check-brand-compliance` as a pre_command instead of in-agent tool calls
+- `find-and-update` script instead of grep → read → edit cycles
+- Research data pre-fetched via pre_commands, injected into context
+
+Rule: if a tool sequence appears in >50% of runs, it's a candidate for a
+composite tool or pre_command.
+
+### Turn Reduction Checklist
+
+| Technique | Turn Savings | Where to Apply |
+|-----------|-------------|----------------|
+| Parallel tool calls | 2-5× per batch | All tool-using agents |
+| Search query planning | 50-70% fewer search turns | Research agents, scouts |
+| Pre-computed context injection | Eliminates discovery turns | All agent invocations |
+| Inline few-shot examples | Fewer correction loops | Code writers, content writers |
+| Exhaustive task specs | 1-3 fewer rounds | Orchestrator → agent dispatch |
+| Scope locks | Prevents generate-then-simplify | Code writers |
+| Verify-and-fix containment | Keeps fixes internal | All agents with build/test |
+| Plan-then-act separation | Prevents false starts | Multi-file changes |
+| Meta-tools / pre_commands | Eliminates intermediate reasoning | Predictable sequences |
+
+### Sources — Turn Optimization
+- Anthropic: Writing effective tools for AI agents (2025)
+- Anthropic: Effective context engineering for AI agents (2025)
+- Anthropic: Multi-agent research system (2025)
+- AWO Meta-tools: arXiv 2601.22037
+- PASTE speculative execution: arXiv 2603.18897
+- AgentDiet trajectory reduction: arXiv 2509.23586
+- Efficient Agents: arXiv 2508.02694
+
+---
+
 ## See Also
 - `techniques/anti-hallucination.md` — verification patterns for every agent
 - `techniques/agent-design.md` — agent YAML templates and dispatch patterns
