@@ -109,29 +109,17 @@ case "$BRANCH" in
 esac
 
 # Auto-import from companion repo (if .claude/ is missing but companion exists)
+# Companion layout: ~/.claude-configs/{project}/.claude/ (nested, matches project structure)
 COMPANION_DIR="$HOME/.claude-configs/$PROJECT_NAME"
-if [ ! -f "$PROJECT_ROOT/.claude/settings.json" ] && [ -d "$COMPANION_DIR/.claude" ]; then
-  echo "⚡ Auto-importing .claude/ from companion repo at $COMPANION_DIR..."
-
-  # Restore directories
-  for dir in rules skills agents hooks scripts specs; do
-    if [ -d "$COMPANION_DIR/.claude/$dir" ]; then
-      mkdir -p "$PROJECT_ROOT/.claude/$dir"
-      cp -r "$COMPANION_DIR/.claude/$dir/." "$PROJECT_ROOT/.claude/$dir/" 2>/dev/null || true
-    fi
-  done
-
-  # Restore files
-  [ -f "$COMPANION_DIR/.claude/settings.json" ] && cp "$COMPANION_DIR/.claude/settings.json" "$PROJECT_ROOT/.claude/settings.json" 2>/dev/null || true
-  [ -f "$COMPANION_DIR/CLAUDE.md" ] && cp "$COMPANION_DIR/CLAUDE.md" "$PROJECT_ROOT/CLAUDE.md" 2>/dev/null || true
-
-  # Restore learnings
-  if [ -f "$COMPANION_DIR/.learnings/log.md" ]; then
-    mkdir -p "$PROJECT_ROOT/.learnings"
-    cp "$COMPANION_DIR/.learnings/log.md" "$PROJECT_ROOT/.learnings/log.md" 2>/dev/null || true
-  fi
-
-  echo "✅ Companion config imported. All project settings restored."
+if [ ! -f "$PROJECT_ROOT/.claude/settings.json" ] && [ -f "$COMPANION_DIR/.claude/settings.json" ]; then
+  echo "Auto-importing .claude/ from companion repo at $COMPANION_DIR..."
+  mkdir -p "$PROJECT_ROOT/.claude"
+  cp -r "$COMPANION_DIR/.claude/"* "$PROJECT_ROOT/.claude/" 2>/dev/null || true
+  [ -d "$COMPANION_DIR/.learnings" ] && cp -r "$COMPANION_DIR/.learnings" "$PROJECT_ROOT/" 2>/dev/null || true
+  [ -f "$COMPANION_DIR/CLAUDE.md" ] && cp "$COMPANION_DIR/CLAUDE.md" "$PROJECT_ROOT/" 2>/dev/null || true
+  [ -f "$COMPANION_DIR/CLAUDE.local.md" ] && cp "$COMPANION_DIR/CLAUDE.local.md" "$PROJECT_ROOT/" 2>/dev/null || true
+  echo "Companion config imported."
+  COMPANION_STATUS="COMPANION_IMPORTED=true"
 fi
 
 # Check key tools
@@ -295,6 +283,55 @@ fi
 
 Make executable: `chmod +x .claude/hooks/stop-verify.sh`
 
+## 4c. Create Hook: `.claude/hooks/sync-companion.sh`
+
+Stop hook — syncs `.claude/` to companion repo on session end. Zero tokens — pure bash, no Claude interaction.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Stop hook: sync .claude/ to companion repo (~/.claude-configs/{project}/)
+# Runs silently on session stop — zero tokens, no Claude interaction
+
+INPUT=$(cat)
+PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+PROJECT_NAME=$(basename "$PROJECT_ROOT")
+COMPANION_DIR="$HOME/.claude-configs/$PROJECT_NAME"
+
+# Skip if no companion repo
+[[ -d "$HOME/.claude-configs/.git" ]] || exit 0
+[[ -d "$COMPANION_DIR" ]] || mkdir -p "$COMPANION_DIR"
+
+# Sync .claude/ → companion/.claude/ (nested layout matching existing projects)
+if command -v rsync >/dev/null 2>&1; then
+  rsync -a --delete --exclude='.git' "$PROJECT_ROOT/.claude/" "$COMPANION_DIR/.claude/"
+  [[ -d "$PROJECT_ROOT/.learnings" ]] && rsync -a --delete "$PROJECT_ROOT/.learnings/" "$COMPANION_DIR/.learnings/"
+else
+  mkdir -p "$COMPANION_DIR/.claude"
+  cp -r "$PROJECT_ROOT/.claude/"* "$COMPANION_DIR/.claude/" 2>/dev/null
+  [[ -d "$PROJECT_ROOT/.learnings" ]] && cp -r "$PROJECT_ROOT/.learnings" "$COMPANION_DIR/" 2>/dev/null
+fi
+
+# Copy root config files
+cp "$PROJECT_ROOT/CLAUDE.md" "$COMPANION_DIR/" 2>/dev/null || true
+cp "$PROJECT_ROOT/CLAUDE.local.md" "$COMPANION_DIR/" 2>/dev/null || true
+
+# Commit and push in companion repo
+cd "$HOME/.claude-configs"
+git add "$PROJECT_NAME/" 2>/dev/null || true
+if ! git diff --cached --quiet 2>/dev/null; then
+  git commit -q -m "sync: $PROJECT_NAME $(date +%Y-%m-%d)" 2>/dev/null || true
+  git push -q 2>/dev/null || true
+fi
+
+exit 0
+```
+
+Make executable: `chmod +x .claude/hooks/sync-companion.sh`
+
+> **Note:** This hook only activates if `~/.claude-configs/` is a git repo. Projects without a companion repo are unaffected. The detect-env.sh SessionStart hook handles the reverse (import from companion on fresh clone).
+
 ## 5. Create `.claude/settings.json`
 
 Create with ONLY the deterministic hooks — hooks that don't depend on what modules 05-18 create.
@@ -344,6 +381,10 @@ The flat format `{ "type": "command", ... }` directly in the array will fail val
           {
             "type": "command",
             "command": "bash .claude/hooks/stop-verify.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/sync-companion.sh"
           }
         ]
       }
