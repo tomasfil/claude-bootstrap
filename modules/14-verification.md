@@ -27,7 +27,7 @@ Run through EVERY check below. Print pass/fail for each.
 ls .claude/rules/*.md 2>/dev/null && echo "✅ Rules exist" || echo "❌ No rule files"
 
 # Skills
-for skill in reflect audit-file audit-memory write-prompt brainstorm spec write-plan execute-plan tdd debug verify commit pr review module-write check-consistency write-ticket ci-triage consolidate migrate-bootstrap; do
+for skill in reflect audit-file audit-memory write-prompt brainstorm write-plan execute-plan tdd debug verify commit pr review consolidate migrate-bootstrap; do
   [ -f ".claude/skills/$skill/SKILL.md" ] && echo "✅ /skill $skill" || echo "❌ /$skill MISSING"
 done
 

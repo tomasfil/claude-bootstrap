@@ -141,7 +141,7 @@ Only create each if it doesn't exist:
 
 `.learnings/.last-dream`:
 ```
-never
+0
 ```
 
 `.learnings/.last-reflect-lines`:

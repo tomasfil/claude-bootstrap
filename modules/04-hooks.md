@@ -152,7 +152,8 @@ LOG_FILE=".learnings/log.md"
 # Increment session count
 mkdir -p .learnings
 COUNT=$(cat "$SESSION_COUNT_FILE" 2>/dev/null | tr -d '\r' || echo 0)
-echo $((COUNT + 1)) > "$SESSION_COUNT_FILE"
+COUNT=$((COUNT + 1))
+echo "$COUNT" > "$SESSION_COUNT_FILE"
 
 # Check consolidate conditions (5+ sessions AND 24h since last)
 if [ "$COUNT" -ge 5 ]; then

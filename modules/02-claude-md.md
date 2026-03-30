@@ -127,9 +127,8 @@ Auto (never manual unless forcing):
 - /reflect → session start when due (3+ new learnings)
 
 Active dev:
-- /brainstorm, /spec, /write-plan, /execute-plan, /tdd, /debug
-- /commit, /pr, /write-ticket, /ci-triage
-- /write-prompt, /module-write, /review (manual override)
+- /brainstorm, /write-plan, /execute-plan, /tdd, /debug
+- /commit, /pr, /write-prompt, /review (manual override)
 
 ## Effort
 Auto per-agent (see techniques/agent-design.md):

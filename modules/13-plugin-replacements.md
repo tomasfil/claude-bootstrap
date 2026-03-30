@@ -510,10 +510,76 @@ Current state: migration {last_migration}
 - `.claude/bootstrap-state.json` always tracked — never gitignored
 ```
 
+### 11. /consolidate (learning system maintenance)
+
+```bash
+mkdir -p .claude/skills/consolidate
+```
+
+`.claude/skills/consolidate/SKILL.md`:
+```yaml
+---
+name: consolidate
+description: >
+  Consolidate learnings into instincts and clean up the learning system. Use when
+  session start reports CONSOLIDATE_DUE=true, or when manually invoked. Reviews raw
+  learnings, merges duplicates, resolves contradictions, promotes/prunes instincts.
+context: fork
+agent: general-purpose
+allowed-tools: Agent, Read, Write, Edit, Grep, Glob
+model: opus
+effort: medium
+---
+```
+```markdown
+## /consolidate — Learning Consolidation
+
+Dispatch the `reflector` agent for heavy analysis. Main thread applies approved changes.
+
+### Phase 1: Orient
+Read current state:
+- `.learnings/log.md` — raw corrections and discoveries
+- `.learnings/instincts/` — existing instinct files
+- `.learnings/patterns.md` — recurring patterns
+- MEMORY.md — auto-memory index
+
+### Phase 2: Gather
+Dispatch `reflector` agent with all learnings paths. Agent:
+- Scans for corrections, decisions, recurring themes
+- Clusters entries by domain (code-style, testing, git, debugging, security, architecture, tooling)
+- Identifies entries that should become instincts (2+ similar corrections)
+- Identifies instincts to reinforce (+0.1) or contradict (-0.05)
+
+### Phase 3: Consolidate
+Present reflector's proposals to user:
+- New instincts to create (with initial confidence 0.5)
+- Existing instincts to reinforce or contradict
+- Duplicate entries to merge
+- Contradictions to resolve
+
+Apply approved changes.
+
+### Phase 4: Prune & Promote
+- High-confidence instincts (0.8+) — propose promotion to `.claude/rules/`
+- Low-confidence instincts (<0.3) — archive or remove
+- Clear processed entries from `log.md` (move to archive)
+- Keep instinct index lean
+
+### Phase 5: Update Tracking
+- Run `date +%s` and write the output (Unix epoch seconds) to `.learnings/.last-dream`
+- Reset `.learnings/.session-count` to 0
+- Write current entry count (`grep -c '^##\+ [0-9]\{4\}-' .learnings/log.md`) to `.learnings/.last-reflect-lines`
+
+### Anti-Hallucination
+- Only analyze entries that actually exist in the files
+- Don't invent patterns not present in the data
+- Don't create instincts from single occurrences — require 2+ similar entries
+```
+
 ## Checkpoint
 
 ```
 ✅ Module 13 complete — Plugin replacement skills created:
-  /brainstorm, /write-plan, /execute-plan, /tdd, /debug, /verify, /commit, /pr, /review, /migrate-bootstrap
+  /brainstorm, /write-plan, /execute-plan, /tdd, /debug, /verify, /commit, /pr, /review, /migrate-bootstrap, /consolidate
   These replace: superpowers, claude-md-management, commit-commands, pr-review-toolkit
 ```

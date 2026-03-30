@@ -91,7 +91,7 @@ No mode detection needed. Run the bootstrap any time — it brings everything to
 - [ ] Module 10: `.claude/agents/` with 10 base agents (quick-check, researcher, plan-writer, debugger, verifier, reflector, consistency-checker, tdd-runner, module-writer, project-code-reviewer)
 - [ ] Module 11: `.learnings/` initialized (log, instincts, patterns, decisions, environment, tracking)
 - [ ] Module 12: MCP servers + external plugin recommendations (connectors only)
-- [ ] Module 13: Plugin replacement skills generated (replaces superpowers, feature-dev, etc.) + `/migrate-bootstrap` skill
+- [ ] Module 13: Plugin replacement skills generated (replaces superpowers, feature-dev, etc.) + `/migrate-bootstrap` + `/consolidate` skills
 - [ ] Module 14: Wiring verification — all checks pass
 - [ ] Module 15: Companion repo sync (only if git_strategy == "companion")
 - [ ] Module 16: Code writer agents generated (orchestrator skill + per-language specialists)
