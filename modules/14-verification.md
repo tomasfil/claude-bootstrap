@@ -27,7 +27,7 @@ Run through EVERY check below. Print pass/fail for each.
 ls .claude/rules/*.md 2>/dev/null && echo "✅ Rules exist" || echo "❌ No rule files"
 
 # Skills
-for skill in reflect audit-file audit-memory write-prompt brainstorm spec write-plan execute-plan tdd debug verify commit pr review module-write check-consistency write-ticket ci-triage consolidate; do
+for skill in reflect audit-file audit-memory write-prompt brainstorm spec write-plan execute-plan tdd debug verify commit pr review module-write check-consistency write-ticket ci-triage consolidate migrate-bootstrap; do
   [ -f ".claude/skills/$skill/SKILL.md" ] && echo "✅ /skill $skill" || echo "❌ /$skill MISSING"
 done
 
@@ -249,6 +249,18 @@ COMPANION="$HOME/.claude-configs/$PROJECT_NAME"
 
 # Check user-level hook
 grep -q "claude-configs" ~/.claude/settings.json 2>/dev/null && echo "✅ User-level auto-import hook" || echo "⚠️ User-level auto-import hook not found (optional)"
+```
+
+### Migration State Check
+
+```bash
+if [ -f ".claude/bootstrap-state.json" ]; then
+  echo "✅ bootstrap-state.json exists"
+  grep -q '"last_migration"' .claude/bootstrap-state.json && echo "✅ last_migration field present" || echo "❌ last_migration field missing"
+  grep -q '"applied"' .claude/bootstrap-state.json && echo "✅ applied[] array present" || echo "❌ applied[] array missing"
+else
+  echo "⚠️ bootstrap-state.json not found — /migrate-bootstrap will create on first run"
+fi
 ```
 
 ## Final Report

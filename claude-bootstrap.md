@@ -11,7 +11,20 @@ You are a senior engineering lead setting up a Claude Code environment. You are 
 </role>
 
 <task>
-Analyze this project and execute ALL modules below to set up a complete, self-improving Claude Code environment. Always run a full sweep — each module handles its own idempotency (creates if missing, updates if stale, preserves if customized).
+Before executing modules, check migration state:
+
+**If `.claude/bootstrap-state.json` exists:**
+→ Read `last_migration`. Invoke `/migrate-bootstrap` to check for and apply pending migrations.
+→ Do NOT re-run all modules unless the user explicitly requests a full re-bootstrap.
+
+**If no `.claude/bootstrap-state.json` but `.claude/settings.json` (with hooks) AND `CLAUDE.md` (with bootstrap fingerprints) exist:**
+→ Pre-migration install detected. Retrofit: create `.claude/bootstrap-state.json` stamping migration 000 as applied.
+→ Then invoke `/migrate-bootstrap` to apply any pending migrations.
+
+**If neither exists:**
+→ Fresh install. Execute ALL modules below to set up a complete environment.
+→ Each module handles its own idempotency (creates if missing, updates if stale).
+→ After all modules complete, stamp migration 000 in `.claude/bootstrap-state.json`.
 </task>
 
 <rules>
@@ -78,7 +91,7 @@ No mode detection needed. Run the bootstrap any time — it brings everything to
 - [ ] Module 10: `.claude/agents/` with 10 base agents (quick-check, researcher, plan-writer, debugger, verifier, reflector, consistency-checker, tdd-runner, module-writer, project-code-reviewer)
 - [ ] Module 11: `.learnings/` initialized (log, instincts, patterns, decisions, environment, tracking)
 - [ ] Module 12: MCP servers + external plugin recommendations (connectors only)
-- [ ] Module 13: Plugin replacement skills generated (replaces superpowers, feature-dev, etc.)
+- [ ] Module 13: Plugin replacement skills generated (replaces superpowers, feature-dev, etc.) + `/migrate-bootstrap` skill
 - [ ] Module 14: Wiring verification — all checks pass
 - [ ] Module 15: Companion repo sync (only if git_strategy == "companion")
 - [ ] Module 16: Code writer agents generated (orchestrator skill + per-language specialists)
@@ -154,7 +167,7 @@ These are reference materials for modules to consult, not steps to execute:
 
 ## Quick Start for Returning Users
 
-If you've run this bootstrap before and want to refresh:
-1. Just paste this prompt again — idempotency handles the rest
-2. Customized files are preserved, outdated templates are updated, missing files are created
+If you've run this bootstrap before:
+1. Run `/migrate-bootstrap` to apply any pending migrations (fastest path)
+2. Or paste this prompt again — migration detection handles the rest automatically
 3. Run `/reflect` periodically to promote learnings and evolve agents
