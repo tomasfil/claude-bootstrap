@@ -163,12 +163,12 @@ LOG_FILE=".learnings/log.md"
 
 # Increment session count
 mkdir -p .learnings
-COUNT=$(cat "$SESSION_COUNT_FILE" 2>/dev/null || echo 0)
+COUNT=$(cat "$SESSION_COUNT_FILE" 2>/dev/null | tr -d '\r' || echo 0)
 echo $((COUNT + 1)) > "$SESSION_COUNT_FILE"
 
 # Check consolidate conditions (5+ sessions AND 24h since last)
 if [ "$COUNT" -ge 5 ]; then
-  LAST_DREAM=$(cat "$LAST_DREAM_FILE" 2>/dev/null || echo 0)
+  LAST_DREAM=$(cat "$LAST_DREAM_FILE" 2>/dev/null | tr -d '\r' || echo 0)
   NOW=$(date +%s)
   ELAPSED=$(( NOW - LAST_DREAM ))
   if [ "$ELAPSED" -gt 86400 ]; then
@@ -179,8 +179,8 @@ fi
 # Check reflect conditions (3+ new learning entries since last reflect)
 # Count actual entries (## or ### dated headers), not raw line count
 if [ -f "$LOG_FILE" ]; then
-  CURRENT_ENTRIES=$(grep -c '^##\+ [0-9]\{4\}-' "$LOG_FILE" 2>/dev/null || echo 0)
-  LAST_ENTRIES=$(cat "$LAST_REFLECT_FILE" 2>/dev/null || echo 0)
+  CURRENT_ENTRIES=$(grep -c '^##\+ [0-9]\{4\}-' "$LOG_FILE" 2>/dev/null | tr -d '\r' || echo 0)
+  LAST_ENTRIES=$(cat "$LAST_REFLECT_FILE" 2>/dev/null | tr -d '\r' || echo 0)
   NEW_ENTRIES=$(( CURRENT_ENTRIES - LAST_ENTRIES ))
   if [ "$NEW_ENTRIES" -ge 3 ]; then
     echo "REFLECT_DUE=true"
