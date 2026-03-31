@@ -69,11 +69,12 @@ effort: high
 6. **Transition** — invoke /write-plan to create implementation plan
 
 ### Knowledge Base
-Before proposing approaches, read (if they exist):
-- `.claude/references/techniques/prompt-engineering.md` — RCCF, structured outputs, taxonomy-guided prompting
-- `.claude/references/techniques/agent-design.md` — orchestrator patterns, agent design constraints
+Before proposing approaches, read `.claude/references/techniques/INDEX.md` (if it exists) to discover available technique references. Then read the relevant technique files based on the task:
+- Skill/agent/prompt design → `prompt-engineering.md`
+- Code generation agents → `anti-hallucination.md`
+- Agent architecture → `agent-design.md`
 
-Use as design vocabulary for architecture/prompt-engineering tasks. Skip for unrelated tasks.
+Use as design vocabulary — starting point, not definitive. Skip for tasks unrelated to architecture/prompt-engineering.
 
 DO NOT write any code until the user approves the design.
 Prefer multiple choice questions. One question per message.

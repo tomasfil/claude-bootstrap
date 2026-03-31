@@ -250,12 +250,14 @@ mkdir -p .claude/references/techniques
 **Idempotency:** If destination file exists w/ same content → skip. If older/different → overwrite.
 
 Copy each file:
-1. Read `techniques/prompt-engineering.md` → write `.claude/references/techniques/prompt-engineering.md`
-2. Read `techniques/anti-hallucination.md` → write `.claude/references/techniques/anti-hallucination.md`
-3. Read `techniques/agent-design.md` → write `.claude/references/techniques/agent-design.md`
+1. Read `techniques/INDEX.md` → write `.claude/references/techniques/INDEX.md`
+2. Read `techniques/prompt-engineering.md` → write `.claude/references/techniques/prompt-engineering.md`
+3. Read `techniques/anti-hallucination.md` → write `.claude/references/techniques/anti-hallucination.md`
+4. Read `techniques/agent-design.md` → write `.claude/references/techniques/agent-design.md`
 
 **If running from remote** (bootstrap repo not local):
 ```bash
+gh api repos/tomasfil/claude-bootstrap/contents/techniques/INDEX.md --jq '.content' | base64 -d > .claude/references/techniques/INDEX.md
 gh api repos/tomasfil/claude-bootstrap/contents/techniques/prompt-engineering.md --jq '.content' | base64 -d > .claude/references/techniques/prompt-engineering.md
 gh api repos/tomasfil/claude-bootstrap/contents/techniques/anti-hallucination.md --jq '.content' | base64 -d > .claude/references/techniques/anti-hallucination.md
 gh api repos/tomasfil/claude-bootstrap/contents/techniques/agent-design.md --jq '.content' | base64 -d > .claude/references/techniques/agent-design.md

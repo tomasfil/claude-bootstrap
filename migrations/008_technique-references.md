@@ -23,6 +23,7 @@ breaking: false
 
 | Action | Path | Summary |
 |--------|------|---------|
+| add | `.claude/references/techniques/INDEX.md` | Technique index — what each file covers, canonical ownership |
 | add | `.claude/references/techniques/prompt-engineering.md` | Compressed RCCF + token optimization reference |
 | add | `.claude/references/techniques/anti-hallucination.md` | Compressed verification patterns reference |
 | add | `.claude/references/techniques/agent-design.md` | Compressed agent design + orchestrator patterns reference |
@@ -43,6 +44,7 @@ mkdir -p .claude/references/techniques
 ### Step 2 — Fetch compressed technique files
 
 ```bash
+gh api repos/tomasfil/claude-bootstrap/contents/techniques/INDEX.md --jq '.content' | base64 -d > .claude/references/techniques/INDEX.md
 gh api repos/tomasfil/claude-bootstrap/contents/techniques/prompt-engineering.md --jq '.content' | base64 -d > .claude/references/techniques/prompt-engineering.md
 gh api repos/tomasfil/claude-bootstrap/contents/techniques/anti-hallucination.md --jq '.content' | base64 -d > .claude/references/techniques/anti-hallucination.md
 gh api repos/tomasfil/claude-bootstrap/contents/techniques/agent-design.md --jq '.content' | base64 -d > .claude/references/techniques/agent-design.md
@@ -107,6 +109,7 @@ Use as design vocabulary for architecture/prompt-engineering tasks. Skip for unr
 
 ## Verify
 
+- [ ] `.claude/references/techniques/INDEX.md` exists and is non-empty
 - [ ] `.claude/references/techniques/prompt-engineering.md` exists and is non-empty
 - [ ] `.claude/references/techniques/anti-hallucination.md` exists and is non-empty
 - [ ] `.claude/references/techniques/agent-design.md` exists and is non-empty
