@@ -52,6 +52,7 @@ gh api repos/tomasfil/claude-bootstrap/contents/techniques/agent-design.md --jq 
 
 Fallback if `gh` unavailable:
 ```
+WebFetch: https://raw.githubusercontent.com/tomasfil/claude-bootstrap/main/techniques/INDEX.md
 WebFetch: https://raw.githubusercontent.com/tomasfil/claude-bootstrap/main/techniques/prompt-engineering.md
 WebFetch: https://raw.githubusercontent.com/tomasfil/claude-bootstrap/main/techniques/anti-hallucination.md
 WebFetch: https://raw.githubusercontent.com/tomasfil/claude-bootstrap/main/techniques/agent-design.md
