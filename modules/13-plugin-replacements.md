@@ -151,6 +151,7 @@ effort: high
 4. **Verify each task** — run the verification command after completing each task
 5. **Checkpoint** — after each task, print status and ask if user wants to continue
 6. **Final verification** — run full build + test suite at the end
+7. **Review** — invoke `/review` on all changed files before suggesting commit. This is mandatory, not optional.
 
 ### Per-Task Protocol
 - Read-before-write: read all files in the task's file list before starting
@@ -164,6 +165,14 @@ effort: high
 - Explain what changed and why
 - Update the plan file
 - Get user approval before continuing
+
+### Post-Execution (mandatory)
+After all tasks complete:
+1. Run `/review` on all changed files — do NOT skip this
+2. If review finds issues: fix them before proceeding
+3. Only after review passes, tell the user changes are ready to `/commit`
+
+Never say "ready to commit" without having run /review first.
 ```
 
 ### 4. /tdd (replaces superpowers:test-driven-development)
