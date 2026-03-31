@@ -138,6 +138,15 @@ If Step 0/Step 1 are not present, the skill is already clean — skip.
 4. `/commit`: no "Auto-Verify" or "Auto-Review" text
 5. All modified files exist and are valid markdown
 
+### Step 7 — Fix log.md lifecycle
+
+**7a.** If `.claude/skills/consolidate/SKILL.md` exists:
+- Replace `Clear processed entries from log.md (move to archive)` with `Clear processed entries from log.md (delete after promoting/dismissing)`
+
+**7b.** If `CLAUDE.md` contains `## Self-Improvement`:
+- Ensure log.md entries are specified as compressed telegraphic notation
+- Add `Format: telegraphic compressed (log.md is Claude-facing, not human-facing)` if not present
+
 ---
 
 ## Verify
@@ -149,6 +158,8 @@ If Step 0/Step 1 are not present, the skill is already clean — skip.
 - [ ] /tdd: agent-to-agent fallback (test-writer to tdd-runner) preserved
 - [ ] /commit: no embedded verify/review steps
 - [ ] /code-write: fallback handled correctly based on specialist agent discovery
+- [ ] /consolidate: says "delete" not "move to archive"
+- [ ] CLAUDE.md: log.md entries specified as compressed telegraphic
 
 ---
 

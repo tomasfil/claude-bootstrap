@@ -48,20 +48,21 @@ Only create if it doesn't exist:
 
 ## Format
 
+Entries use compressed telegraphic notation (Claude-facing file, not human-facing).
 Each entry:
 ```
 ### {date} — {category}: {summary}
 Status: pending review | promoted ({destination}) | dismissed ({reason})
-
-{Details of what was learned}
+{Compressed details — no articles, telegraphic style, use → | + symbols}
+Domain: {tag1} | {tag2}
 ```
 
 ## Categories
-- `correction` — User corrected Claude's approach
-- `failure` — Command or tool failed, root cause identified
-- `gotcha` — Non-obvious behavior discovered
-- `agent-candidate` — Task pattern that would benefit from a dedicated agent
-- `environment` — OS/tool/platform-specific discovery
+- correction — user corrected approach
+- failure — cmd/tool failed, root cause identified
+- gotcha — non-obvious behavior
+- agent-candidate — task needing dedicated agent
+- environment — OS/tool/platform discovery
 
 ---
 

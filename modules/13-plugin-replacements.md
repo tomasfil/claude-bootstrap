@@ -579,7 +579,7 @@ Apply approved changes.
 ### Phase 4: Prune & Promote
 - High-confidence instincts (0.8+) — propose promotion to `.claude/rules/`
 - Low-confidence instincts (<0.3) — archive or remove
-- Clear processed entries from `log.md` (move to archive)
+- Clear processed entries from `log.md` (delete after promoting/dismissing)
 - Keep instinct index lean
 
 ### Phase 5: Update Tracking
