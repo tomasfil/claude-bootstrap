@@ -90,7 +90,7 @@ effort: medium
 | Field | Required | Notes |
 |-------|----------|-------|
 | `name` | Yes | Lowercase, hyphens, <64 chars |
-| `description` | Yes | "Pushy" — include trigger words for when to use |
+| `description` | Yes | "Pushy" — include trigger words for when to use (see Skill Authoring Rules below) |
 | `tools` | No | Allowlist. Default: inherit all from main conversation |
 | `disallowedTools` | No | Denylist. Alternative to `tools` |
 | `model` | No | `haiku`, `sonnet`, `opus`. Default: inherit from parent |
@@ -104,6 +104,21 @@ effort: medium
 | `background` | No | **Do not use.** Always dispatch foreground. See "Foreground-Only Dispatch" section |
 | `hooks` | No | Lifecycle hooks scoped to this subagent |
 | `mcpServers` | No | MCP servers available to this subagent |
+
+### Skill Authoring Rules
+
+Rules for writing effective SKILL.md files. Source: Anthropic platform docs.
+
+1. **Description** — third person voice; state what the skill does + when to trigger it; max 1024 chars. Example: "Use when implementing features, writing code, or creating new files. Orchestrates language-specific writers."
+2. **Body size** — SKILL.md under 500 lines. Approaching limit → split to `references/` subdirectory. Claude loads full SKILL.md into context on every invocation.
+3. **Reference depth** — all references one level deep from SKILL.md. No A→B→C chains. SKILL.md → `references/foo.md` is fine; `references/foo.md` → `references/bar.md` is not.
+4. **TOC** — reference files >100 lines need table of contents at top for navigation.
+5. **Conciseness** — Claude already knows standard patterns, frameworks, idioms. Only add project-specific conventions, unusual constraints, non-obvious decisions. Test: "would Claude get this wrong without being told?"
+6. **Degrees of freedom** — match flexibility to task fragility:
+   - High (prose instructions): flexible tasks where Claude's judgment adds value
+   - Low (exact scripts/commands): fragile ops where deviation breaks things (deploys, migrations, CI)
+7. **Feedback loops** — quality-critical operations need validate → fix → repeat cycles. Include verification command + expected output in skill body.
+8. **Evaluation** — test with 3+ real scenarios before writing extensive docs. Observe what Claude gets wrong → add only those corrections. Premature docs waste tokens on things Claude already handles.
 
 ### Automatic Model Selection
 

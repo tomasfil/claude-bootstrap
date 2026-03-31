@@ -245,6 +245,8 @@ citing actually exist and are accessible before including them.
 Verify cited sources exist + accessible before including.
 ```
 
+**Conciseness principle:** Claude already knows standard patterns, frameworks, and idioms. Default assumption: Claude gets it right without being told. Only add to prompts: project-specific conventions, unusual constraints, non-obvious architectural decisions, and patterns that differ from framework defaults. Test every instruction: "would Claude get this wrong without being told?" If no → remove it. Over-specifying wastes tokens and can actually degrade output by crowding out Claude's own knowledge.
+
 **Quality thresholds for compression:**
 - Code examples + few-shot patterns: keep full fidelity (quality cliff below 65%)
 - Classification/routing instructions: very tolerant (5-10× compression safe)
