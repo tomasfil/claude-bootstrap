@@ -83,7 +83,7 @@ Every agent that writes code must include:
 5. **Fallback behavior:**
    "If you cannot verify a type/method exists, say so. Don't fabricate."
 
-See `.claude/references/techniques/anti-hallucination.md` for complete patterns.
+See `.claude/references/techniques/INDEX.md` for available technique references (anti-hallucination, prompt engineering, agent design).
 
 ### Claim-Evidence Ledger (for research-heavy skills)
 

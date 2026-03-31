@@ -43,8 +43,7 @@ Dispatch the `reflector` agent with paths to:
 - `CLAUDE.md` — current rules and conventions
 - `.claude/rules/` — current standards
 - `.claude/agents/` — current agents and descriptions
-- `.claude/references/techniques/agent-design.md` — agent design standards (for evaluating agent improvement proposals)
-- `.claude/references/techniques/prompt-engineering.md` — prompt engineering standards (for evaluating skill improvement proposals)
+- `.claude/references/techniques/INDEX.md` — read index, pick relevant technique files for evaluating improvement proposals
 - User memory at `~/.claude/projects/` (project-specific MEMORY.md)
 
 The agent reads all sources, analyzes learnings, checks agent usage patterns, validates file sizes, and returns grouped proposals.

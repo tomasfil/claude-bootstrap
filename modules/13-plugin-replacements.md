@@ -69,12 +69,7 @@ effort: high
 6. **Transition** — invoke /write-plan to create implementation plan
 
 ### Knowledge Base
-Before proposing approaches, read `.claude/references/techniques/INDEX.md` (if it exists) to discover available technique references. Then read the relevant technique files based on the task:
-- Skill/agent/prompt design → `prompt-engineering.md`
-- Code generation agents → `anti-hallucination.md`
-- Agent architecture → `agent-design.md`
-
-Use as design vocabulary — starting point, not definitive. Skip for tasks unrelated to architecture/prompt-engineering.
+Read `.claude/references/techniques/INDEX.md` (if exists) — use it to decide which technique files are relevant. These are starting-point knowledge, not definitive. Skip for tasks unrelated to architecture/prompt-engineering.
 
 DO NOT write any code until the user approves the design.
 Prefer multiple choice questions. One question per message.
@@ -431,12 +426,14 @@ effort: medium
 ## /review — Request Code Review
 
 1. Run `git diff` to see what's changed
-2. Dispatch the `project-code-reviewer` agent with:
+2. Read `.claude/references/techniques/INDEX.md` (if exists) — use it to decide which technique files are relevant to the review
+3. Dispatch the `project-code-reviewer` agent with:
    - List of changed files
    - Summary of what the changes do
    - Which code standards apply
-3. Present the review results
-4. If issues found: fix them, then re-review
+   - Relevant technique references (paths from INDEX.md)
+4. Present the review results
+5. If issues found: fix them, then re-review
 ```
 
 ### 10. /migrate-bootstrap
