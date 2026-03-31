@@ -216,6 +216,8 @@ The three triggers defined in CLAUDE.md feed into this system:
 2. **Command/tool failure** — Log to `log.md`, add to `environment.md` if platform-specific
 3. **Agent-candidate** — Log to `log.md` with `agent-candidate` category
 
+> **Note:** Bash command failures (non-zero exit code) are auto-logged by the `log-failures.sh` PostToolUse hook (Module 04). Claude only needs to manually log: user corrections, gotchas, and agent-candidates.
+
 The `/reflect` skill reads `log.md`, promotes recurring patterns to instincts, adjusts confidence scores on existing instincts, and proposes high-confidence instincts for promotion to `.claude/rules/`.
 
 ---

@@ -552,6 +552,121 @@ Important guardrails:
 - Low-signal read-only commands (`ls`, `cat`, `pwd`, etc.) are skipped for Bash
 - Never let Claude read raw JSONL directly — use /reflect to analyze
 
+The `log-failures.sh` hook (section 5e) also uses PostToolUse with matcher `"Bash"`. Both entries coexist in the `"PostToolUse"` array — observe.sh on `"Edit|Write|Bash"` and log-failures.sh on `"Bash"`.
+
+## 5e. PostToolUse Failure Logging Hook (self-improvement)
+
+Fires on Bash tool calls. Detects non-zero exit codes and auto-logs failures to `.learnings/log.md`.
+This closes the feedback loop — Claude sees the hook output confirming the failure was logged,
+plus a nudge to diagnose before retrying.
+
+Create `.claude/hooks/log-failures.sh`:
+
+```bash
+#!/usr/bin/env bash
+# log-failures.sh — PostToolUse hook for Bash
+# Auto-logs non-zero exit code failures to .learnings/log.md
+# Outputs reminder to Claude to diagnose before retrying
+
+set -euo pipefail
+
+INPUT=$(cat)
+
+# Extract fields from PostToolUse JSON
+# Try jq first, fall back to json-val.sh
+if command -v jq >/dev/null 2>&1; then
+  EXIT_CODE=$(echo "$INPUT" | jq -r '.tool_response.exit_code // 0')
+  CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""')
+  OUTPUT=$(echo "$INPUT" | jq -r '.tool_response.output // ""')
+else
+  EXIT_CODE=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_response.exit_code")
+  CMD=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_input.command")
+  OUTPUT=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_response.output")
+fi
+
+# Only log failures (non-zero exit)
+[[ "$EXIT_CODE" == "0" || -z "$EXIT_CODE" ]] && exit 0
+
+# Skip expected/trivial failures
+# grep/rg exit 1 = no matches (normal)
+# git diff --quiet exit 1 = there are diffs (normal)
+# test/[/[[ exit 1 = condition false (normal)
+# command -v/which exit 1 = not found (normal)
+# Commands with || (intentional error handling)
+case "$CMD" in
+  grep\ *|rg\ *|diff\ *|git\ diff\ --quiet*|test\ *|\[\ *|\[\[\ *)
+    exit 0 ;;
+  *"command -v"*|*"which "*)
+    exit 0 ;;
+  *"git diff --quiet"*)
+    exit 0 ;;
+esac
+# Skip commands with explicit error handling (|| true, || echo, || exit, 2>/dev/null at end)
+if [[ "$CMD" =~ \|\|\ *(true|echo|exit|:) ]] || [[ "$CMD" =~ 2\>/dev/null$ ]]; then
+  exit 0
+fi
+
+# Truncate output to 500 chars
+TRUNCATED="${OUTPUT:0:500}"
+[[ ${#OUTPUT} -gt 500 ]] && TRUNCATED="${TRUNCATED}... (truncated)"
+
+# Truncate command to 200 chars
+CMD_SHORT="${CMD:0:200}"
+
+# Sanitize — prevent heredoc injection (backticks + subshells in cmd/output)
+CMD_SAFE="${CMD_SHORT//\`/\'}"
+CMD_SAFE="${CMD_SAFE//\$/\$}"
+OUT_SAFE="${TRUNCATED//\`/\'}"
+OUT_SAFE="${OUT_SAFE//\$/\$}"
+
+# Build log entry
+DATE=$(date -u +%Y-%m-%d)
+LOG_FILE=".learnings/log.md"
+mkdir -p .learnings
+
+# Create log file with header if missing
+if [[ ! -f "$LOG_FILE" ]]; then
+  cat > "$LOG_FILE" << 'HEADER'
+# Learnings Log
+
+> Corrections, discoveries, and patterns. Managed by Self-Improvement triggers in CLAUDE.md.
+> Run `/reflect` to promote pending entries to rules/CLAUDE.md or instincts.
+
+---
+
+HEADER
+fi
+
+# Append failure entry (quoted heredoc — no variable expansion inside)
+printf '\n### %s — failure: Bash exit code %s\nStatus: pending review\n\n**Command:** `%s`\n**Exit code:** %s\n**Output:**\n```\n%s\n```\n' \
+  "$DATE" "$EXIT_CODE" "$CMD_SAFE" "$EXIT_CODE" "$OUT_SAFE" >> "$LOG_FILE"
+
+# Output reminder to Claude's context
+echo "FAILURE_LOGGED: exit $EXIT_CODE from '${CMD_SHORT:0:80}' → .learnings/log.md. Diagnose root cause before retrying."
+
+exit 0
+```
+
+Make executable: `chmod +x .claude/hooks/log-failures.sh`
+
+Add to `settings.json` template — add a NEW PostToolUse entry alongside the existing ones. This entry uses matcher `"Bash"` (not `"Edit|Write|Bash"` like observe.sh):
+
+```json
+{
+  "matcher": "Bash",
+  "hooks": [
+    {
+      "type": "command",
+      "command": "bash .claude/hooks/log-failures.sh"
+    }
+  ]
+}
+```
+
+> **Note:** This hook coexists with `observe.sh` which also fires on Bash. Both have different purposes:
+> `observe.sh` captures all tool usage patterns (Edit/Write/Bash) for the instinct system.
+> `log-failures.sh` captures only Bash failures for the self-improvement log.
+
 ## 6. Optional: Auto-Format Hook
 
 Only add if user said "yes" to auto-format in Module 01 discovery.
@@ -611,6 +726,7 @@ Add to settings.json:
   - SubagentStop: agent usage tracking
   - Stop: verification nudge (reminds to verify before claiming done)
   - PreCompact: state preservation before context compaction
+  - PostToolUse (Bash): failure logging → .learnings/log.md
   - UserPromptSubmit: deferred to Module 14 (needs full skill inventory)
   {- PostToolUse: auto-format (if enabled)}
 ```

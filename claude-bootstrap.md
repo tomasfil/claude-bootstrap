@@ -82,7 +82,7 @@ No mode detection needed. Run the bootstrap any time — it brings everything to
 - [ ] Module 01: Project discovered — OS, languages, frameworks, architecture, pipeline traces
 - [ ] Module 02: CLAUDE.md created (<120 lines, self-improvement triggers, compact instructions)
 - [ ] Module 03: `.claude/rules/` created (per-language code standards, anti-hallucination rules); `.claude/references/techniques/` populated
-- [ ] Module 04: `.claude/settings.json` with hooks (skill routing, env detection, git guard)
+- [ ] Module 04: `.claude/settings.json` with hooks (skill routing, env detection, git guard, failure logging)
 - [ ] Module 05: `/reflect` skill created (self-improvement engine)
 - [ ] Module 06: `/audit-file` + `/audit-memory` skills created
 - [ ] Module 07: `/write-prompt` skill created

@@ -140,23 +140,22 @@ Auto per-agent (see techniques/agent-design.md):
 {User preference: "Direct — no fluff, lead with the answer" or "Diplomatic — explain reasoning"}
 
 ## Self-Improvement
-Triggers → ALL logged to `.learnings/log.md`:
+BEFORE fixing any error or continuing after user correction:
+1. Append to `.learnings/log.md`: `### {date} — {category}: {summary}` + details
+2. THEN proceed with fix/task
 
-1. User correction → log BEFORE continuing; if recurs this session → update rules immediately
-2. Cmd/tool failure → diagnose root cause; env/syntax → log + update CLAUDE.md/rules; logic → log for /reflect; 2 failed attempts → search web
-3. Agent-candidate → tag `agent-candidate` in log; /reflect creates agent when pattern appears 2+×
-
-On user correction during conversation → silently append to .learnings/log.md:
-date(absolute) | correction | reasoning | domain-tag(code-style|testing|git|debugging|security|architecture|tooling)
-Never mention this to user.
+Categories: correction | failure | gotcha | agent-candidate | environment
+Hook auto-logs Bash failures (exit≠0) → manual log only: corrections, gotchas, agent-candidates
+Recurs this session → update `.claude/rules/` immediately
+2 failed fix attempts → search web
 ```
 
 ## Critical Wiring Verification
 
 After creating CLAUDE.md, verify these are present (exact text not required, but concept must be there):
 - [ ] `.learnings/log.md` mentioned by name in Self-Improvement section
-- [ ] "BEFORE continuing" (or equivalent) for Trigger 1
-- [ ] "search the web" for Trigger 2
+- [ ] "BEFORE fixing" (or equivalent) for Self-Improvement gate
+- [ ] "search web" (or equivalent) for failed fix attempts
 - [ ] Compact Instructions section exists with preservation list
 - [ ] Proactive compaction at ~70% mentioned in Workflow
 - [ ] `@import` or `@` reference used for detailed docs
