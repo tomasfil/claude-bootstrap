@@ -1,18 +1,27 @@
 # Anti-Hallucination Techniques Reference
 
-> Referenced by bootstrap modules and generated agents/skills. Apply these patterns to every agent that generates or modifies code.
-
 ---
+type: research-knowledge
+status: curated-starting-point
+warning: >
+  Patterns are researched best practices — NOT project-verified truths.
+  Validate against current project state before applying.
+see-also:
+  - techniques/prompt-engineering.md — RCCF framework, structured outputs, token optimization
+  - techniques/agent-design.md — agent constraints, orchestrator patterns, YAML templates
+---
+
+> **Cross-references:**
+> - RCCF framework for structuring agent prompts → `techniques/prompt-engineering.md`
+> - Agent constraints + tool restrictions → `techniques/agent-design.md`
+
+Referenced by bootstrap modules + generated agents/skills. Apply to every agent generating | modifying code.
 
 ## Core Principle
 
-Code hallucinations are the LEAST dangerous form (they produce immediate compile/runtime errors), but they waste time. The goal is to catch them BEFORE the user sees them, not after.
+Code hallucinations = least dangerous (immediate compile/runtime errors) but waste time. Goal: catch BEFORE user sees them.
 
----
-
-## 1. Read-Before-Write (Mandatory in Every Agent)
-
-**Template to include in every code-writing agent:**
+## 1. Read-Before-Write (Mandatory — Every Agent)
 
 ```markdown
 ## Pre-Writing Checklist (MANDATORY)
@@ -33,13 +42,9 @@ BEFORE writing or modifying ANY code:
 NEVER skip this checklist. "I already know the pattern" is not valid — patterns change.
 ```
 
----
+## 2. Chain-of-Verification (CoVe) — Multi-File Changes
 
-## 2. Chain-of-Verification (CoVe) for Complex Generation
-
-Use when generating code that spans 3+ files or involves unfamiliar patterns.
-
-**Template:**
+Use when generating code spanning 3+ files | involving unfamiliar patterns.
 
 ```markdown
 ## Verification Protocol (for multi-file changes)
@@ -66,11 +71,9 @@ If ANY reference doesn't match reality:
 Proceed with implementation ONLY after all references verified.
 ```
 
----
+## 3. Negative Instructions (Every Agent)
 
-## 3. Negative Instructions (Include in Every Agent)
-
-**Template — adapt to specific language/framework:**
+Adapt to specific language/framework:
 
 ```markdown
 ## Anti-Hallucination Rules
@@ -93,11 +96,9 @@ WHEN YOU MAKE A MISTAKE:
 - Log it to .learnings/log.md if it's a pattern worth remembering
 ```
 
----
-
 ## 4. LSP Verification Checklist
 
-**Template for agents with LSP access:**
+W/ LSP access:
 
 ```markdown
 ## LSP Verification (use after writing code)
@@ -115,7 +116,7 @@ If LSP reports errors:
 - If error is in a {framework-specific files with known LSP false positives}, verify with build command (LSP false positives common)
 ```
 
-**Template for agents WITHOUT LSP access (fallback):**
+Without LSP (fallback):
 
 ```markdown
 ## Grep-Based Verification (fallback when LSP unavailable)
@@ -129,11 +130,7 @@ After generating code:
 5. **Run `dotnet build`** (or language equivalent) → catch anything Grep missed
 ```
 
----
-
 ## 5. Build Verification (Mandatory)
-
-**Template:**
 
 ```markdown
 ## Build Verification (MANDATORY after code changes)
@@ -154,13 +151,9 @@ After ALL code changes are complete:
 NEVER claim code is complete without a successful build.
 ```
 
----
-
 ## 6. Fabricated Package Detection
 
-Code-specific hallucination where LLMs invent plausible package names.
-
-**Template:**
+LLMs invent plausible package names — code-specific hallucination surface.
 
 ```markdown
 ## Package Verification
@@ -178,11 +171,7 @@ Common hallucination patterns to watch for:
 - Packages from your training data that have since been deprecated
 ```
 
----
-
 ## 7. Confidence-Based Routing
-
-**Template for complex decisions:**
 
 ```markdown
 ## When Unsure
@@ -200,11 +189,7 @@ For LOW confidence:
 4. If still uncertain, ask the user rather than guessing
 ```
 
----
-
-## 8. Spec-Driven Truth (for Complex Features)
-
-**Template for multi-step implementations:**
+## 8. Spec-Driven Truth — Complex Features (3+ File Changes)
 
 ```markdown
 ## Feature Implementation Protocol
@@ -234,16 +219,9 @@ For features requiring 3+ file changes:
    - Did anything change during implementation that invalidates the spec?
 ```
 
----
+## 9. Claim-Evidence Ledger — Research-to-Output Skills
 
-## 9. Claim-Evidence Ledger (for Research-to-Output Skills)
-
-Use when a skill researches external data and synthesizes it into output (reports,
-recommendations, competitive analysis, audits that cite external sources). This is
-the most dangerous hallucination surface — fabricated statistics and false citations
-look authoritative and are hard to catch after the fact.
-
-**Template:**
+Most dangerous hallucination surface — fabricated stats + false citations look authoritative, hard to catch post-hoc. Use when skill researches external data → synthesizes output. NOT for code-writing agents (use patterns 1-8 instead).
 
 ```markdown
 ## Claim-Evidence Ledger
@@ -291,15 +269,9 @@ Before writing the final output:
 - Never confuse dates (release vs deprecation, announced vs deployed) — verify against primary sources
 ```
 
-**When to include:** Any skill whose output contains external claims — market reports,
-technology recommendations, audit findings that cite docs, competitive analysis. NOT
-needed for code-writing agents (those use read-before-write + build verification instead).
-
----
-
 ## Integration Into Generated Agents
 
-When the bootstrap generates an agent, include these sections based on the agent's role:
+Include patterns based on agent role:
 
 | Agent Type | Must Include |
 |-----------|-------------|
@@ -310,17 +282,12 @@ When the bootstrap generates an agent, include these sections based on the agent
 | Orchestrator skill | Patterns 2, 7, 8 |
 | Research-to-output skill | Pattern 9 (Claim-Evidence Ledger) + Patterns 3, 7 |
 
----
-
 ## See Also
-- `techniques/prompt-engineering.md` — RCCF framework for structuring agent prompts
-- `techniques/agent-design.md` — agent constraints and tool restrictions
+- `techniques/prompt-engineering.md` — RCCF framework
+- `techniques/agent-design.md` — agent constraints + tool restrictions
 
 ## Sources
-- Chain-of-Verification: Meta Research / arXiv 2309.11495
-- Anthropic Claude Documentation — reducing hallucinations
-- Read-before-write: Medium / Design Bootcamp
-- Spec-driven workflow: DEV Community (samhath03)
-- Package hallucination: USENIX
-- LSP grounding: Amir Teymoori, The Experts Tech Talk
+- Chain-of-Verification: Meta Research / arXiv 2309.11495; Anthropic Claude docs — reducing hallucinations
+- Read-before-write: Medium / Design Bootcamp; Spec-driven workflow: DEV Community (samhath03)
+- Package hallucination: USENIX; LSP grounding: Amir Teymoori, The Experts Tech Talk
 - Layered guardrails: AWS DEV Community, Neubird

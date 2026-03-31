@@ -43,12 +43,15 @@ Dispatch the `reflector` agent with paths to:
 - `CLAUDE.md` — current rules and conventions
 - `.claude/rules/` — current standards
 - `.claude/agents/` — current agents and descriptions
+- `.claude/references/techniques/agent-design.md` — agent design standards (for evaluating agent improvement proposals)
+- `.claude/references/techniques/prompt-engineering.md` — prompt engineering standards (for evaluating skill improvement proposals)
 - User memory at `~/.claude/projects/` (project-specific MEMORY.md)
 
 The agent reads all sources, analyzes learnings, checks agent usage patterns, validates file sizes, and returns grouped proposals.
 
 > **Fallback:** If the `reflector` agent doesn't exist, perform the work on the main thread.
 > **Fallback:** If `.learnings/instincts/` doesn't exist, fall back to `log.md` only for instinct analysis.
+> **Fallback:** If `.claude/references/techniques/` doesn't exist, skip technique references — reflector uses general knowledge.
 
 ### Step 2: Present Proposals (main thread)
 Present all proposed changes grouped by category:

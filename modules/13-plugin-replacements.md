@@ -68,6 +68,13 @@ effort: high
 5. **Save design** — write to `.claude/specs/{date}-{topic}.md`
 6. **Transition** — invoke /write-plan to create implementation plan
 
+### Knowledge Base
+Before proposing approaches, read (if they exist):
+- `.claude/references/techniques/prompt-engineering.md` — RCCF, structured outputs, taxonomy-guided prompting
+- `.claude/references/techniques/agent-design.md` — orchestrator patterns, agent design constraints
+
+Use as design vocabulary for architecture/prompt-engineering tasks. Skip for unrelated tasks.
+
 DO NOT write any code until the user approves the design.
 Prefer multiple choice questions. One question per message.
 ```

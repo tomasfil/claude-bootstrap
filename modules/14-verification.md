@@ -26,6 +26,11 @@ Run through EVERY check below. Print pass/fail for each.
 # Rules
 ls .claude/rules/*.md 2>/dev/null && echo "✅ Rules exist" || echo "❌ No rule files"
 
+# Technique references
+for tech in prompt-engineering anti-hallucination agent-design; do
+  [ -f ".claude/references/techniques/${tech}.md" ] && echo "✅ techniques/${tech}.md" || echo "❌ .claude/references/techniques/${tech}.md MISSING"
+done
+
 # Skills
 for skill in reflect audit-file audit-memory write-prompt brainstorm write-plan execute-plan tdd debug verify commit pr review consolidate migrate-bootstrap; do
   [ -f ".claude/skills/$skill/SKILL.md" ] && echo "✅ /skill $skill" || echo "❌ /$skill MISSING"

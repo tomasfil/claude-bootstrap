@@ -1,33 +1,36 @@
 # Agent Design Techniques Reference
 
-> Referenced by bootstrap modules when generating agents and skills. Covers constraints, patterns, and templates.
-
 ---
+type: research-knowledge
+status: curated-starting-point
+warning: >
+  Patterns are researched best practices — NOT project-verified truths.
+  Architectural constraints (subagent limits, tool removal) reflect Claude Code
+  as of 2026 — verify against current docs.
+see-also:
+  - techniques/prompt-engineering.md — RCCF framework, structured outputs, token optimization
+  - techniques/anti-hallucination.md — verification patterns for every agent
+---
+
+> **Cross-references:**
+> - Scope locks, verify-and-fix containment → canonical in `techniques/prompt-engineering.md`
+> - RCCF framework → `techniques/prompt-engineering.md`
+> - Verification patterns → `techniques/anti-hallucination.md`
 
 ## Subagent Constraints (Hard Rules)
 
-These are architectural constraints in Claude Code — not suggestions:
+1. CANNOT spawn subagents — Agent tool removed
+2. CANNOT ask user questions — AskUserQuestion removed
+3. CANNOT enter plan mode — EnterPlanMode removed
+4. Isolated context window per subagent (size = model-dependent)
+5. System prompt = `.md` body (NOT full Claude Code system prompt)
+6. Windows: long `.md` may fail via `--agents` CLI (8191 char limit)
 
-1. **Subagents CANNOT spawn other subagents** — Agent tool is removed at spawn time
-2. **Subagents CANNOT ask the user questions** — AskUserQuestion tool removed
-3. **Subagents CANNOT enter plan mode** — EnterPlanMode tool removed
-4. **Each subagent gets its own isolated context window** (size depends on model)
-5. **Subagent system prompt = the .md file body** (NOT the full Claude Code system prompt)
-6. **On Windows, very long agent .md files may fail** via `--agents` CLI flag (8191 char limit) — use file-based agents instead
+**Exception** — `claude --agent`: agents ARE main thread, CAN spawn subagents + restrict types
 
-### Exception: Main-Thread Agents
-When run via `claude --agent agent-name`, agents ARE the main thread and CAN:
-- Spawn subagents using the Agent tool
-- Restrict spawnable types: `tools: Agent(worker, researcher), Read, Bash`
-- This is useful for orchestrator agents, but changes the UX
+## Orchestrator-as-Skill Pattern
 
----
-
-## Orchestrator-as-Skill Pattern (Recommended)
-
-**Why:** Skills run in the main conversation where the Agent tool IS available. This lets the skill orchestrate specialist agents without hitting the "no nested subagents" constraint.
-
-**Structure:**
+Skills run in main conversation where Agent tool IS available → orchestrate specialists w/o nested-subagent constraint.
 
 ```
 .claude/skills/code-write/
@@ -36,8 +39,6 @@ When run via `claude --agent agent-name`, agents ARE the main thread and CAN:
     ├── pipeline-traces.md      # Feature-type → file mapping
     └── layer-dependencies.md   # Which layers depend on which
 ```
-
-**SKILL.md Template:**
 
 ```yaml
 ---
@@ -68,9 +69,7 @@ paths: "src/**"
 7. **Verify integration** — build all, run tests, check cross-layer wiring
 ```
 
----
-
-## Agent YAML Frontmatter Template
+## Agent YAML Frontmatter
 
 ```yaml
 ---
@@ -85,200 +84,73 @@ effort: medium
 ---
 ```
 
-### Field Reference
+| Field | Req | Notes |
+|-------|-----|-------|
+| `name` | Y | Lowercase hyphens, <64 chars |
+| `description` | Y | Pushy — trigger words for when to use |
+| `tools` / `disallowedTools` | N | Allow/denylist; default: inherit |
+| `model` | N | `haiku` `sonnet` `opus`; default: inherit |
+| `effort` | N | `low` `medium` `high` `max`; default: inherit |
+| `maxTurns` | N | Limit iterations |
+| `color` | N | CLI output color |
+| `memory` | N | `user` `project` `local` |
+| `skills` | N | Preloaded (full SKILL.md injected) |
+| `isolation` | N | `worktree` for git isolation |
+| `permissionMode` | N | `default` `acceptEdits` `dontAsk` `plan` |
+| `background` | N | **Do not use** — see Foreground-Only |
+| `hooks` / `mcpServers` | N | Lifecycle hooks; MCP servers |
 
-| Field | Required | Notes |
-|-------|----------|-------|
-| `name` | Yes | Lowercase, hyphens, <64 chars |
-| `description` | Yes | "Pushy" — include trigger words for when to use (see Skill Authoring Rules below) |
-| `tools` | No | Allowlist. Default: inherit all from main conversation |
-| `disallowedTools` | No | Denylist. Alternative to `tools` |
-| `model` | No | `haiku`, `sonnet`, `opus`. Default: inherit from parent |
-| `effort` | No | `low`, `medium`, `high`, `max`. Default: inherit |
-| `maxTurns` | No | Limit agent iterations |
-| `color` | No | CLI output color for visual distinction (e.g., `green`, `red`, `cyan`) |
-| `memory` | No | Persistent memory scope: `user`, `project`, `local` |
-| `skills` | No | Skills preloaded into agent context at startup (full SKILL.md injected) |
-| `isolation` | No | `worktree` for isolated git worktree |
-| `permissionMode` | No | `default`, `acceptEdits`, `dontAsk`, `plan` |
-| `background` | No | **Do not use.** Always dispatch foreground. See "Foreground-Only Dispatch" section |
-| `hooks` | No | Lifecycle hooks scoped to this subagent |
-| `mcpServers` | No | MCP servers available to this subagent |
+**Skill authoring** (Anthropic docs): description third-person max 1024 chars; body <500 lines (split to `references/`); refs one level deep; TOC for >100-line files; project-specific only ("would Claude get this wrong?"); match freedom to fragility; validate→fix→repeat loops; test 3+ scenarios before writing docs
 
-### Skill Authoring Rules
+**Model selection:** GENERATES code | SUBTLE errors → `opus`; ANALYZES → `sonnet`; CHECKS → `haiku`
 
-Rules for writing effective SKILL.md files. Source: Anthropic platform docs.
+| Agent | Model | Agent | Model |
+|-------|-------|-------|-------|
+| code-writer-{lang} | opus | plan-writer | sonnet |
+| test-writer | opus | researcher | sonnet |
+| project-code-reviewer | opus | consistency-checker | sonnet |
+| debugger | opus | verifier | sonnet |
+| tdd-runner / reflector | opus | quick-check | haiku |
 
-1. **Description** — third person voice; state what the skill does + when to trigger it; max 1024 chars. Example: "Use when implementing features, writing code, or creating new files. Orchestrates language-specific writers."
-2. **Body size** — SKILL.md under 500 lines. Approaching limit → split to `references/` subdirectory. Claude loads full SKILL.md into context on every invocation.
-3. **Reference depth** — all references one level deep from SKILL.md. No A→B→C chains. SKILL.md → `references/foo.md` is fine; `references/foo.md` → `references/bar.md` is not.
-4. **TOC** — reference files >100 lines need table of contents at top for navigation.
-5. **Conciseness** — Claude already knows standard patterns, frameworks, idioms. Only add project-specific conventions, unusual constraints, non-obvious decisions. Test: "would Claude get this wrong without being told?"
-6. **Degrees of freedom** — match flexibility to task fragility:
-   - High (prose instructions): flexible tasks where Claude's judgment adds value
-   - Low (exact scripts/commands): fragile ops where deviation breaks things (deploys, migrations, CI)
-7. **Feedback loops** — quality-critical operations need validate → fix → repeat cycles. Include verification command + expected output in skill body.
-8. **Evaluation** — test with 3+ real scenarios before writing extensive docs. Observe what Claude gets wrong → add only those corrections. Premature docs waste tokens on things Claude already handles.
+## Foreground-Only Dispatch
 
-### Automatic Model Selection
+**Always foreground. Never `run_in_background: true`.** Permission-gated tools silently block background agents. Parallel foreground (multiple Agent calls in one message) = same concurrency.
+- Permission-gated: `Write` `Edit` `Bash` `NotebookEdit` `Agent` `WebSearch` `WebFetch`
+- Auto-allowed: `Read` `Grep` `Glob` `LSP`
 
-Model is assigned based on task complexity — no user preference needed.
+| Restriction | Tools | Use for |
+|-------------|-------|---------|
+| Minimal | `Read, Grep, Glob` | reviewers, researchers |
+| Standard | `Read, Write, Edit, Bash, Grep, Glob, LSP` | implementation |
+| Extended | Standard + `WebSearch, WebFetch` | current docs/APIs |
+| Orchestrator | `Agent(...), Read, Grep, Glob, Bash` | main-thread only |
 
-**Decision rule:** If the agent GENERATES code or catches SUBTLE errors → `opus`. If it ANALYZES → `sonnet`. If it CHECKS or LOOKS UP → `haiku`.
+## Communication + Errors + Teams
 
-| Agent | Model | Reasoning |
-|-------|-------|-----------|
-| code-writer-{lang} | opus | Generates code — needs maximum quality |
-| test-writer | opus | Generates code + catches subtle bugs |
-| project-code-reviewer | opus | Catches subtle issues, judgment-heavy |
-| debugger | opus | Traces complex bugs, generates fixes |
-| tdd-runner | opus | Generates tests + implementation code |
-| reflector | opus | Judgment: promote/demote instincts |
-| plan-writer | sonnet | Analyzes codebase, structures plans |
-| researcher | sonnet | Analyzes patterns, explores code |
-| consistency-checker | sonnet | Analyzes cross-references |
-| verifier | sonnet | Runs checks, analyzes results |
-| quick-check | haiku | Fast lookups, existence checks |
+**Communication:** file-based (most reliable) | task-based (teams only) | sequential (A→B→synthesize) | parallel (no deps → single message)
 
-Override in `CLAUDE.local.md` if cost is a concern. Comment: `## Model Override — set model: sonnet in agent frontmatter`
+**Errors:** check output → retry ONCE w/ context → surface to user; never swallow. Prevention: verification steps; maxTurns; "if unsure, say so"
 
----
+**Teams** = independent full sessions (unlike subagents). Own context + tools.
 
-## Foreground-Only Dispatch (Critical)
+| Criteria | Subagents | Teams |
+|----------|-----------|-------|
+| Scope | Focused | Complex |
+| Context | <50% window | Full window |
+| Coordination | Dispatch | Shared tasks |
+| Cost | 4-7x | ~15x |
+| Isolation | Shared repo | Worktree |
 
-**Always dispatch agents in foreground. Never use `run_in_background: true`.**
-
-Background agents cannot prompt the user for permission. Any tool that requires permission approval (Write, Edit, Bash, WebSearch, WebFetch) will **silently block** a background agent forever. Even read-only tools like WebSearch require permission, making background dispatch unreliable for most agents.
-
-Foreground agents can run in parallel — launch multiple Agent tool calls in a single message for concurrency. This gives the same performance benefit as background dispatch without the permission problem.
-
-### Why Not Background?
-1. **Permission prompts silently block** — the agent hangs, wastes tokens, returns nothing
-2. **No progress visibility** — you cannot see what a background agent is doing
-3. **Foreground parallel works** — multiple foreground Agent calls in one message run concurrently
-4. **No real benefit** — background only helps if you need to do other work while waiting, but in practice the orchestrator should wait for agent results before proceeding
-
-### Permission-Gated Tools (any of these block background agents)
-`Write`, `Edit`, `Bash`, `NotebookEdit`, `Agent`, `WebSearch`, `WebFetch`
-
-### Auto-Allowed Tools (never prompt)
-`Read`, `Grep`, `Glob`, `LSP`
-
----
-
-## Tool Restriction Patterns
-
-### Minimal (Research Only)
-```yaml
-tools: Read, Grep, Glob
-```
-Use for: code reviewers, researchers, quick-check agents
-
-### Standard (Code Writer)
-```yaml
-tools: Read, Write, Edit, Bash, Grep, Glob, LSP
-```
-Use for: implementation agents, test writers
-
-### Extended (With Web Access)
-```yaml
-tools: Read, Write, Edit, Bash, Grep, Glob, LSP, WebSearch, WebFetch
-```
-Use for: agents that need to research current docs/APIs
-
-### Orchestrator (Can Dispatch — main thread only)
-```yaml
-tools: Agent(code-writer-dotnet, code-writer-frontend), Read, Grep, Glob, Bash
-```
-Use for: main-thread orchestrator agents (via `claude --agent`)
-
----
-
-## Communication Patterns
-
-### File-Based (Most Reliable)
-Agents read/write shared files. No direct messaging needed.
-- Agent A writes `output-a.md`
-- Agent B reads `output-a.md` as input
-- Works across subagents, teams, and sessions
-
-### Task-Based (Agent Teams Only)
-Shared task list with status tracking.
-- Lead creates tasks
-- Workers self-assign
-- Status visible to all teammates
-- NOT available for regular subagents
-
-### Sequential Chaining (Subagents)
-Main conversation chains subagents:
-1. Dispatch Agent A → wait for result
-2. Use result to inform Agent B dispatch → wait for result
-3. Synthesize both results
-
-### Parallel Dispatch (Independent Work)
-```markdown
-When tasks have NO dependencies and NO shared files:
-- Dispatch all specialists in a single message
-- Each gets clear, complete instructions
-- Each owns distinct files
-- Main thread synthesizes results after all complete
-```
-
----
-
-## Agent Error Handling
-
-### Common Failure Modes
-- Context overflow: agent runs out of context mid-task
-- Tool errors: file not found, build failures, permission denied
-- Hallucination: agent invents files or patterns that don't exist
-- Silent failure: agent claims success without verifying
-
-### Orchestrator Recovery
-1. Check agent output for error indicators ("not found", "failed", empty result)
-2. If agent failed: provide more context and retry ONCE
-3. If retry fails: surface error to user with agent's output
-4. Never silently swallow agent failures
-
-### Prevention
-- Include verification steps in every agent prompt
-- Set maxTurns to prevent runaway agents
-- Include "if unsure, say so" in agent instructions
-
----
-
-## Agent Teams (Multi-Session Coordination)
-
-Agent Teams allow multiple independent Claude sessions to coordinate on parallel work.
-Unlike subagents (which run within the main conversation), team members are full sessions
-with their own context, tool access, and user interaction.
-
-### When to Use Teams vs Subagents
-| Criteria | Subagents | Agent Teams |
-|----------|-----------|-------------|
-| Task scope | Focused, single-purpose | Complex, multi-faceted |
-| Context needs | <50% of window | Full window per member |
-| Coordination | Sequential/parallel dispatch | Shared task list, messaging |
-| Token cost | 4-7x standard | ~15x standard |
-| Isolation | Shared repo (or worktree) | Each member can use worktree |
-
-### When NOT to Use Teams
-- Simple tasks that a single subagent can handle
-- Cost-sensitive workflows (15x token multiplier)
-- Tasks requiring tight sequential coordination
-
----
+Avoid teams for: simple tasks; cost-sensitive; tight sequential coordination
 
 ## Invocation Quality (Critical)
 
-Most subagent failures come from poor invocations, not execution failures.
-
-### Bad Invocation
+Most failures = poor invocations. Bad:
 ```
 "Fix the Division service"
 ```
 
-### Good Invocation
+Good:
 ```
 "In MyProject.Services/Data/Divisions/DivisionService.cs,
 add a new method `GetActiveDivisionsForBrandAsync(Guid brandId)` that:
@@ -296,27 +168,14 @@ Reference files:
 After implementation, run: dotnet build MyProject.Services"
 ```
 
-### Invocation Checklist
-Every subagent dispatch should include:
-- [ ] Specific file paths
-- [ ] Expected behavior / success criteria
-- [ ] Reference files for pattern matching
-- [ ] Build/test command to verify
-- [ ] What to do if something unexpected is found
-
----
+Checklist: file paths; success criteria; reference files; build/test command; unexpected-case instructions
 
 ## Turn-Efficient Agent Design
 
-Turn count is the second cost axis after token size. Each turn re-reads the
-entire conversation prefix, so turn reduction and token compression are
-multiplicative. These patterns apply to both Claude Code subagents and
-Agent SDK orchestrator jobs (e.g., Tof Orchestrator cron pipelines).
+Turn count = second cost axis. Each turn re-reads conversation → turn reduction × token compression = multiplicative.
 
-### Pre-Computed Context in Invocations
-
-Every tool call an agent makes to "discover" context the orchestrator already
-has is a wasted turn. Front-load it in the dispatch:
+### Pre-Computed Context
+Front-load context orchestrator already has — don't make agent discover it.
 
 **Bad — forces discovery turns:**
 ```
@@ -337,44 +196,15 @@ Target: 800-1200 words, Czech, publish-ready.
 Output: JSON with title, body, meta_description, slug."
 ```
 
-For **orchestrator pipelines** (Agent SDK / Tof Orchestrator):
-- Use `pre_commands` to compute data before agent starts → inject via context
-- Use `include_files` for static references → agent never needs to Read them
-- Pipeline stage outputs should be structured (YAML) and injected directly
-- Rule: if the orchestrator can compute it, don't make the agent discover it
+Pipeline: `pre_commands` compute+inject; `include_files` for static refs; stage outputs = YAML injected directly
 
-### Scope Locks in Agent Prompts
-
-Models overbuild, triggering generate → simplify loops. Include scope locks
-in every code-writing agent:
-
-```markdown
-## Scope Lock
-- Implement ONLY what's specified — no extras
-- Do NOT refactor adjacent code
-- Do NOT add abstractions for one-time operations
-- MINIMAL change that satisfies the spec
-```
+### Scope Locks
+→ See canonical: `techniques/prompt-engineering.md` § Scope Locks
 
 ### Verify-and-Fix Containment
-
-Agents should self-fix rather than report errors back to orchestrator:
-
-```markdown
-## Self-Fix Protocol
-After changes, run build/test. If failure:
-1. Read error → fix in same turn → rebuild
-2. Up to 3 fix attempts
-3. Only report if still failing after 3 attempts
-```
-
-This prevents the costly: agent fails → orchestrator retries → agent fixes →
-orchestrator validates cycle (4+ turns → 1 turn).
+→ See canonical: `techniques/prompt-engineering.md` § Verify-and-Fix Containment
 
 ### Search Batching for Research Agents
-
-Research-heavy agents (trend scouts, article researchers, QC with web checks)
-should plan all searches upfront:
 
 ```markdown
 ## Research Protocol
@@ -385,14 +215,8 @@ should plan all searches upfront:
 5. Maximum 2 search rounds total
 ```
 
-For **pipeline jobs**: cap web searches per job in the instruction file.
-Example: "Maximum 5 WebSearch calls for competitive sweep. If key_facts >= 5
-from prior research, skip competitive sweep entirely."
-
 ### Tool Call Batching Instruction
-
-Include in every agent that uses multiple tools. Use the XML-tagged variant
-for stronger compliance (Anthropic-recommended pattern):
+Include in every multi-tool agent (Anthropic-recommended XML pattern):
 
 ```markdown
 <use_parallel_tool_calls>
@@ -406,22 +230,11 @@ NEVER: Read A → respond → Read B → respond. INSTEAD: Read A + B → respon
 </use_parallel_tool_calls>
 ```
 
-The `<use_parallel_tool_calls>` XML tag is a behavioral anchor — Claude
-treats content inside named XML blocks as stronger instructions than plain
-markdown headers. This is the official Anthropic recommendation for
-maximizing parallel tool use.
+XML tag = behavioral anchor — stronger than markdown headers.
 
-### Agent SDK: Tool Result Formatting (Critical for Parallelism)
+### Agent SDK: Tool Result Formatting
+Parallel batch results MUST go in **single** user message. Splitting trains model away from parallelism.
 
-When building API-based agents (Agent SDK, custom orchestrators), how you
-format tool results in conversation history **directly affects** whether
-Claude continues to use parallel tool calls.
-
-**Rule:** All tool results from a parallel batch MUST go in a **single**
-user message. Splitting them into separate messages actively trains the
-model away from parallelism.
-
-❌ **WRONG** — separate messages teach Claude to avoid parallel calls:
 ```json
 [
   {"role": "assistant", "content": ["tool_use_1", "tool_use_2"]},
@@ -430,7 +243,6 @@ model away from parallelism.
 ]
 ```
 
-✅ **CORRECT** — single message maintains parallel behavior:
 ```json
 [
   {"role": "assistant", "content": ["tool_use_1", "tool_use_2"]},
@@ -438,15 +250,9 @@ model away from parallelism.
 ]
 ```
 
-Additional formatting rules:
-- Do NOT insert text blocks before tool_result blocks in the content array
-- Every `tool_use` must have a matching `tool_result` with the same `tool_use_id`
-- For pipeline jobs: your tool execution layer must collect all results
-  before sending the next message — never stream partial results back
+No text before tool_results; every `tool_use` needs matching `tool_result`; collect all before next message.
 
-### Meta-Tools / Pre-Commands for Predictable Sequences
-
-When agents consistently perform the same tool sequence, extract it:
+### Meta-Tools / Pre-Commands
 
 | Pattern | Solution |
 |---------|----------|
@@ -455,14 +261,9 @@ When agents consistently perform the same tool sequence, extract it:
 | Agent reads 3 files to learn pattern | Inline pattern example in prompt |
 | Agent searches web for same reference each run | Cache result, inject as include_file |
 
-Rule: if a sequence appears in >50% of runs, make it a pre_command or
-include_file instead.
+Sequence in >50% runs → extract to pre_command | include_file.
 
-### Turn Budget Guidelines (Pipeline Jobs)
-
-For Agent SDK orchestrator jobs, set expectations in the instruction file.
-Not a hard `maxTurns` (article writing isn't deterministic), but explicit
-guidance on efficiency:
+### Turn Budget Guidelines
 
 ```markdown
 ## Efficiency Expectations
@@ -472,46 +273,27 @@ guidance on efficiency:
 - Total: minimize turns. Every tool call should have clear purpose.
 ```
 
-For **mechanical jobs** (metadata, uploads, routing): these CAN use hard
-`maxTurns` (5-10) since their behavior IS deterministic.
+Mechanical jobs: hard `maxTurns` (5-10) — deterministic.
 
----
+## File Size + Token Efficiency
 
-## Agent File Size Guidelines
+| Lines | Action |
+|-------|--------|
+| <100 | Too sparse — may lack context |
+| 100-300 | Ideal |
+| 300-500 | Acceptable for complex projects |
+| 500+ | Split into agent + `references/` |
 
-| Lines | Assessment | Action |
-|-------|-----------|--------|
-| <100 | Too sparse | May lack context for reliable generation |
-| 100-300 | Ideal | Focused, sufficient context |
-| 300-500 | Acceptable | For complex projects with many component types |
-| 500+ | Consider splitting | Break into agent + reference files |
-
-For agents >300 lines, use the reference file pattern:
 ```
 .claude/agents/code-writer-dotnet.md          # Core logic (200 lines)
 .claude/agents/references/dotnet-patterns.md   # Detailed examples (300 lines)
 ```
-Agent reads references on demand rather than having everything in the system prompt.
 
-### Token Efficiency in Agent Files
-
-Agent .md files are system prompts — Claude is the only reader.
-Write in compressed telegraphic notation (see `techniques/prompt-engineering.md` → Token Optimization):
-- Strip articles/filler; use symbols (→ | + ~); key:value over sentences
-- Exception: code examples + few-shot patterns → keep full fidelity
-- Impact: 30-50% smaller agent prompts = faster subagent startup + lower token cost
-- Each subagent loads its full .md file into its own context window — savings multiply by invocation count
-
----
-
-## See Also
-- `techniques/prompt-engineering.md` — RCCF framework (required for all agents)
-- `techniques/anti-hallucination.md` — verification patterns (required in all agents)
+Agent `.md` = system prompts — Claude only reader. Compress w/ telegraphic notation (`techniques/prompt-engineering.md` → Token Optimization). Code examples → full fidelity. 30-50% smaller × invocation count.
 
 ## Sources
 - Claude Code Docs: sub-agents, agent-teams, tools-reference
 - claudefa.st: sub-agent best practices
 - OpenDev Paper (arxiv 2603.05344)
 - Anthropic: Building Effective AI Agents
-- lst97/claude-code-sub-agents (resource metrics)
-- wshobson/agents (large-scale agent architecture)
+- lst97/claude-code-sub-agents; wshobson/agents
