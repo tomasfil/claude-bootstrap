@@ -107,12 +107,15 @@ For each agent in `.claude/agents/` that writes code or uses tools (code-writer,
 
 **Append to all tool-using agents:**
 ```markdown
-## Parallel Execution
-When multiple tool calls have no data dependencies → issue ALL in one message.
-- Multiple Reads → batch
-- Multiple Greps → batch
-- Multiple WebSearches → batch
-NEVER: Read A → respond → Read B → respond. INSTEAD: Read A + B → respond once.
+<use_parallel_tool_calls>
+For maximum efficiency, invoke all independent tool calls simultaneously
+rather than sequentially. Err on the side of maximizing parallel calls.
+- Multiple Reads → batch in one message
+- Multiple Greps → batch in one message
+- Multiple WebSearches → batch in one message
+- Read-only tools (Glob, Grep, Read) → ALWAYS parallel
+NEVER: Read A → respond → Read B → respond. INSTEAD: Read A + B → respond.
+</use_parallel_tool_calls>
 ```
 
 **Append to code-writing agents (code-writer, tdd-runner):**
@@ -144,7 +147,7 @@ Before executing ANY web search:
 Rules:
 - Read-before-write — check if agent already has these sections
 - Additive — append after existing content, before any closing markers
-- Skip agents that already contain "Parallel Execution" or "Scope Lock" sections
+- Skip agents that already contain "use_parallel_tool_calls" or "Scope Lock" sections
 
 ### Step 6 — Create /migrate-bootstrap skill
 
@@ -270,7 +273,7 @@ grep -l "color:" .claude/agents/*.md | wc -l  # should match agent count
 grep -l "model:" .claude/skills/*/SKILL.md | wc -l  # should match skill count
 
 # Turn optimization injected into agents
-grep -rl "Parallel Execution" .claude/agents/*.md | wc -l  # should be > 0
+grep -rl "use_parallel_tool_calls" .claude/agents/*.md | wc -l  # should be > 0
 
 # Migration skill
 [[ -f ".claude/skills/migrate-bootstrap/SKILL.md" ]] && echo "✓ migrate-bootstrap skill" || echo "✗ missing"

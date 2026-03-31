@@ -531,21 +531,19 @@ response. Infrastructure executes concurrently; latency = slowest call, not sum.
 **Prompt instruction template (include in agents that use tools):**
 
 ```markdown
-## Parallel Execution Rule
-When multiple tool calls have no data dependencies, issue ALL in one response.
-
-Parallelizable:
-- Reading multiple files → one message, multiple Read calls
-- Searching different patterns → one message, multiple Grep/WebSearch calls
-- Dispatching independent subagents → one message, multiple Agent calls
-
-NOT parallelizable (must be sequential):
-- Read file → edit it (edit depends on read content)
-- Search → read found file (read depends on search result)
-
-NEVER do: Read file A → respond → Read file B → respond → Read file C
-INSTEAD: Read file A + Read file B + Read file C → respond once
+<use_parallel_tool_calls>
+For maximum efficiency, invoke all independent tool calls simultaneously
+rather than sequentially. Err on the side of maximizing parallel calls.
+- Multiple Reads → batch in one message
+- Multiple Greps → batch in one message
+- Multiple WebSearches → batch in one message
+- Read-only tools (Glob, Grep, Read) → ALWAYS parallel
+NEVER: Read A → respond → Read B → respond. INSTEAD: Read A + B → respond.
+</use_parallel_tool_calls>
 ```
+
+Parallelizable: reading multiple files, searching patterns, dispatching independent subagents.
+NOT parallelizable: Read file → edit it (edit depends on read); Search → read found file.
 
 ### Search Planning Protocol
 

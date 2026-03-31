@@ -488,6 +488,50 @@ You are a TDD practitioner. You follow the red-green-refactor cycle strictly.
 - If a test fails unexpectedly, diagnose before continuing
 ```
 
+## Turn Optimization Blocks
+
+Append these blocks to every agent after its body content. These are the
+standard efficiency patterns from `techniques/agent-design.md`:
+
+**All tool-using agents** — use XML-tagged parallel instruction (Anthropic-recommended):
+```markdown
+<use_parallel_tool_calls>
+For maximum efficiency, invoke all independent tool calls simultaneously
+rather than sequentially. Err on the side of maximizing parallel calls.
+- Multiple Reads → batch in one message
+- Multiple Greps → batch in one message
+- Multiple WebSearches → batch in one message
+- Read-only tools (Glob, Grep, Read) → ALWAYS parallel
+NEVER: Read A → respond → Read B → respond. INSTEAD: Read A + B → respond.
+</use_parallel_tool_calls>
+```
+
+**Code-writing agents** (code-writer, tdd-runner) — add after parallel block:
+```markdown
+## Scope Lock
+- Implement ONLY what's specified — no extras
+- Do NOT refactor adjacent code
+- Do NOT add abstractions for one-time operations
+- MINIMAL change that satisfies the spec
+
+## Self-Fix Protocol
+After changes, run build/test. If failure:
+1. Read error → fix in same turn → rebuild
+2. Up to 3 fix attempts
+3. Only report if still failing after 3 attempts
+```
+
+**Research agents** (researcher) — add after parallel block:
+```markdown
+## Search Planning
+Before executing ANY web search:
+1. Identify ALL information needs from the task
+2. Formulate ALL search queries at once
+3. Execute all searches in parallel (single message)
+4. Follow-up searches ONLY for specific identified gaps
+5. Maximum 2 search rounds total
+```
+
 ## Token Efficiency in Agent Files
 
 All agent .md files are system prompts — Claude is the only reader.

@@ -376,16 +376,58 @@ from prior research, skip competitive sweep entirely."
 
 ### Tool Call Batching Instruction
 
-Include in every agent that uses multiple tools:
+Include in every agent that uses multiple tools. Use the XML-tagged variant
+for stronger compliance (Anthropic-recommended pattern):
 
 ```markdown
-## Parallel Execution
-When tool calls have no data dependencies → issue ALL in one message.
-- Multiple Reads → batch
-- Multiple Greps → batch
-- Multiple WebSearches → batch
+<use_parallel_tool_calls>
+For maximum efficiency, invoke all independent tool calls simultaneously
+rather than sequentially. Err on the side of maximizing parallel calls.
+- Multiple Reads → batch in one message
+- Multiple Greps → batch in one message
+- Multiple WebSearches → batch in one message
+- Read-only commands (ls, Glob, Grep) → ALWAYS parallel
 NEVER: Read A → respond → Read B → respond. INSTEAD: Read A + B → respond.
+</use_parallel_tool_calls>
 ```
+
+The `<use_parallel_tool_calls>` XML tag is a behavioral anchor — Claude
+treats content inside named XML blocks as stronger instructions than plain
+markdown headers. This is the official Anthropic recommendation for
+maximizing parallel tool use.
+
+### Agent SDK: Tool Result Formatting (Critical for Parallelism)
+
+When building API-based agents (Agent SDK, custom orchestrators), how you
+format tool results in conversation history **directly affects** whether
+Claude continues to use parallel tool calls.
+
+**Rule:** All tool results from a parallel batch MUST go in a **single**
+user message. Splitting them into separate messages actively trains the
+model away from parallelism.
+
+❌ **WRONG** — separate messages teach Claude to avoid parallel calls:
+```json
+[
+  {"role": "assistant", "content": ["tool_use_1", "tool_use_2"]},
+  {"role": "user", "content": ["tool_result_1"]},
+  {"role": "user", "content": ["tool_result_2"]}
+]
+```
+
+✅ **CORRECT** — single message maintains parallel behavior:
+```json
+[
+  {"role": "assistant", "content": ["tool_use_1", "tool_use_2"]},
+  {"role": "user", "content": ["tool_result_1", "tool_result_2"]}
+]
+```
+
+Additional formatting rules:
+- Do NOT insert text blocks before tool_result blocks in the content array
+- Every `tool_use` must have a matching `tool_result` with the same `tool_use_id`
+- For pipeline jobs: your tool execution layer must collect all results
+  before sending the next message — never stream partial results back
 
 ### Meta-Tools / Pre-Commands for Predictable Sequences
 
