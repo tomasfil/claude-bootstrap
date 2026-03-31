@@ -158,6 +158,7 @@ effort: high
 
 ### Per-Task Protocol
 - Read-before-write: read all files in the task's file list before starting
+- MUST dispatch the agent specified in each task's `Agent:` field — do not execute tasks inline if an agent is specified
 - Execute steps in order
 - Run verification command
 - If verification fails: fix, retry once, then ask user
@@ -341,6 +342,8 @@ effort: medium
 ```markdown
 ## /commit — Project-Aware Commit
 
+> Assumes /review and /verify have already run per CLAUDE.md automation. Do not embed verify/review here.
+
 1. Run `git status` to see what's changed
 2. Run `git diff --staged` and `git diff` to understand changes
 3. Check recent commits: `git log --oneline -5` for message style
@@ -416,7 +419,7 @@ description: >
   committing, or when you want to verify code quality. Dispatches the
   project-code-reviewer agent.
 context: fork
-agent: general-purpose
+agent: project-code-reviewer
 allowed-tools: Agent, Read, Grep, Glob, Bash
 model: opus
 effort: medium

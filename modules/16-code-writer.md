@@ -253,7 +253,7 @@ description: >
 1. **Feature Analysis** — Decision tree: what kind of feature? What layers affected?
 2. **Pipeline Trace Lookup** — Read references/pipeline-traces.md for the feature type
 3. **File Change Map** — List every file that needs to change, in order
-4. **Specialist Dispatch** — Which language agents, in what order
+4. **Specialist Dispatch** — Which language agents, in what order. The Step 4 dispatch instruction MUST read "MUST dispatch the appropriate code-writer-{type} agent — do not perform this work inline". Exception: if no code-writer-* agents were generated in Phase 4, include a fallback clause allowing main-thread execution.
 5. **Cross-Layer Verification** — After all specialists complete: build all, run tests
 6. **Anti-Hallucination** — Verify all file paths exist before dispatching
 

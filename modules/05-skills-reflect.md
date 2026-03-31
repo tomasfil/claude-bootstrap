@@ -28,6 +28,11 @@ description: >
   development environment, audit configuration, evolve agents, check for
   plugin updates, or optimize the .claude/ setup. Run periodically to
   promote learnings and keep the environment sharp.
+context: fork
+agent: reflector
+allowed-tools: Agent, Read, Write, Edit, Grep, Glob, Bash
+model: opus
+effort: high
 ---
 ```
 
@@ -48,7 +53,6 @@ Dispatch the `reflector` agent with paths to:
 
 The agent reads all sources, analyzes learnings, checks agent usage patterns, validates file sizes, and returns grouped proposals.
 
-> **Fallback:** If the `reflector` agent doesn't exist, perform the work on the main thread.
 > **Fallback:** If `.learnings/instincts/` doesn't exist, fall back to `log.md` only for instinct analysis.
 > **Fallback:** If `.claude/references/techniques/` doesn't exist, skip technique references — reflector uses general knowledge.
 

@@ -203,7 +203,7 @@ After all specialist agents finish:
 4. Report final review status
 ```
 
-Update the `/review` skill to dispatch this enhanced reviewer instead of the base one.
+Set `agent: project-code-reviewer` in `.claude/skills/review/SKILL.md` YAML frontmatter. This routes /review directly to the enhanced reviewer — no body dispatch logic needed.
 
 ## Checkpoint
 
