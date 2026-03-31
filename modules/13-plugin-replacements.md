@@ -419,7 +419,7 @@ description: >
   committing, or when you want to verify code quality. Dispatches the
   project-code-reviewer agent.
 context: fork
-agent: project-code-reviewer
+agent: general-purpose
 allowed-tools: Agent, Read, Grep, Glob, Bash
 model: opus
 effort: medium

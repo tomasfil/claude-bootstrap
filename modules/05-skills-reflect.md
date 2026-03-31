@@ -29,7 +29,7 @@ description: >
   plugin updates, or optimize the .claude/ setup. Run periodically to
   promote learnings and keep the environment sharp.
 context: fork
-agent: reflector
+agent: general-purpose
 allowed-tools: Agent, Read, Write, Edit, Grep, Glob, Bash
 model: opus
 effort: high
