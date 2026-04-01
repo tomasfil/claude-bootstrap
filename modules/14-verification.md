@@ -91,7 +91,7 @@ Read `.claude/settings.json` and verify deterministic hooks:
 
 The UserPromptSubmit routing hook MUST be regenerated every time Module 14 runs.
 It is built by scanning what actually exists on disk — not from a static list.
-This ensures new agents/skills added during Modules 16-18 (or by /reflect) are
+This ensures new agents/skills added during Modules 16-17 (or by /reflect) are
 always included. **Never build the hook early and assume it stays current.**
 
 ⚠️ **This hook is NOT redundant with Claude Code's native skill detection.**
@@ -308,5 +308,5 @@ Git strategy: {track / companion / ephemeral}
 
 🎉 Bootstrap complete. Run /reflect periodically to evolve the setup.
 
-Continuing to Module 15 (companion sync), then Module 16 (code writer), Module 17 (test writer).
+Continuing to Module 15 (companion sync), then Module 16 (code writer + test writer), Module 17 (code reviewer).
 ```

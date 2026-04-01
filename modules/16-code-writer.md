@@ -1,59 +1,70 @@
-# Module 16 — Generate Code Writer Agents
+# Module 16 — Generate Code Writer + Test Writer Agents
 
-> Generate a tailored orchestrator skill and language-specific code writer agents.
-> Uses discovery context from Module 01 and rules from Module 03.
+> Generate per-language code-writer and test-writer specialist agents, an orchestrator skill,
+> coverage skills, and supporting reference artifacts. Uses discovery context from Module 01,
+> rules from Module 03, and dispatches agents from the main thread for quality.
 
 ---
 
 ## Idempotency
 
-Per agent file: read existing content, merge project-specific knowledge with current template, regenerate.
+Per agent/skill file: read existing content, extract project-specific knowledge (component types, patterns, gotchas), merge w/ current template, regenerate.
 
 ## What This Produces
 
 | Output | Path | Purpose |
 |--------|------|---------|
-| Orchestrator skill | `.claude/skills/code-write/SKILL.md` | `/code-write` — analyzes features, maps pipelines, dispatches specialists |
-| Pipeline traces | `.claude/skills/code-write/references/pipeline-traces.md` | Feature-type → affected-files mapping |
-| Language specialists | `.claude/agents/code-writer-{lang}.md` | Per-language implementation agents with classification trees |
-| (Optional) References | `.claude/agents/references/{lang}-patterns.md` | Detailed code examples for agents >300 lines |
+| Per-language analysis refs | `.claude/skills/code-write/references/{lang}-analysis.md` | Local codebase findings per language |
+| Per-language research refs | `.claude/skills/code-write/references/{lang}-research.md` | Web research findings per language |
+| Orchestrator skill | `.claude/skills/code-write/SKILL.md` | `/code-write` dispatcher |
+| Pipeline traces | `.claude/skills/code-write/references/pipeline-traces.md` | Feature-type → file mapping |
+| Capability index | `.claude/skills/code-write/references/capability-index.md` | Agent inventory + gaps |
+| Language specialists | `.claude/agents/code-writer-{lang}.md` | Per-language code writers (9 sections each) |
+| Test specialists | `.claude/agents/test-writer-{lang}.md` | Per-language test writers (8 sections each) |
+| Coverage skill | `.claude/skills/coverage/SKILL.md` | `/coverage` command |
+| Coverage gaps skill | `.claude/skills/coverage-gaps/SKILL.md` | `/coverage-gaps` command |
 
-The generated system is **not generic** — it encodes your project's specific architecture layers, pipeline traces, component types, framework patterns, DI strategies, error handling, and naming conventions. The orchestrator knows which files change together for each feature type. The specialists know how to write code that a senior engineer on your team would recognize as idiomatic.
+The generated system is **not generic** — it encodes your project's specific architecture layers, pipeline traces, component types, framework patterns, DI strategies, error handling, naming conventions, mocking strategies, and test infrastructure. The orchestrator knows which files change together for each feature type. The specialists know how to write code and tests that a senior engineer on your team would recognize as idiomatic.
 
 ---
 
 ## How It Works
 
-Seven phases (0-6), executed in order:
+Nine phases (0-8), executed in order. Phases 1-4 repeat per detected language. Phases 3+4 dispatch in parallel within each language.
 
-0. **Capability Scan** — Check what agents and skills already exist, identify coverage gaps
-1. **Project Analysis** — Deep-read the codebase AND any existing code-writer agents. If `.claude/agents/code-writer-*.md` already exist, read them to extract project-specific knowledge (component types, patterns, gotchas) as input for regeneration. Then detect all languages, classify component types, map architecture layers, trace file co-occurrence patterns, extract conventions
-2. **Web Research** — Search for current best practices per detected language/framework combo (~15-20 searches per language) — architecture, idioms, DI, error handling, performance, security, LSP tools, MCP servers
-3. **Generate Orchestrator** — Create the `/code-write` skill with pipeline traces, layer dependencies, and specialist dispatch logic
-4. **Generate Specialists** — Create per-language agents with 9 required sections, each grounded in research findings and project patterns
-5. **Generate Supporting Files** — Pipeline trace reference, component examples
-6. **Verification** — Validate all outputs against project reality
+0. **Capability Scan** — detect languages, check existing agents, identify gaps
+1. **Local Analysis** (per lang) — dispatch `researcher` agent to deep-read codebase
+2. **Web Research** (per lang) — dispatch `researcher` agent for current best practices
+3. **Generate Code Writer** (per lang) — dispatch `code-writer-markdown` agent
+4. **Generate Test Writer** (per lang) — dispatch `code-writer-markdown` agent (PARALLEL w/ Phase 3)
+5. **Generate Orchestrator** — create `/code-write` skill, pipeline traces, capability index
+6. **Generate Coverage Skills** — create `/coverage` + `/coverage-gaps` skills
+7. **Update Code Reviewer** — verify reference artifacts ready for Module 17
+8. **Verification** — validate all outputs against project reality
 
 ---
 
-## What Makes a Good Code Writer System
+## What Makes a Good Code Writer + Test Writer System
 
-The generated agents should enable an AI to write code that:
-- **Matches existing conventions exactly** — naming, structure, patterns extracted from real project files
-- **Knows the full pipeline** — adding a field means Entity + Config + Migration + DTO + Mapper + Endpoint + Client
-- **Picks the right strategy per component** — REPR for endpoints, CrudServiceBase for CRUD services, standalone for business logic
-- **Verifies before presenting** — read-before-write, LSP checks, build verification, never fabricates APIs
-- **Knows project-specific gotchas** — framework internals, library quirks, EF Core owned entities, soft deletes
-- **Documents its requirements** — which LSP plugins, MCP servers, and tools it needs
+The generated agents should enable an AI to:
+- **Match existing conventions exactly** — naming, structure, patterns extracted from real project files
+- **Know the full pipeline** — adding a field means tracing through all affected layers
+- **Pick the right strategy per component** — different component types get different patterns
+- **Discover bugs, not just confirm code runs** — critical thinking phase in test writers
+- **Verify before presenting** — read-before-write, LSP checks, build verification, never fabricates APIs
+- **Know project-specific gotchas** — framework internals, library quirks, mocking pitfalls
+- **Document requirements** — which LSP plugins, MCP servers, and tools each agent needs
 
 ---
 
 <role>
-You are a senior engineering lead creating a comprehensive code writing system for this project. You combine deep knowledge of software architecture with meticulous codebase analysis and current research. You read existing code to extract patterns rather than imposing conventions. You understand that the most valuable output is project-specific knowledge — the pipeline traces, classification trees, and gotchas that would otherwise take hours to discover.
+You are a senior engineering lead creating a comprehensive code writing AND test writing system for this project. You combine deep knowledge of software architecture and testing methodology with meticulous codebase analysis and current research. You read existing code to extract patterns rather than imposing conventions. You understand that the most valuable output is project-specific knowledge — the pipeline traces, classification trees, mocking strategies, and gotchas that would otherwise take hours to discover.
 </role>
 
 <task>
-Execute ALL phases below to produce a complete, project-specific code writing system. Every output must be grounded in what you discovered during analysis and research — no generic filler. The agents you produce will be used repeatedly to write production code across the entire codebase, so invest heavily in accuracy and specificity.
+Execute ALL phases below to produce a complete, project-specific code writing and test writing system. Every output must be grounded in what you discovered during analysis and research — no generic filler. The agents you produce will be used repeatedly to write production code and tests across the entire codebase, so invest heavily in accuracy and specificity.
+
+**Execution model:** You are the orchestrator on the main thread. Use the Agent tool to dispatch `researcher` and `code-writer-markdown` agents for Phases 1-4. Do NOT perform analysis, research, or agent generation inline — the agents ARE the quality layer.
 </task>
 
 <rules>
@@ -69,173 +80,322 @@ Execute ALL phases below to produce a complete, project-specific code writing sy
 10. When web research fails after 2 attempts on a topic, move on — don't block on a single search.
 11. Write all generated agent/skill content in compressed telegraphic notation — Claude is the only reader. Strip articles/filler, use symbols (→ | + ~), key:value over sentences. Exception: code examples + few-shot patterns keep full fidelity. See `techniques/prompt-engineering.md` → Token Optimization.
 12. For inter-stage data formats when only consumer is Claude: YAML for hierarchical data (11-20% savings vs JSON), TSV/TOON for flat/tabular arrays (30-60% savings), markdown for mixed prose+structure (16-38% savings). JSON only when tooling requires it.
+13. **NEVER create generic `code-writer.md` or `test-writer.md`.** All agents MUST be `code-writer-{lang}.md` and `test-writer-{lang}.md`. If a generic file already exists, delete it.
+14. **Every language with 3+ owned source files MUST get both specialists.** Skip languages below threshold but document in capability-index.md.
+15. **Dispatch agents from main thread.** Phases 1-4 use Agent tool to dispatch researcher and code-writer-markdown agents. Do NOT attempt to do analysis/research/generation inline — the agents ARE the quality layer.
+16. **Phases 3+4 MUST dispatch in parallel.** Use two Agent tool calls in a single message — they write different files and read the same inputs.
 </rules>
 
 ---
 
 ## Phase 0 — Capability Scan
 
-Before creating anything, check what already exists:
+Before creating anything, detect languages and check what already exists.
 
-1. Scan `.claude/agents/` for existing code-writer agents (`code-writer-*.md`)
-2. Scan `.claude/skills/` for existing code-write skill (`code-write/SKILL.md`)
+### 0.1 Language Detection
+
+Scan the project for languages with 3+ owned source files.
+
+**Exclude from file count:** `node_modules/`, `vendor/`, `wwwroot/lib/`, `bin/`, `obj/`, `.nuget/`, `packages/`, `dist/`, `build/`, `__pycache__/`, `.venv/`, `venv/`
+
+Per detected language, record:
+- Language name
+- Version (from build configs / package manifests)
+- Framework(s) + version(s)
+- Test framework + mock library
+- File count (owned source files only)
+
+### 0.2 Existing Agent Scan
+
+1. Scan `.claude/agents/` for existing agents: `code-writer-*.md`, `test-writer-*.md`
+2. Scan `.claude/skills/` for existing `code-write/SKILL.md`, `coverage/SKILL.md`, `coverage-gaps/SKILL.md`
 3. If capability index exists at `.claude/skills/code-write/references/capability-index.md`, read it
-4. Record existing capabilities to avoid duplicating work
+4. Check for generic `code-writer.md` or `test-writer.md` — if found, mark for deletion
 
-Store the index at `.claude/skills/code-write/references/capability-index.md`:
+### 0.3 Output
+
+Store language manifest + coverage gaps. Format:
 
 ```markdown
 # Code Writer Capability Index
 
+## Language Manifest
+| Language | Version | Framework | Test Framework | File Count |
+|----------|---------|-----------|----------------|------------|
+| {lang} | {ver} | {framework} | {test_fw} | {N} |
+
 ## Existing Agents
 - {agent name} — {language/purpose} — last updated {date}
 
-## Existing Skills
-- {skill name} — {purpose}
-
 ## Coverage Gaps
 - {language/area not yet covered}
+
+## Below Threshold (skipped)
+- {lang} — {N} files (threshold: 3)
 ```
 
-**Checkpoint:** `Phase 0 complete — {N} existing agents found, {M} coverage gaps identified`
+**Checkpoint:** `Phase 0 complete — {N} languages detected, {M} existing agents found`
 
 ---
 
-## Phase 1 — Project Analysis
+## Phases 1-4 — Per-Language Agent Generation
 
-Deep-read the codebase to understand everything before researching.
+**For each detected language** (sequential — each language completes all sub-phases before starting the next):
 
-### 1.1 Language & Framework Detection
-Scan for ALL languages present (not just primary):
-- File extensions → language mapping
-- Build configs → framework and version
-- Package manifests → dependencies and versions
-- Record per language: name, version, framework, package manager, build/test/lint commands
+### Phase 1 — Local Analysis (dispatch `researcher` agent)
 
-### 1.2 Architecture Classification
-- **Solution structure**: .sln, monorepo, workspaces → list all projects/packages
-- **Layer identification**: Which projects/packages are API, service, data, contracts, common, client, functions?
-- **Dependency graph**: Which layers depend on which? (read project references)
-- **Architecture pattern**: Layered, vertical slice, clean architecture, CQRS, hexagonal?
+Dispatch a `researcher` agent with this prompt template:
 
-### 1.3 Component Type Inventory
-Per language, classify all component types found:
-
-For each component type, read 3-5 examples and extract:
-- File naming convention
-- Class structure (inheritance, interfaces, attributes)
-- Constructor/DI pattern
-- Method patterns
-- Error handling approach
-- Related files (what else changes when this type changes)
-
-Example classification for a .NET project:
 ```
-Component Types:
-├── Endpoint (FastEndpoints)
-│   ├── AuthenticatedEndpoint<TRequest, TResponse>
-│   ├── AdminEndpoint<TRequest, TResponse>
-│   ├── EndpointWithoutRequest<TResponse>
-│   └── Naming: {Action}.cs in Endpoints/{Entity}/
-├── Service
-│   ├── Type A: Simple (IDataService injection only)
-│   ├── Type B: Complex (multiple dependencies)
-│   ├── Type C: CrudServiceBase extension
-│   └── Naming: {Entity}Service.cs in Services/Data/{Entity}/
-├── Entity
-│   ├── DomainEntity<Guid> base
-│   ├── Record types with owned entities
-│   └── Naming: {Name}.cs in Data/Entities/
-├── Configuration
-│   ├── IEntityTypeConfiguration<T>
-│   ├── Fluent API mapping
-│   └── Naming: {Entity}Configuration.cs in Data/Configurations/
-├── DTO / Contract
-│   ├── Record types
-│   └── Naming: {Entity}Dto.cs in Contracts/
-├── Mapper
-│   ├── Extension methods
-│   └── Naming: {Entity}Mapper.cs in Api/Mappers/
-└── [more per project...]
+Deep-read the {lang} source files in this project. Analyze:
+- Component types found (read 3-5 examples of each)
+- File naming conventions per component type
+- Class/function structure patterns (inheritance, interfaces, decorators)
+- Constructor/DI patterns
+- Method patterns + error handling approach
+- Architecture layers + dependency graph
+- Pipeline traces: which files change together for common feature types
+- Existing test patterns (naming, structure, setup/teardown, fixtures, mocking)
+- Test data patterns + custom utilities/helpers/base classes
+- Error handling approach (exceptions? result types? HTTP status codes?)
+
+Write findings to `.claude/skills/code-write/references/{lang}-analysis.md`
+structured as YAML blocks per component type.
+
+Include:
+- Solution/workspace structure
+- Layer identification (API, service, data, contracts, etc.)
+- Plugin/LSP/MCP needs for this language
+- Build, test, lint, coverage commands
+
+Read existing code-writer-{lang}.md and test-writer-{lang}.md if they exist —
+extract project-specific knowledge to carry forward.
 ```
 
-### 1.4 Pipeline Trace Detection
-Analyze which files change together for common feature types:
+**Checkpoint:** `Phase 1 ({lang}) complete — {N} component types, {M} patterns extracted`
 
-**Method 1 — Git co-occurrence analysis:**
-```bash
-# Find files that frequently change together in commits
-git log --name-only --pretty=format: --diff-filter=ACMR | sort | uniq -c | sort -rn
+### Phase 2 — Web Research (dispatch `researcher` agent — MANDATORY)
+
+Dispatch a `researcher` agent with this prompt template:
+
+```
+Read `.claude/skills/code-write/references/{lang}-analysis.md` for framework+version info.
+
+Search for current best practices (~15-20 searches) covering ALL of these categories:
+
+CODE-WRITING TOPICS:
+- "{framework} architecture best practices {year}"
+- "{language} {framework} coding patterns {year}"
+- "{framework} {component_type} best practices" (per major component type)
+- "{language} dependency injection {framework}"
+- "{framework} error handling patterns"
+- "{framework} performance optimization {year}"
+- "{framework} security best practices OWASP"
+- "{language} language server protocol coding agent"
+- "MCP server {framework} {service}"
+- "{framework} common mistakes to avoid"
+
+TESTING TOPICS:
+- "{language} {test_framework} best practices {year}"
+- "{language} {mocking_library} best practices"
+- "{language} what to mock unit tests"
+- "{framework} integration testing {year}"
+- "{language} code coverage tool {year}"
+- "{test_framework} async testing patterns"
+- "{test_framework} parameterized tests"
+- "{mocking_library} common gotchas"
+
+Write findings to `.claude/skills/code-write/references/{lang}-research.md`.
+
+You MUST print:
+- Total search count
+- Key findings (5-7 bullets covering both code-writing and testing)
+- Gaps: topics where search failed after 2 attempts
+
+Research Quality Checklist:
+- Each search returned relevant results
+- Findings from 2024+ sources
+- Framework version matches project
+- Findings don't contradict existing project patterns (note discrepancies)
 ```
 
-**Method 2 — Manual trace from architecture:**
-Read the architecture and trace a feature through all layers. For example:
-- "Add new entity" → Entity + Config + Migration + DTO + Mapper + Endpoints + Client Service + UI
-- "Add field to entity" → Entity + Config? + Migration + DTO + Mapper + Endpoints? + Client + UI
-- "New API endpoint" → Request DTO + Response DTO + Endpoint + Service method? + Tests
+**Checkpoint:** `Phase 2 ({lang}) complete — {N} searches, key findings: {summary}`
 
-### 1.5 Pattern Extraction
-For each detected pattern, capture:
-- Error handling: ErrorOr? Exceptions? Result<T>? HTTP status codes?
-- DI patterns: Constructor injection? IServiceProvider? Lazy resolution?
-- Naming: PascalCase? camelCase? snake_case? Async suffix?
-- Guards: Early returns? Guard clauses? Validation middleware?
-- Comments: None? WHY-only? XML docs?
+### Phases 3+4 — Generate Specialists (dispatch TWO `code-writer-markdown` agents IN PARALLEL)
 
-### 1.6 Plugin/LSP/MCP Needs Assessment
-Per language/framework, identify:
-- What LSP plugin would benefit this language? (csharp-lsp, pyright-lsp, etc.)
-- What MCP servers connect to services used by this project? (firebase, github, etc.)
-- What Claude Code plugins provide relevant capabilities? (security-guidance, etc.)
+These MUST be dispatched in a single message (parallel Agent calls) — they read the same inputs and write different files.
 
-**Checkpoint:** `Phase 1 complete — {N} languages detected, {M} component types classified, {P} pipeline traces mapped`
+**Agent A — Code Writer Specialist:**
+
+```
+Read `.claude/skills/code-write/references/{lang}-analysis.md` and
+`.claude/skills/code-write/references/{lang}-research.md`.
+
+Generate `.claude/agents/code-writer-{lang}.md` with ALL 9 required sections below.
+Use compressed telegraphic notation. Code examples at full fidelity.
+
+YAML frontmatter:
+---
+name: code-writer-{lang}
+description: >
+  {Language} code writer specialist for {project}. Use when writing {language}
+  code for {list component types}. Knows project conventions, DI patterns,
+  error handling, and framework-specific gotchas.
+tools: Read, Write, Edit, Bash, Grep, Glob, LSP, WebSearch
+model: opus
+effort: medium
+maxTurns: 30
+color: blue
+---
+
+REQUIRED SECTIONS (populate every section with project-specific content):
+
+## Section 1: Role + Stack
+- Role statement: senior {language} specialist for {project}
+- Stack: language, version, framework, ORM, test framework, package manager
+
+## Section 2: Analysis Phase (Read-Before-Write)
+MANDATORY pre-writing checklist:
+1. Read target file (if modifying) | 2-3 similar files (if creating)
+2. Read related files: base classes, interfaces, configurations
+3. Use LSP goToDefinition/findReferences if available
+4. Check .claude/rules/{language}-code-standards.md
+5. Check scoped CLAUDE.md in target directory (if exists)
+6. Verify every type/method planned for use actually exists
+
+## Section 3: Component Classification Tree
+Decision tree w/ real code examples from the project.
+Each leaf: file naming, class structure, DI pattern, method patterns.
+Use taxonomy-guided prompting (Level 1: layer → Level 2: type → action).
+
+## Section 4: Writing Code
+Sub-sections: naming conventions, structure templates (per component type),
+error handling (project's specific pattern), DI registration, guard patterns.
+All extracted from actual project files.
+
+## Section 5: Anti-Hallucination Checks
+DO NOT / NEVER rules adapted to this language/framework.
+Post-writing: build command, LSP verify, run affected tests.
+Confidence routing: HIGH → proceed, MEDIUM → verify, LOW → research.
+
+## Section 6: Plugin/LSP/MCP Requirements
+LSP plugin + operations, MCP servers, recommended plugins.
+Include fallback for when LSP unavailable.
+
+## Section 7: Verification Phase
+Build, lint, test commands specific to this project.
+Report format: "Build {pass/fail}, {N} tests passed, {M} failed"
+
+## Section 8: Technique References
+- techniques/prompt-engineering.md → RCCF, token optimization
+- techniques/anti-hallucination.md → verification patterns
+- techniques/agent-design.md → subagent constraints
+
+## Section 9: Project-Specific Knowledge (Gotchas)
+Framework behaviors, library quirks, namespace conflicts, enum values,
+transaction behavior, audit fields, import conflicts — everything
+discovered during analysis that's non-obvious.
+```
+
+**Agent B — Test Writer Specialist:**
+
+```
+Read `.claude/skills/code-write/references/{lang}-analysis.md` and
+`.claude/skills/code-write/references/{lang}-research.md`.
+
+Generate `.claude/agents/test-writer-{lang}.md` with ALL 8 required sections below.
+Use compressed telegraphic notation. Code examples at full fidelity.
+
+YAML frontmatter:
+---
+name: test-writer-{lang}
+description: >
+  {Language} test writer specialist for {project}. Use when writing tests,
+  improving coverage, or adding test cases for {language} code. Knows
+  project test patterns, mocking strategies, and framework-specific gotchas.
+tools: Read, Write, Edit, Bash, Grep, Glob, LSP
+model: opus
+effort: high
+maxTurns: 30
+color: green
+---
+
+REQUIRED SECTIONS (populate every section with project-specific content):
+
+## Section 1: Introduction Line
+One line: language, test framework, mock library, assertion library,
+coverage tool — with exact version numbers from project manifest.
+
+## Section 2: Analysis Phase (Understand Before Writing)
+- Read source file, understand every public method
+- Use LSP to trace dependencies (documentSymbol, goToDefinition, findReferences, hover)
+- Read project rules/standards files
+- Check existing tests for style + patterns to match
+- Read any project-specific reference docs
+
+## Section 3: Service/Component Classification
+Decision tree: pick testing strategy per component type.
+Per type found in analysis:
+- When this type applies
+- Concrete mocking/setup pattern w/ code example from project
+- Gotchas specific to this type
+
+| Component Type | Strategy | Mock Boundary |
+|----------------|----------|---------------|
+| Pure logic | Direct test, no mocks | N/A |
+| Service w/ injected deps | Mock interfaces | Constructor params |
+| Data access | Integration test | Real DB or mock abstraction |
+| API/Controller | Integration test | Test server |
+| Infrastructure wrapper | Mock at boundary | External service |
+
+## Section 4: Writing Tests
+Sub-sections:
+- Structure: AAA (or language equivalent), naming, variable naming (sut, result)
+- What to test: happy path, edge cases, error paths, guard clauses,
+  state transitions, dependency failures
+- Assertion patterns: success + error assertions using project's error handling
+- Code quality DO: extracted helpers, parameterized tests, fresh state, focused files
+- Anti-patterns DO NOT: testing private methods, mocking SUT, shared mutable state,
+  over-verifying, testing implementation over behavior
+
+## Section 5: Critical Thinking Phase
+Audit code while writing tests:
+- Unreachable branches, logic errors (off-by-one, wrong operators)
+- Race conditions, missing error handling
+- Contract violations, silent data loss
+When suspicious: write test documenting actual behavior, log findings,
+create GitHub issues for bugs. Do NOT silently work around bugs.
+
+## Section 6: Verification Phase
+1. Build/compile test project
+2. Run only new tests (filter command for test runner)
+3. Diagnose + fix failures
+4. Report: total, passed, failed, coverage gaps w/ reasons
+
+## Section 7: Project-Specific Knowledge (Gotchas)
+Internal framework behaviors (auto-transactions, event dispatch, audit fields),
+library quirks, type/enum naming conflicts, import issues — everything
+that wastes hours when you don't know it.
+
+## Section 8: Mocking Gotchas
+Library-specific mocking pitfalls from research + existing test code.
+Include: async mock patterns, interface vs class mocking restrictions,
+setup/verify ordering issues, common false-positive patterns.
+```
+
+**Checkpoint:** `Phases 3-4 ({lang}) complete — code-writer-{lang}.md + test-writer-{lang}.md generated`
 
 ---
 
-## Phase 2 — Web Research (MANDATORY — do not skip or abbreviate)
+## Phase 5 — Generate Orchestrator Skill
 
-For EACH detected language/framework combination, research current best practices. This grounds the agents in verified knowledge rather than training data assumptions.
+After all languages complete Phases 1-4, create the orchestrator on the main thread.
 
-**Why this phase exists:** Your training data contains patterns from many framework versions. This project uses a specific version. Searching confirms which patterns are current for THAT version, and surfaces gotchas/deprecations you wouldn't know about. Skipping research means the generated agents may contain outdated or incorrect patterns.
+### 5.1 Read All Analysis Files
 
-**Enforcement:** Before proceeding to Phase 3, you MUST print:
-```
-Phase 2 complete — {N} searches conducted across {M} topic categories
-Key findings: {3-5 bullet points of most impactful discoveries}
-Gaps: {any topics where search failed after 2 attempts}
-```
-If N < 10 per language, explain which categories were skipped and why.
+Read all `{lang}-analysis.md` files to build cross-language knowledge.
 
-### Search Matrix (per language/framework)
-
-| Topic | Search Query Template | What to Extract |
-|-------|----------------------|-----------------|
-| Architecture | "{framework} architecture best practices {year}" | Recommended patterns, layer organization |
-| Coding idioms | "{language} {framework} coding patterns {year}" | Idiomatic code style, modern features |
-| Component patterns | "{framework} {component_type} best practices" | Per-component-type guidance |
-| DI patterns | "{language} dependency injection {framework}" | Registration, lifetime, resolution patterns |
-| Error handling | "{framework} error handling patterns" | Framework-specific error flow |
-| Performance | "{framework} performance optimization {year}" | Query optimization, caching, async patterns |
-| Security | "{framework} security best practices OWASP" | Input validation, auth, injection prevention |
-| LSP/Tools | "{language} language server protocol coding agent" | LSP operations, tool integration |
-| MCP servers | "MCP server {framework} {service}" | Available MCP integrations |
-| Common pitfalls | "{framework} common mistakes to avoid" | Anti-patterns, gotchas |
-
-### Research Quality Checklist
-- [ ] Each search actually returned relevant results
-- [ ] Findings are from 2024+ sources (not outdated)
-- [ ] Framework version matches project (e.g., .NET 10, not .NET 6)
-- [ ] Findings don't contradict project's existing patterns (if they do, note the discrepancy)
-
-**Checkpoint:** `Phase 2 complete — {N} searches conducted, key findings: {summary}`
-
----
-
-## Phase 3 — Generate Orchestrator Skill
-
-Create `.claude/skills/code-write/SKILL.md` and reference files.
-
-### SKILL.md Structure
+### 5.2 Create/Update `.claude/skills/code-write/SKILL.md`
 
 ```yaml
 ---
@@ -245,228 +405,234 @@ description: >
   components, or creating new files. Orchestrates language-specific code writers
   for cross-layer features. Analyzes the request, maps the pipeline trace, and
   dispatches specialist agents in dependency order.
+context: fork
+agent: general-purpose
+allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob, Skill
+model: opus
+effort: high
+paths: "src/**"
 ---
 ```
 
 ### Content Sections
 
 1. **Feature Analysis** — Decision tree: what kind of feature? What layers affected?
-2. **Pipeline Trace Lookup** — Read references/pipeline-traces.md for the feature type
+2. **Pipeline Trace Lookup** — Read `references/pipeline-traces.md` for the feature type
 3. **File Change Map** — List every file that needs to change, in order
-4. **Specialist Dispatch** — Which language agents, in what order. The Step 4 dispatch instruction MUST read "MUST dispatch the appropriate code-writer-{type} agent — do not perform this work inline". Exception: if no code-writer-* agents were generated in Phase 4, include a fallback clause allowing main-thread execution.
-5. **Cross-Layer Verification** — After all specialists complete: build all, run tests
-6. **Anti-Hallucination** — Verify all file paths exist before dispatching
+4. **Specialist Dispatch** — Step 4 MUST read: "MUST dispatch the appropriate code-writer-{lang} agent — do not perform this work inline". Exception: if no code-writer-* agents exist, include fallback clause allowing main-thread execution.
+5. **Test Dispatch** — After code writing: dispatch test-writer-{lang} for affected code (or note for user to invoke separately)
+6. **Cross-Layer Verification** — After all specialists complete: build all, run tests
+7. **Anti-Hallucination** — Verify all file paths exist before dispatching
 
-### references/pipeline-traces.md
+### 5.3 Create/Update `references/pipeline-traces.md`
+
+Per feature type found during analysis, trace through all layers. Use language-agnostic format w/ concrete examples:
 
 ```markdown
 ## Pipeline Traces
 
-### new-entity
+### {feature-type}
+Language: {lang}
+Files (in order):
+1. {path/pattern} — {action}
+2. {path/pattern} — {action}
+...
+
+### Example: new-entity (.NET)
 Files (in order):
 1. Data/Entities/{Entity}.cs — create entity record
-2. Data/Configurations/{Entity}Configuration.cs — create EF config
+2. Data/Configurations/{Entity}Configuration.cs — EF config
 3. [Migration] — dotnet ef migrations add Add{Entity}
-4. Contracts/{Entity}Dto.cs — create DTO record
-5. Api/Mappers/{Entity}Mapper.cs — create mapper extensions
-6. Api/Endpoints/{Entity}/Get.cs — create GET endpoint
-7. Api/Endpoints/{Entity}/Create.cs — create POST endpoint
-8. Api/Endpoints/{Entity}/Update.cs — create PUT endpoint
-9. Api/Endpoints/{Entity}/Delete.cs — create DELETE endpoint
-10. Services/Data/{Entity}/{Entity}Service.cs — create service
-11. Services/Data/{Entity}/I{Entity}Service.cs — create interface
-12. DependencyInjection.cs — register service
+4. Contracts/{Entity}Dto.cs — create DTO
+...
 
-### new-field
-[... similar trace ...]
-
-### new-endpoint
-[... similar trace ...]
+### Example: new-component (React/TS)
+Files (in order):
+1. src/components/{Component}/{Component}.tsx — component
+2. src/components/{Component}/{Component}.test.tsx — tests
+3. src/components/{Component}/{Component}.module.css — styles
+4. src/components/index.ts — re-export
+...
 ```
 
-**Checkpoint:** `Phase 3 complete — orchestrator skill created with {N} pipeline traces`
+### 5.4 Update Capability Index
+
+Update `.claude/skills/code-write/references/capability-index.md` with all generated agents.
+
+**Checkpoint:** `Phase 5 complete — orchestrator skill with {N} pipeline traces`
 
 ---
 
-## Phase 4 — Generate Language Specialist Agents
+## Phase 6 — Generate Coverage Skills
 
-Create `.claude/agents/code-writer-{lang}.md` for each detected language.
+Create coverage skills. These are language-aware — detect which coverage tooling to use from the analysis files.
 
-### Required Sections (all 9)
+### 6.1 Coverage Skill
 
-Every specialist agent MUST contain these sections, with project-specific content in each:
+Create `.claude/skills/coverage/SKILL.md`:
 
-#### Section 1: Role + Stack
-```markdown
-## Role
-You are a {language} code writer specialist for {project_name}.
-
-## Stack
-- Language: {language} {version}
-- Framework: {framework} {version}
-- ORM: {orm} {version} (if applicable)
-- Test Framework: {test_framework} (if applicable)
-- Package Manager: {package_manager}
-```
-
-#### Section 2: Analysis Phase (Read-Before-Write)
-```markdown
-## Before Writing Code (MANDATORY)
-
-1. Read the target file (if modifying) or 2-3 similar files (if creating)
-2. Read related files: base classes, interfaces, configurations
-3. Use LSP goToDefinition/findReferences if available
-4. Check .claude/rules/{language}-code-standards.md
-5. Check scoped CLAUDE.md in target directory (if exists)
-6. Verify every type/method you plan to use actually exists
-```
-
-#### Section 3: Component Classification Tree
-```markdown
-## Component Classification
-
-Determine what you're building BEFORE writing code:
-
-[Decision tree with real code examples from the project]
-[Each leaf node: file naming, class structure, DI pattern, method patterns]
-```
-
-#### Section 4: Writing Code
-```markdown
-## Code Patterns
-
-### Naming Conventions
-[Extracted from actual project files]
-
-### Structure Templates
-[Per component type, with real examples]
-
-### Error Handling
-[Project's specific pattern: ErrorOr, exceptions, Result<T>]
-
-### DI Registration
-[How to register new services/components]
-```
-
-#### Section 5: Anti-Hallucination Checks
-```markdown
-## Verification Rules
-
-DO NOT:
-- Invent APIs, methods, or parameters not in this project
-- Fabricate package names or import paths
-- Assume method signatures — check actual source
-- Generate code for components you haven't read examples of
-
-AFTER writing:
-1. Run {build_command} — fix any errors
-2. Use LSP hover to verify types (if available)
-3. Run affected tests
-4. If unsure, say so rather than guessing
-```
-
-#### Section 6: Plugin/LSP/MCP Requirements
-```markdown
-## Required Tools
-
-### LSP
-- Plugin: {lsp_plugin} — install via `claude plugins install {name}`
-- Operations: goToDefinition, findReferences, hover, documentSymbol
-- Fallback: Use Grep for symbol search if LSP unavailable
-
-### MCP Servers
-- {server}: {purpose} (if applicable)
-
-### Plugins
-- security-guidance: Catches security issues at write time
-- context7: Library docs lookup for unfamiliar APIs
-```
-
-#### Section 7: Verification Phase
-```markdown
-## Post-Implementation Verification
-
-1. Build: {build_command}
-2. Lint: {lint_command}
-3. Test: {test_command_single} (for changed code)
-4. Report: "Build {pass/fail}, {N} tests passed, {M} failed"
-```
-
-#### Section 8: Technique References
-```markdown
-## Technique References
-- `techniques/prompt-engineering.md` → RCCF framework, token optimization, structured outputs
-- `techniques/anti-hallucination.md` → verification patterns, false-claims mitigation
-- `techniques/agent-design.md` → subagent constraints, orchestrator patterns
-Apply applicable patterns when generating | modifying code. These are starting-point knowledge — validate against project state.
-```
-
-#### Section 9: Project-Specific Knowledge
-```markdown
-## Gotchas & Internal Knowledge
-
-[Framework-specific behaviors discovered during analysis]
-[Library quirks, namespace conflicts, enum values]
-[Transaction behavior, soft deletes, audit field handling]
-[Import conflicts, type resolution order]
-```
-
-### YAML Frontmatter
 ```yaml
 ---
-name: code-writer-{lang}
-description: >
-  {Language} code writer specialist for {project}. Use when writing {language}
-  code for {list component types}. Knows project conventions, DI patterns,
-  error handling, and framework-specific gotchas.
-tools: Read, Write, Edit, Bash, Grep, Glob, LSP, WebSearch
-model: opus
-# Model is fixed based on task complexity. Override in CLAUDE.local.md if needed.
-effort: medium
+name: coverage
+description: "Run code coverage on test projects and display a summary report. Use when the user says /coverage or asks about test coverage."
 ---
 ```
 
-**Checkpoint:** `Phase 4 complete — {N} language specialists created`
+Content must include:
+1. Which test projects to cover (exclude integration tests requiring external resources)
+2. Commands to clean previous results, run tests w/ coverage, generate reports
+3. How to display summary
+4. All commands use project's actual test runner + coverage tool
+5. Multi-language support if project has multiple test frameworks
+
+### 6.2 Coverage Gaps Skill
+
+Create `.claude/skills/coverage-gaps/SKILL.md`:
+
+```yaml
+---
+name: coverage-gaps
+description: "Parse coverage data to show uncovered lines per class/function. Use when the user says /coverage-gaps or asks what's missing from coverage."
+---
+```
+
+Content must include:
+1. How to verify coverage data exists
+2. Script (in project's language or Python fallback) to parse coverage format and display:
+   - Classes/modules w/ uncovered lines, sorted by gap size
+   - Line ranges grouped for readability
+   - Fully covered classes as summary
+3. Optional filter by class/module name
+4. Instructions to read source at uncovered lines when user asks about specific gaps
+
+**Checkpoint:** `Phase 6 complete — coverage skills generated`
 
 ---
 
-## Phase 5 — Generate Supporting Files
+## Phase 7 — Update Code Reviewer
 
-- Pipeline trace reference doc (if not already created in Phase 3)
-- Component type examples (few-shot, if agents are >300 lines)
-- Update skill routing hook (in .claude/settings.json) to include /code-write
+Module 17 (code reviewer) uses the per-language reference artifacts generated here. Verify:
 
-**Checkpoint:** `Phase 5 complete — supporting files created, routing hook updated`
+1. `.claude/skills/code-write/references/` directory exists w/ all `{lang}-analysis.md` files
+2. All `code-writer-{lang}.md` and `test-writer-{lang}.md` agents exist
+3. Pipeline traces reference correct paths
+
+Do NOT generate the code reviewer agent — that's Module 17's job.
+
+**Checkpoint:** `Phase 7 complete — reference artifacts ready for Module 17`
 
 ---
 
-## Phase 6 — Verification
+## Phase 8 — Verification
 
 ### Checklist
-- [ ] Orchestrator skill has YAML frontmatter (name, description)
-- [ ] Orchestrator references pipeline-traces.md correctly
-- [ ] Each specialist has all 9 sections with project-specific content
+
+**Code Writer Agents:**
+- [ ] Each `code-writer-{lang}.md` has all 9 required sections w/ project-specific content
 - [ ] No generic placeholder text — all code examples from actual project
-- [ ] Plugin/LSP/MCP requirements are accurate for each specialist
-- [ ] Pipeline traces match actual project structure
+- [ ] Plugin/LSP/MCP requirements accurate for each specialist
 - [ ] Classification trees cover all detected component types
 - [ ] Anti-hallucination sections present in every specialist
 - [ ] Technique reference section present in every specialist
-- [ ] Build command works (verify by running it)
+
+**Test Writer Agents:**
+- [ ] Each `test-writer-{lang}.md` has all 8 required sections w/ project-specific content
+- [ ] Introduction line has exact version numbers
+- [ ] Mocking gotchas section populated w/ real findings
+- [ ] Critical thinking phase included (not just "run tests")
+- [ ] Component classification covers all types found in project
+
+**Negative Guard:**
+- [ ] No generic `code-writer.md` exists (if found → DELETE)
+- [ ] No generic `test-writer.md` exists (if found → DELETE)
+
+**Reference Artifacts:**
+- [ ] All `{lang}-analysis.md` files exist
+- [ ] All `{lang}-research.md` files exist
+- [ ] Pipeline traces reference correct paths
+- [ ] Capability index is current
+
+**Skills:**
+- [ ] Orchestrator skill has YAML frontmatter (name, description)
+- [ ] Orchestrator references pipeline-traces.md correctly
+- [ ] Coverage skill uses correct build/test commands
+- [ ] Coverage gaps skill parses correct coverage format
 - [ ] Skill routing hook lists /code-write
 
+**Build:**
+- [ ] Build command works (verify by running it)
+
 ### Smoke Test
-Run through one mental scenario:
-"If the user says 'add a new field X to entity Y', does the orchestrator know:
+
+Run through one mental scenario per generated language:
+"If the user says 'add a new field X to entity Y', does the system know:
 1. Which pipeline trace to use?
 2. Which files to create/modify?
-3. Which specialists to dispatch?
-4. In what order?
-5. How to verify the result?"
+3. Which code-writer specialist to dispatch?
+4. Which test-writer specialist to dispatch for new tests?
+5. In what order?
+6. How to verify the result?"
 
-**Checkpoint:** `Phase 6 complete — all checks passed`
+**Checkpoint:** `Phase 8 complete — all checks passed`
 
-✅ Module 16 complete — code writer orchestrator skill, language specialists, pipeline traces, and capability index generated and verified
+✅ Module 16 complete — per-language code-writer and test-writer agents, coverage skills, pipeline traces, and reference artifacts generated and verified
+
+---
+
+## Component Classification — Multi-Language Examples
+
+### Generic Template
+```
+Component Types:
+├── {TypeA}
+│   ├── Subtypes found in project
+│   ├── Naming: {convention}
+│   └── Related files: {co-occurring files}
+├── {TypeB}
+│   ├── Subtypes
+│   └── Naming: {convention}
+└── [more per project...]
+```
+
+### Example: .NET Project
+```
+Component Types:
+├── Endpoint (FastEndpoints)
+│   ├── AuthenticatedEndpoint<TReq, TRes>
+│   ├── AdminEndpoint<TReq, TRes>
+│   └── Naming: {Action}.cs in Endpoints/{Entity}/
+├── Service
+│   ├── Type A: Simple (single IDataService)
+│   ├── Type B: Complex (multiple deps)
+│   ├── Type C: CrudServiceBase extension
+│   └── Naming: {Entity}Service.cs in Services/Data/{Entity}/
+├── Entity
+│   ├── DomainEntity<Guid> base
+│   └── Naming: {Name}.cs in Data/Entities/
+└── Configuration
+    ├── IEntityTypeConfiguration<T>
+    └── Naming: {Entity}Configuration.cs in Data/Configurations/
+```
+
+### Example: TypeScript/React Project
+```
+Component Types:
+├── Component
+│   ├── Page component (route-level)
+│   ├── Feature component (business logic)
+│   ├── UI component (presentational)
+│   └── Naming: {Name}.tsx in src/components/{Name}/
+├── Hook
+│   ├── Data hook (API calls)
+│   ├── State hook (local state logic)
+│   └── Naming: use{Name}.ts in src/hooks/
+├── Service
+│   ├── API service (HTTP client wrapper)
+│   └── Naming: {name}.service.ts in src/services/
+└── Store
+    ├── Slice (Redux) | Atom (Jotai) | Store (Zustand)
+    └── Naming: {name}.store.ts in src/store/
+```
 
 ---
 
@@ -475,6 +641,9 @@ Run through one mental scenario:
 This module uses context from earlier modules:
 - Discovery results from Module 01 (languages, frameworks, architecture)
 - Rules from Module 03 (code standards per language)
-- Base agents from Module 10 (these specialists complement them)
-- Skill routing is generated by Module 14 (will include /code-write after this module runs)
-- /reflect from Module 05 monitors and evolves the generated agents
+- Base agents from Module 10 (these specialists complement them — `researcher` and `code-writer-markdown` are dispatched here)
+- Skill routing generated by Module 14 (includes /code-write after this module runs)
+- /reflect from Module 05 monitors and evolves the generated agents, watches for drift in `{lang}-analysis.md` references
+
+This module produces artifacts consumed by:
+- Module 17 (code reviewer) — uses per-language references for deep project-specific review

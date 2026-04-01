@@ -49,7 +49,7 @@ ANTI-SHORTCUT RULES — do not rationalize around these:
 
 15. **Create the files the module specifies.** If a module says to create `guard-git.sh` as a separate script file, create it as a separate script file. Do NOT inline script logic into settings.json one-liners. Separate files exist for maintainability, readability, and debuggability — a 200-character bash one-liner in JSON is unmaintainable.
 16. **Do not skip the UserPromptSubmit routing hook.** Claude Code's native `user-invocable: true` detection only works when the user types the exact slash command. The routing hook catches natural language ("add a field to X") and nudges toward the right skill. These are complementary, not redundant. Module 14 MUST generate it.
-17. **Do not skip or abbreviate web research in Modules 16-18.** The research phase exists because training data goes stale and projects use specific framework versions. You MUST conduct the searches, print how many you ran and key findings, BEFORE generating agents. "I'll do the research later" or "8 out of 15 is enough" are not acceptable.
+17. **Do not skip or abbreviate web research in Modules 16-17.** The research phase exists because training data goes stale and projects use specific framework versions. You MUST conduct the searches, print how many you ran and key findings, BEFORE generating agents. "I'll do the research later" or "8 out of 15 is enough" are not acceptable.
 18. **Do not decide a module's output is "not needed".** Every module was designed as part of an integrated system. If you believe something is unnecessary, flag it to the user and let THEM decide — do not skip it silently or with a one-line justification.
 </rules>
 
@@ -96,9 +96,8 @@ No mode detection needed. Run the bootstrap any time — it brings everything to
 - [ ] Module 13: Plugin replacement skills generated (replaces superpowers, feature-dev, etc.) + `/migrate-bootstrap` + `/consolidate` skills
 - [ ] Module 14: Wiring verification — all checks pass, compression compliance check
 - [ ] Module 15: Companion repo sync (only if git_strategy == "companion")
-- [ ] Module 16: Code writer agents generated (orchestrator skill + per-language specialists)
-- [ ] Module 17: Test writer agent generated (test writer + coverage skills)
-- [ ] Module 18: Code reviewer enhanced (deep project-specific review with pipeline trace checks)
+- [ ] Module 16: Code writer + test writer agents generated (per-language specialists, coverage skills, persistent reference artifacts)
+- [ ] Module 17: Code reviewer enhanced (deep project-specific review with pipeline trace checks and per-language knowledge)
 
 ---
 
@@ -152,8 +151,7 @@ Read and execute each module file in order. Each module is self-contained with f
 
 **Code generation agents (require web research — these take longer):**
 16. Read and execute `modules/16-code-writer.md` — code writer orchestrator + language specialists
-17. Read and execute `modules/17-test-writer.md` — test writer agent + coverage skills
-18. Read and execute `modules/18-code-reviewer.md` — deep project-specific code reviewer
+17. Read and execute `modules/17-code-reviewer.md` — deep project-specific code reviewer
 
 ---
 

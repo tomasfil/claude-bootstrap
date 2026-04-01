@@ -100,7 +100,7 @@ competing hooks, wasted context tokens).
 
 ⚠️  superpowers — replaced by: /brainstorm, /write-plan, /execute-plan, /tdd, /debug,
     /verify, /review + skill routing hook
-⚠️  code-review — replaced by: project-code-reviewer agent (Module 18)
+⚠️  code-review — replaced by: project-code-reviewer agent (Module 17)
 ⚠️  commit-commands — replaced by: /commit, /pr skills
 {...etc for each found}
 

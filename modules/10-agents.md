@@ -1,7 +1,7 @@
 # Module 10 — Create Base Agents
 
 > Create `.claude/agents/` with generic utility agents.
-> Project-specific agents (code-writer, test-writer, code-reviewer) are created in Modules 16-18 via web research.
+> Project-specific agents (code-writer, test-writer, code-reviewer) are created in Modules 16-17 via web research.
 
 ---
 
@@ -408,7 +408,7 @@ Cross-reference validator — check all internal references are valid + consiste
 - {file}:{line} references {path} — {EXISTS | MISSING}
 
 ### Module Numbering: {PASS | FAIL}
-- Expected: 01-18, Found: {list}
+- Expected: 01-17, Found: {list}
 
 ### Frontmatter: {PASS | FAIL}
 - {file}: {valid | missing field: X}

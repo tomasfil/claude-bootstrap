@@ -6,7 +6,7 @@
 
 One-command setup that analyzes your project and generates a complete Claude Code environment:
 
-- **18 modules** -- systematic, dependency-ordered, idempotent (safe to re-run)
+- **17 modules** -- systematic, dependency-ordered, idempotent (safe to re-run)
 - **17 skills** -- slash commands for the full development lifecycle
 - **11+ agents** -- each optimized for its task type (count varies by language)
 - **3 technique docs** -- reference patterns for prompt engineering, anti-hallucination, and agent design
@@ -53,7 +53,7 @@ using WebFetch, then read and execute the bootstrap prompt it contains against t
 
 Claude reads `claude-bootstrap.md` (the orchestrator), which tells it to:
 1. Check if this project was previously bootstrapped (migration state detection)
-2. If fresh: execute all 18 modules in order, analyzing your project and generating the full environment
+2. If fresh: execute all 17 modules in order, analyzing your project and generating the full environment
 3. If already bootstrapped: run only pending migrations via `/migrate-bootstrap`
 
 The bootstrap asks a few configuration questions, then creates everything. Re-running is safe — each module handles its own idempotency: creates if missing, updates if stale, preserves if customized.
@@ -75,7 +75,7 @@ The main thread stays lightweight. Skills dispatch to specialist agents for heav
 | Agent | Model | Purpose |
 |-------|-------|---------|
 | code-writer-{lang} | opus | Per-language code generation with framework research |
-| test-writer | opus | Test writing matching project conventions |
+| test-writer-{lang} | opus | Per-language test writing matching project conventions |
 | project-code-reviewer | opus | Deep review with pipeline trace verification |
 | debugger | opus | Bug tracing and root cause analysis |
 | tdd-runner | opus | Red-green-refactor cycles |
@@ -114,7 +114,7 @@ Plus: `/debug`, `/verify`, `/code-write`, `/coverage`, `/coverage-gaps`, `/refle
 
 ### Project-Specific Generation
 
-Not generic templates. Modules 16-18 perform live web research on your detected stack before generating agents. A code writer for a FastEndpoints project is fundamentally different from one for a Django project -- because the bootstrap researched FastEndpoints patterns, not Django patterns.
+Not generic templates. Modules 16-17 perform live web research on your detected stack before generating agents. A code writer for a FastEndpoints project is fundamentally different from one for a Django project -- because the bootstrap researched FastEndpoints patterns, not Django patterns.
 
 Deep codebase analysis produces:
 - Pipeline traces (which files change together for a feature)
@@ -147,7 +147,7 @@ External connector plugins (LSP, MCP servers) are still recommended.
 
 ```
 claude-bootstrap.md          <- Entry point / orchestrator
-├── modules/01-18            <- Sequential setup (discovery -> code reviewer)
+├── modules/01-17            <- Sequential setup (discovery -> code reviewer)
 ├── techniques/              <- Reference docs (RCCF, anti-hallucination, agent design)
 └── Generated per-project:
     ├── CLAUDE.md            <- Project instructions (<120 lines)
@@ -182,9 +182,8 @@ claude-bootstrap.md          <- Entry point / orchestrator
 | 13 | Plugin Replacements | 9 skills replacing methodology plugins: brainstorm, write-plan, execute-plan, tdd, debug, verify, commit, pr, review |
 | 14 | Verification | Full wiring validation + skill routing hook generation |
 | 15 | Companion Repo | Private config sync for work projects (conditional) |
-| 16 | Code Writer | `/code-write` orchestrator + per-language specialist agents (web research) |
-| 17 | Test Writer | `test-writer` agent + `/coverage` and `/coverage-gaps` skills (web research) |
-| 18 | Code Reviewer | `project-code-reviewer` with pipeline trace verification (web research) |
+| 16 | Code Writer + Test Writer | Per-language `code-writer-{lang}` + `test-writer-{lang}` agents, `/coverage` and `/coverage-gaps` skills (web research) |
+| 17 | Code Reviewer | `project-code-reviewer` with pipeline trace verification and per-language knowledge (web research) |
 
 ## How Self-Improvement Works
 
@@ -201,7 +200,7 @@ SessionStart hook auto-triggers `/reflect` when new learnings accumulate.
 
 ## Updating an Existing Bootstrap
 
-If your project is already bootstrapped, you don't re-run all 18 modules. Instead:
+If your project is already bootstrapped, you don't re-run all 17 modules. Instead:
 
 ```bash
 cd your-project

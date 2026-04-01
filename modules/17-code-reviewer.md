@@ -1,4 +1,4 @@
-# Module 18 — Generate Project-Specific Code Reviewer
+# Module 17 — Generate Project-Specific Code Reviewer
 
 > Create a deep, research-driven code reviewer that knows the project's architecture,
 > security patterns, common bugs, and pipeline traces. Runs automatically after
@@ -32,9 +32,10 @@ Read the project to understand what the reviewer needs to check:
 1. **Read existing reviewer** — if `.claude/agents/project-code-reviewer.md` exists, extract project-specific checklists, gotchas, and patterns as input for regeneration
 2. **Read all rules** from `.claude/rules/` — these are the standards to enforce
 3. **Read pipeline traces** from `.claude/skills/code-write/references/pipeline-traces.md` — for completeness checks
-4. **Read .learnings/log.md** — past mistakes are the best review checklist
-5. **Read CLAUDE.md gotchas** — things that catch Claude off guard
-6. **Analyze architecture layers** — identify dependency direction rules
+4. **Read per-language reference files** from `.claude/skills/code-write/references/` — read all `{lang}-analysis.md` and `{lang}-research.md` files. Incorporate language-specific component types, gotchas, and conventions into per-component-type review checklists. Makes reviewer language-aware.
+5. **Read .learnings/log.md** — past mistakes are the best review checklist
+6. **Read CLAUDE.md gotchas** — things that catch Claude off guard
+7. **Analyze architecture layers** — identify dependency direction rules
 
 ## Phase 2 — Web Research (MANDATORY — do not skip or abbreviate)
 
@@ -64,6 +65,8 @@ tools: Read, Grep, Glob, LSP
 model: opus
 # Model is fixed based on task complexity. Override in CLAUDE.local.md if needed.
 effort: medium
+maxTurns: 20
+color: yellow
 ---
 ```
 
@@ -210,7 +213,7 @@ Set `agent: project-code-reviewer` in `.claude/skills/review/SKILL.md` YAML fron
 ## Checkpoint
 
 ```
-✅ Module 18 complete — Enhanced project-code-reviewer generated
+✅ Module 17 complete — Enhanced project-code-reviewer generated
   Review checklist: {N} items across {M} component types
   Security checks: {N} items
   Architecture checks: {N} items
