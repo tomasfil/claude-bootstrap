@@ -24,7 +24,7 @@ Before executing modules, check migration state:
 **If neither exists:**
 → Fresh install. Execute ALL modules below to set up a complete environment.
 → Each module handles its own idempotency (creates if missing, updates if stale).
-→ After all modules complete, stamp migration 000 in `.claude/bootstrap-state.json`.
+→ After all modules complete, create `.claude/bootstrap-state.json` stamped at the **highest migration ID** found in the `migrations/` directory. List migration files, extract the highest numeric prefix, and use that as `last_migration`. A fresh bootstrap runs the latest module code, so all migrations are already reflected — stamping at the latest prevents redundant migration runs.
 </task>
 
 <rules>

@@ -13,40 +13,50 @@ One-command setup that analyzes your project and generates a complete Claude Cod
 
 ## Quick Start
 
-### Paste a URL (simplest)
+### Option 1: `gh` CLI (recommended)
+
+Requires [GitHub CLI](https://cli.github.com/) (`gh`). This fetches the orchestrator directly from the repo API.
+
+```bash
+cd your-project
+gh api repos/tomasfil/claude-bootstrap/contents/claude-bootstrap.md --jq '.content' \
+  | base64 -d | claude -p "Read and execute this bootstrap prompt for the current project"
+```
+
+### Option 2: Clone and pipe
+
+```bash
+git clone https://github.com/tomasfil/claude-bootstrap.git ~/claude-bootstrap
+cd your-project
+cat ~/claude-bootstrap/claude-bootstrap.md | claude -p "Read and execute this bootstrap prompt for the current project"
+```
+
+### Option 3: Interactive session
+
+Start a Claude Code session in your project directory:
 
 ```bash
 cd your-project
 claude
 ```
 
-Then paste:
+Then paste the following prompt:
 
 ```
-https://github.com/tomasfil/claude-bootstrap
+Fetch https://raw.githubusercontent.com/tomasfil/claude-bootstrap/main/claude-bootstrap.md
+using WebFetch, then read and execute the bootstrap prompt it contains against this project.
 ```
 
-Claude fetches the orchestrator and all 18 modules from GitHub and executes them against your project. Nothing to clone.
+> **Why not just paste the GitHub URL?** Claude doesn't automatically know what to do with a bare URL. You need to tell it to fetch the content and execute it as a bootstrap prompt. The instructions above do exactly that.
 
-### One-liner from terminal
+### What happens next
 
-```bash
-cd your-project
-gh api repos/tomasfil/claude-bootstrap/contents/claude-bootstrap.md --jq '.content' \
-  | base64 -d | claude -p "Execute this bootstrap for the current project"
-```
+Claude reads `claude-bootstrap.md` (the orchestrator), which tells it to:
+1. Check if this project was previously bootstrapped (migration state detection)
+2. If fresh: execute all 18 modules in order, analyzing your project and generating the full environment
+3. If already bootstrapped: run only pending migrations via `/migrate-bootstrap`
 
-### Clone and pipe
-
-```bash
-git clone https://github.com/tomasfil/claude-bootstrap.git ~/claude-bootstrap
-cd your-project
-cat ~/claude-bootstrap/claude-bootstrap.md | claude -p "Execute this bootstrap for the current project"
-```
-
-The bootstrap analyzes your project, asks a few configuration questions, then creates everything across 18 modules.
-
-Re-running is safe. Each module handles its own idempotency: creates if missing, updates if stale, preserves if customized.
+The bootstrap asks a few configuration questions, then creates everything. Re-running is safe — each module handles its own idempotency: creates if missing, updates if stale, preserves if customized.
 
 ---
 
@@ -188,6 +198,24 @@ User correction -> .learnings/log.md (raw entry)
 ```
 
 SessionStart hook auto-triggers `/reflect` when new learnings accumulate.
+
+## Updating an Existing Bootstrap
+
+If your project is already bootstrapped, you don't re-run all 18 modules. Instead:
+
+```bash
+cd your-project
+claude
+# then type: /migrate-bootstrap
+```
+
+Or trigger it automatically by pasting the bootstrap prompt again — migration detection kicks in.
+
+**How state tracking works:**
+- `.claude/bootstrap-state.json` tracks which migrations have been applied (`last_migration` field)
+- A fresh bootstrap stamps the state at the **latest** migration (all modules already reflect current changes)
+- Each subsequent migration is applied incrementally and recorded in the `applied[]` array
+- Migrations are idempotent — safe to re-run if interrupted
 
 ## Git Strategy Options
 
