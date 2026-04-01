@@ -15,7 +15,7 @@ description: >
   Old Module 17 (test-writer) absorbed into Module 16. This migration re-runs the
   updated pipeline to generate per-language specialists while preserving any evolved
   project-specific gotchas from existing agents.
-base_commit: "78faf7c1e91fe75239ddb32f623071e4295c9d2c"
+base_commit: "49b61ff8d34e55eca1ddf39af379b9f3f3f6a438"
 date: "2026-04-01"
 breaking: false
 ```
@@ -167,6 +167,18 @@ ls .claude/skills/code-write/references/*-research.md 2>/dev/null \
 grep -q "{lang}-analysis\|analysis\.md\|per-language" .claude/agents/project-code-reviewer.md \
   && echo "OK: reviewer references per-language knowledge" \
   || echo "WARN: reviewer may not reference per-language files"
+
+# All specialist agents must have color and maxTurns in frontmatter
+for f in .claude/agents/code-writer-*.md .claude/agents/test-writer-*.md; do
+  [[ -f "$f" ]] || continue
+  name=$(basename "$f")
+  grep -q "^color:" "$f" \
+    && echo "OK: $name has color" \
+    || echo "FAIL: $name missing color in frontmatter"
+  grep -q "^maxTurns:" "$f" \
+    && echo "OK: $name has maxTurns" \
+    || echo "FAIL: $name missing maxTurns in frontmatter"
+done
 ```
 
 - [ ] No generic `test-writer.md` or `code-writer.md` exist
@@ -177,6 +189,8 @@ grep -q "{lang}-analysis\|analysis\.md\|per-language" .claude/agents/project-cod
 - [ ] Coverage skills exist and use correct commands
 - [ ] Code reviewer references per-language knowledge
 - [ ] Evolved gotchas from previous agents are preserved in new agents
+- [ ] All specialist agents have `color` in frontmatter (code-writers: blue, test-writers: green)
+- [ ] All specialist agents have `maxTurns` in frontmatter
 - [ ] No broken cross-references
 
 ---
