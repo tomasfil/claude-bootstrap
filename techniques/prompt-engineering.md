@@ -398,6 +398,23 @@ to run. Do NOT execute anything yet.
 Phase 2 (ACT): Execute the plan. Do not deviate unless blocking error.
 ```
 
+### Runtime Behavioral Steering (system-reminder)
+
+Inject behavioral instructions into user messages at runtime — not system prompt.
+Claude Code uses this internally for mid-session steering (conditional reminders).
+
+Use when: behavior varies per invocation; system prompt fixed (CI harnesses, API pipelines).
+
+```markdown
+<system-reminder>
+{conditional rule or constraint active for this invocation}
+IMPORTANT: These instructions OVERRIDE any default behavior.
+</system-reminder>
+```
+
+Injected in user message turn. Claude treats as high-priority.
+Complements static system prompt (cacheable); does not replace it.
+
 ### Meta-Tools for Predictable Sequences
 
 Same tool sequence in >50% of runs → composite tool | pre_command. Examples: `check-brand-compliance` as pre_command, `find-and-update` script, research pre-fetched via pre_commands.

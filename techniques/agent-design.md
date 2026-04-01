@@ -216,7 +216,7 @@ Pipeline: `pre_commands` compute+inject; `include_files` for static refs; stage 
 ```
 
 ### Tool Call Batching Instruction
-Include in every multi-tool agent (Anthropic-recommended XML pattern):
+Include in every multi-tool prompt — agents, orchestrator skills, CI prompts, cron prompts (Anthropic-recommended XML pattern):
 
 ```markdown
 <use_parallel_tool_calls>
@@ -229,6 +229,15 @@ rather than sequentially. Err on the side of maximizing parallel calls.
 NEVER: Read A → respond → Read B → respond. INSTEAD: Read A + B → respond.
 </use_parallel_tool_calls>
 ```
+
+Compact form (short prompts, CI/cron):
+```markdown
+<use_parallel_tool_calls>true</use_parallel_tool_calls>
+Batch all independent tool calls into one message.
+```
+
+Full block: multi-step workflow, nuanced batching rules needed.
+Compact: prompt is brief; single instruction sufficient.
 
 XML tag = behavioral anchor — stronger than markdown headers.
 
@@ -251,6 +260,25 @@ Parallel batch results MUST go in **single** user message. Splitting trains mode
 ```
 
 No text before tool_results; every `tool_use` needs matching `tool_result`; collect all before next message.
+
+### Batch Operations (Script Threshold)
+
+>5 homogeneous ops (rename 10 files, patch 8 agents, update 12 configs) → write script, execute in one Bash call. <=5 ops OR heterogeneous → parallel tool calls.
+
+BAD: 10× individual Read calls for 10 config files
+GOOD: one Bash `for f in configs/*.yaml; do cat "$f"; done`
+
+Threshold = IDENTICAL operations. Mixed read+write+grep = parallel tool calls, not script.
+
+### Tool Use Examples (Reduce Misuse)
+
+Include wrong/right examples in agent templates for tool-misuse-prone patterns. Inline examples reduce correction loops more than rule statements alone.
+
+BAD: Read file-a.md → respond → Read file-b.md → respond (2 turns)
+GOOD: Read file-a.md + Read file-b.md → respond once (1 turn)
+
+BAD: Bash `grep -r foo .` (shell grep instead of Grep tool)
+GOOD: Grep tool w/ pattern="foo" (optimized permissions + access)
 
 ### Meta-Tools / Pre-Commands
 

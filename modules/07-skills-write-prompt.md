@@ -155,6 +155,34 @@ when the output would look incomplete without them.
 - With web access: add `WebSearch, WebFetch`
 - Minimal: only list tools the agent actually needs
 
+### Parallel Tool Call Batching
+
+Every prompt w/ 2+ tools MUST include `<use_parallel_tool_calls>` block.
+
+**Full block** (agents, complex multi-step prompts):
+```xml
+<use_parallel_tool_calls>
+Invoke all independent tool calls simultaneously, not sequentially.
+- Multiple Reads → batch in one message
+- Multiple Greps → batch in one message
+- Multiple WebSearches → batch in one message
+- Read-only tools (Glob, Grep, Read) → ALWAYS parallel
+NEVER: Read A → respond → Read B → respond. INSTEAD: Read A + B → respond.
+</use_parallel_tool_calls>
+```
+
+**Compact form** (simpler prompts, CI, cron):
+```xml
+<use_parallel_tool_calls>true</use_parallel_tool_calls>
+Batch all independent tool calls into one message.
+```
+
+**Decision rule:** full block → multi-step workflows, nuanced batching rules; compact → brief prompts, single instruction sufficient.
+
+**Scope:** agents, orchestrator skills, CI prompts, cron prompts — any multi-tool prompt.
+
+See `techniques/agent-design.md` § Tool Call Batching Instruction for canonical wording.
+
 ### Invocation Quality
 
 Subagents can't ask for clarification. Every dispatch must include:
@@ -197,6 +225,7 @@ Before writing any generated skill/agent/rule file:
 6. **Match effort** — don't use opus for a simple search
 7. **Token-efficient** — compress Claude-facing content; keep user-facing readable
 8. **Compress-before-save** — ALL generated Claude-facing content MUST pass Output Verification
+9. **Batch tool calls** — include `<use_parallel_tool_calls>` in every multi-tool prompt
 ```
 
 ## Checkpoint
