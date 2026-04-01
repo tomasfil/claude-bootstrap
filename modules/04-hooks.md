@@ -195,12 +195,15 @@ PreToolUse hook — blocks dangerous git operations.
 set -euo pipefail
 
 INPUT=$(cat)
-TOOL=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_name")
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
+SCRIPT_DIR="$PROJECT_DIR/.claude/scripts"
+
+TOOL=$(echo "$INPUT" | bash "$SCRIPT_DIR/json-val.sh" "tool_name")
 
 # Only check Bash tool calls
 [ "$TOOL" != "Bash" ] && exit 0
 
-CMD=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_input.command")
+CMD=$(echo "$INPUT" | bash "$SCRIPT_DIR/json-val.sh" "tool_input.command")
 
 # Allow companion repo operations (sync-config.sh push/pull operates on ~/.claude-configs/)
 if echo "$CMD" | grep -qE 'sync-config\.sh|claude-configs'; then
@@ -252,8 +255,11 @@ SubagentStop hook — logs agent usage for /reflect analysis.
 set -euo pipefail
 
 INPUT=$(cat)
-AGENT_TYPE=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "agent_type")
-AGENT_ID=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "agent_id")
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
+SCRIPT_DIR="$PROJECT_DIR/.claude/scripts"
+
+AGENT_TYPE=$(echo "$INPUT" | bash "$SCRIPT_DIR/json-val.sh" "agent_type")
+AGENT_ID=$(echo "$INPUT" | bash "$SCRIPT_DIR/json-val.sh" "agent_id")
 
 mkdir -p .learnings
 
@@ -501,7 +507,10 @@ Create `.claude/hooks/observe.sh`:
 set -euo pipefail
 
 INPUT=$(cat)
-TOOL=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_name" 2>/dev/null || echo "unknown")
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
+SCRIPT_DIR="$PROJECT_DIR/.claude/scripts"
+
+TOOL=$(echo "$INPUT" | bash "$SCRIPT_DIR/json-val.sh" "tool_name" 2>/dev/null || echo "unknown")
 
 # Only observe write-type tools
 [[ "$TOOL" != "Edit" && "$TOOL" != "Write" && "$TOOL" != "Bash" ]] && exit 0
@@ -516,14 +525,14 @@ fi
 
 # Extract tool-specific fields
 if [[ "$TOOL" == "Bash" ]]; then
-  CMD=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_input.command" 2>/dev/null || echo "")
+  CMD=$(echo "$INPUT" | bash "$SCRIPT_DIR/json-val.sh" "tool_input.command" 2>/dev/null || echo "")
   # Skip low-signal read-only commands
   [[ "$CMD" =~ ^(ls|cat|pwd|echo|head|tail|wc|which|type|file)( |$) ]] && exit 0
   # Truncate long commands to 200 chars
   CMD="${CMD:0:200}"
   echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"tool\":\"$TOOL\",\"cmd\":\"$CMD\"}" >> "$OBS_FILE"
 else
-  FILE=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_input.file_path" 2>/dev/null || echo "")
+  FILE=$(echo "$INPUT" | bash "$SCRIPT_DIR/json-val.sh" "tool_input.file_path" 2>/dev/null || echo "")
   echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"tool\":\"$TOOL\",\"file\":\"$FILE\"}" >> "$OBS_FILE"
 fi
 
@@ -571,6 +580,8 @@ Create `.claude/hooks/log-failures.sh`:
 set -euo pipefail
 
 INPUT=$(cat)
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
+SCRIPT_DIR="$PROJECT_DIR/.claude/scripts"
 
 # Extract fields from PostToolUse JSON
 # Try jq first, fall back to json-val.sh
@@ -579,9 +590,9 @@ if command -v jq >/dev/null 2>&1; then
   CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""')
   OUTPUT=$(echo "$INPUT" | jq -r '.tool_response.output // ""')
 else
-  EXIT_CODE=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_response.exit_code")
-  CMD=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_input.command")
-  OUTPUT=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_response.output")
+  EXIT_CODE=$(echo "$INPUT" | bash "$SCRIPT_DIR/json-val.sh" "tool_response.exit_code")
+  CMD=$(echo "$INPUT" | bash "$SCRIPT_DIR/json-val.sh" "tool_input.command")
+  OUTPUT=$(echo "$INPUT" | bash "$SCRIPT_DIR/json-val.sh" "tool_response.output")
 fi
 
 # Only log failures (non-zero exit)
@@ -681,12 +692,15 @@ Create `.claude/hooks/auto-format.sh`:
 set -euo pipefail
 
 INPUT=$(cat)
-TOOL=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_name")
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
+SCRIPT_DIR="$PROJECT_DIR/.claude/scripts"
+
+TOOL=$(echo "$INPUT" | bash "$SCRIPT_DIR/json-val.sh" "tool_name")
 
 # Only format after Edit or Write
 [[ "$TOOL" != "Edit" && "$TOOL" != "Write" ]] && exit 0
 
-FILE=$(echo "$INPUT" | bash .claude/scripts/json-val.sh "tool_input.file_path")
+FILE=$(echo "$INPUT" | bash "$SCRIPT_DIR/json-val.sh" "tool_input.file_path")
 [ -z "$FILE" ] && exit 0
 
 # Format based on extension
