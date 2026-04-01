@@ -24,8 +24,8 @@ breaking: false
 
 | Action | Path | Summary |
 |--------|------|---------|
-| modify | `techniques/prompt-engineering.md` | Sync: adds Batch Operations section with parallel tool call patterns |
-| modify | `techniques/agent-design.md` | Sync: adds `<use_parallel_tool_calls>` block and compact form guidance |
+| modify | `.claude/references/techniques/prompt-engineering.md` | Sync: adds Batch Operations section with parallel tool call patterns |
+| modify | `.claude/references/techniques/agent-design.md` | Sync: adds `<use_parallel_tool_calls>` block and compact form guidance |
 
 ---
 
@@ -33,22 +33,22 @@ breaking: false
 
 ### Step 1 — Fetch updated techniques
 
-Fetch both updated technique files from the bootstrap repo:
+Fetch both updated technique files from the bootstrap repo into the project's technique reference directory:
 
 ```bash
+mkdir -p .claude/references/techniques
+
 gh api repos/tomasfil/claude-bootstrap/contents/techniques/prompt-engineering.md \
-  --jq '.content' | base64 -d > techniques/prompt-engineering.md
+  --jq '.content' | base64 -d > .claude/references/techniques/prompt-engineering.md
 
 gh api repos/tomasfil/claude-bootstrap/contents/techniques/agent-design.md \
-  --jq '.content' | base64 -d > techniques/agent-design.md
+  --jq '.content' | base64 -d > .claude/references/techniques/agent-design.md
 ```
-
-If `techniques/` directory does not exist, create it first.
 
 ### Step 2 — Verify content
 
-1. Confirm `techniques/prompt-engineering.md` contains a "Batch Operations" or "Parallel Tool Calls" section
-2. Confirm `techniques/agent-design.md` contains `use_parallel_tool_calls`
+1. Confirm `.claude/references/techniques/prompt-engineering.md` contains a "Batch Operations" or "Parallel Tool Calls" section
+2. Confirm `.claude/references/techniques/agent-design.md` contains `use_parallel_tool_calls`
 
 ### Step 3 — Wire + sync
 
@@ -62,15 +62,15 @@ If `techniques/` directory does not exist, create it first.
 
 ```bash
 # Both technique files must exist and contain the new content
-grep -q "parallel_tool_calls\|Batch Operations\|Parallel Tool" techniques/prompt-engineering.md \
+grep -q "parallel_tool_calls\|Batch Operations\|Parallel Tool" .claude/references/techniques/prompt-engineering.md \
   && echo "OK: prompt-engineering" || echo "MISSING: prompt-engineering parallel section"
 
-grep -q "use_parallel_tool_calls" techniques/agent-design.md \
+grep -q "use_parallel_tool_calls" .claude/references/techniques/agent-design.md \
   && echo "OK: agent-design" || echo "MISSING: agent-design parallel tag"
 ```
 
-- [ ] `techniques/prompt-engineering.md` contains parallel tool call patterns
-- [ ] `techniques/agent-design.md` contains `use_parallel_tool_calls` guidance
+- [ ] `.claude/references/techniques/prompt-engineering.md` contains parallel tool call patterns
+- [ ] `.claude/references/techniques/agent-design.md` contains `use_parallel_tool_calls` guidance
 - [ ] No broken cross-references in technique files
 
 ---
