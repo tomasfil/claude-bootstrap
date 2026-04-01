@@ -99,6 +99,8 @@ effort: medium
 | `permissionMode` | N | `default` `acceptEdits` `dontAsk` `plan` |
 | `background` | N | **Do not use** — see Foreground-Only |
 | `hooks` / `mcpServers` | N | Lifecycle hooks; MCP servers |
+| `scope` | N | Comma-separated framework/concern list; used by orchestrators for sub-specialist routing |
+| `parent` | N | Name of parent agent this sub-specialist was split from; prevents re-splitting |
 
 **Skill authoring** (Anthropic docs): description third-person max 1024 chars; body <500 lines (split to `references/`); refs one level deep; TOC for >100-line files; project-specific only ("would Claude get this wrong?"); match freedom to fragility; validate→fix→repeat loops; test 3+ scenarios before writing docs
 
@@ -107,6 +109,7 @@ effort: medium
 | Agent | Model | Agent | Model |
 |-------|-------|-------|-------|
 | code-writer-{lang} | opus | plan-writer | sonnet |
+| code-writer-{lang}-{fw} | opus | | |
 | test-writer | opus | researcher | sonnet |
 | project-code-reviewer | opus | consistency-checker | sonnet |
 | debugger | opus | verifier | sonnet |

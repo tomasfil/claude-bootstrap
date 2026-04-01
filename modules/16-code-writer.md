@@ -246,6 +246,8 @@ model: opus
 effort: medium
 maxTurns: 30
 color: blue
+scope: "{comma-separated framework/concern areas this agent covers — e.g., 'Blazor components, Razor pages, JS interop'}"
+parent: ""
 ---
 
 REQUIRED SECTIONS (populate every section with project-specific content):
@@ -318,6 +320,8 @@ model: opus
 effort: high
 maxTurns: 30
 color: green
+scope: "{comma-separated test concern areas — e.g., 'unit tests, xUnit, NSubstitute, isolated service tests'}"
+parent: ""
 ---
 
 REQUIRED SECTIONS (populate every section with project-specific content):
@@ -417,6 +421,12 @@ paths: "src/**"
 ### Content Sections
 
 1. **Feature Analysis** — Decision tree: what kind of feature? What layers affected?
+1a. **Agent Discovery** — Before every dispatch:
+    1. Glob `.claude/agents/code-writer-*.md` → build agent inventory
+    2. For each agent, read frontmatter `scope` field (if present)
+    3. Match request against scope: exact match → sub-specialist; language match only → parent `code-writer-{lang}`; no match → main thread fallback
+    4. Read `references/capability-index.md` for gap awareness
+    Sub-specialists (created by `/evolve-agents`) have `scope` + `parent` frontmatter. Orchestrator MUST prefer scope-matched sub-specialist over parent.
 2. **Pipeline Trace Lookup** — Read `references/pipeline-traces.md` for the feature type
 3. **File Change Map** — List every file that needs to change, in order
 4. **Specialist Dispatch** — Step 4 MUST read: "MUST dispatch the appropriate code-writer-{lang} agent — do not perform this work inline". Exception: if no code-writer-* agents exist, include fallback clause allowing main-thread execution.

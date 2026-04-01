@@ -90,7 +90,7 @@ No mode detection needed. Run the bootstrap any time — it brings everything to
 - [ ] Module 07: `/write-prompt` skill created
 - [ ] Module 08: `CLAUDE.local.md` created, .gitignore updated
 - [ ] Module 09: Scoped CLAUDE.md files (only if needed — skip is valid)
-- [ ] Module 10: `.claude/agents/` with 8 base agents (quick-check, researcher, plan-writer, debugger, verifier, reflector, consistency-checker, tdd-runner)
+- [ ] Module 10: `.claude/agents/` with 9 base agents (quick-check, researcher, plan-writer, debugger, verifier, reflector, consistency-checker, tdd-runner + code-writer-markdown)
 - [ ] Module 11: `.learnings/` initialized (log, instincts, patterns, decisions, environment, tracking)
 - [ ] Module 12: MCP servers + external plugin recommendations (connectors only)
 - [ ] Module 13: Plugin replacement skills generated (replaces superpowers, feature-dev, etc.) + `/migrate-bootstrap` + `/consolidate` skills
@@ -98,6 +98,7 @@ No mode detection needed. Run the bootstrap any time — it brings everything to
 - [ ] Module 15: Companion repo sync (only if git_strategy == "companion")
 - [ ] Module 16: Code writer + test writer agents generated (per-language specialists, coverage skills, persistent reference artifacts)
 - [ ] Module 17: Code reviewer enhanced (deep project-specific review with pipeline trace checks and per-language knowledge)
+- [ ] Module 18: `/evolve-agents` skill for framework sub-specialist creation + audit
 
 ---
 
@@ -152,6 +153,7 @@ Read and execute each module file in order. Each module is self-contained with f
 **Code generation agents (require web research — these take longer):**
 16. Read and execute `modules/16-code-writer.md` — code writer orchestrator + language specialists
 17. Read and execute `modules/17-code-reviewer.md` — deep project-specific code reviewer
+18. Read and execute `modules/18-evolve-agents.md` — /evolve-agents skill for sub-specialist creation + audit
 
 ---
 

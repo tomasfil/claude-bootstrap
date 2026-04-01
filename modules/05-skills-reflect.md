@@ -48,6 +48,13 @@ Dispatch `reflector` agent w/ paths:
 - `CLAUDE.md` — rules + conventions
 - `.claude/rules/` — standards
 - `.claude/agents/` — agents + descriptions
+- For each `code-writer-*` + `test-writer-*` agent: check evolution heuristics:
+  1. Line count (`wc -l`) — >500 = evolution candidate
+  2. Classification tree branches — 3+ top-level framework branches = candidate
+  3. Framework-specific corrections in `.learnings/log.md` — 3+ for same framework = candidate
+  4. Dispatch count from `.learnings/agent-usage.log` — 10+ dispatches = mature enough for split
+  5. Sub-specialists (agents w/ `parent` field): check version drift — compare project manifest versions against agent's Role+Stack section
+  6. Sub-specialist research staleness — reference files older than 90 days
 - `.claude/references/techniques/INDEX.md` — read index → pick relevant techniques for evaluating proposals
 - User memory: `~/.claude/projects/` (project-specific MEMORY.md)
 
@@ -67,6 +74,12 @@ Group proposed changes by category:
 - [ ] Create agent: {name} — triggered by {pattern} appearing {N} times
 - [ ] Retire agent: {name} — unused in last {N} sessions
 - [ ] Improve agent: {name} — {what to change}
+
+**Agent evolution candidates** (detect only — user runs /evolve-agents):
+- [ ] Evolve: {name} — {reason: >500 lines | 3+ framework branches | 3+ corrections | 10+ dispatches}
+      → Recommend: run `/evolve-agents` to split into framework sub-specialists
+- [ ] Update: {name} — {reason: version drift | research >90 days stale | 3+ new corrections}
+      → Recommend: run `/evolve-agents` to refresh research + update agent
 
 **CLAUDE.md changes:**
 - [ ] Add gotcha: {gotcha}
@@ -108,6 +121,8 @@ Print summary:
 - Single-occurrence corrections → DO NOT promote to rules; require 2+ similar entries
 - Agent usage data may be empty if SubagentStop hook unwired — check first
 - Routing hook in settings.json must update when creating new skills | agents
+- Reflect proposes agent evolution/updates — NEVER auto-splits or auto-updates; user must run `/evolve-agents`
+- Sub-specialist version drift: compare framework versions in project manifests (*.csproj, package.json, pyproject.toml) against agent's embedded Role+Stack section
 
 ### Anti-Hallucination
 - READ before modifying — verify `.learnings/log.md` entries exist before marking promoted | dismissed
