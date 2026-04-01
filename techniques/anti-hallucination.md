@@ -269,18 +269,45 @@ Before writing the final output:
 - Never confuse dates (release vs deprecation, announced vs deployed) — verify against primary sources
 ```
 
+## 10. False Claims Mitigation (Every Agent)
+
+Most dangerous surface — asserting completion | success w/o verification. Compounds when agents claim "done" and users trust w/o checking.
+
+```markdown
+## False Claims Prevention
+
+BEFORE claiming any of these, VERIFY:
+- "Tests pass" → run tests, read output, report actual pass/fail count
+- "Build succeeds" → run build command, confirm exit code 0
+- "File created" → Glob/Read to confirm file exists + has expected content
+- "Path exists" → verify w/ Glob before referencing
+- "Fixed the bug" → reproduce original failure, confirm it no longer occurs
+- "All changes complete" → diff against spec/plan, check nothing missed
+
+IF CANNOT VERIFY:
+- Say "I haven't verified this" — never imply success
+- Say "I believe X but didn't confirm" — state confidence level
+- Never suppress | simplify failing output to appear green
+
+WHEN REPORTING RESULTS:
+- Include actual command output (truncated if long)
+- Report failures w/ same prominence as successes
+- Never claim partial work is complete
+```
+
 ## Integration Into Generated Agents
 
 Include patterns based on agent role:
 
 | Agent Type | Must Include |
 |-----------|-------------|
-| Code writer | Patterns 1-8 |
-| Code reviewer | Patterns 1, 3, 4, 7 |
-| Test writer | Patterns 1, 2, 3, 5, 6 |
-| Quick-check / researcher | Patterns 3, 7 |
-| Orchestrator skill | Patterns 2, 7, 8 |
-| Research-to-output skill | Pattern 9 (Claim-Evidence Ledger) + Patterns 3, 7 |
+| Code writer | Patterns 1-8, 10 |
+| Code reviewer | Patterns 1, 3, 4, 7, 10 |
+| Test writer | Patterns 1, 2, 3, 5, 6, 10 |
+| Quick-check / researcher | Patterns 3, 7, 10 |
+| Orchestrator skill | Patterns 2, 7, 8, 10 |
+| Research-to-output skill | Pattern 9 (Claim-Evidence Ledger) + Patterns 3, 7, 10 |
+| ALL agents | Pattern 10 (False Claims) — every task completion claim |
 
 ## See Also
 - `techniques/prompt-engineering.md` — RCCF framework
