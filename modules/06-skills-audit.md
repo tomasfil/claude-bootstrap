@@ -32,16 +32,31 @@ description: >
 ## /audit-file — Source File Audit
 
 ### Input
-The user specifies a file path to audit. If no path given, ask for one.
+File path to audit. If none given, ask.
 
 ### Process
 
-1. **Read the file** in full
-2. **Determine language** from file extension
-3. **Read the matching code standards** from `.claude/rules/code-standards-{lang}.md`
-4. **Read data access rules** from `.claude/rules/data-access.md` (if file touches data layer)
-5. **Use LSP** (if available) to check for type errors, undefined references
-6. **Scan for violations** against all applicable rules
+1. Read file in full
+2. Determine language from extension
+3. Read `.claude/rules/code-standards-{lang}.md`
+4. Read `.claude/rules/data-access.md` (if file touches data layer)
+5. LSP check (if available) → type errors, undefined references
+6. Scan violations against all applicable rules
+
+### Check Categories
+
+#### Code Standards
+- Naming, structure, style per language rules
+- Security + correctness violations
+- Data access patterns (if applicable)
+
+#### Claude-Facing Content (only for .claude/ files)
+When auditing `.claude/agents/`, `.claude/skills/`, `.claude/rules/`:
+- Telegraphic notation: no full-sentence prose (subject-verb-object patterns)
+- RCCF structure: skill/agent bodies should have role/constraints/context/format where applicable
+- No article sentence starters (The/A/An + verb phrase)
+- No filler: "in order to", "please note", "it is important", "your job is"
+- Severity: 🟡 WARNING | Rule: compression/prose
 
 ### Report Format
 
@@ -54,9 +69,9 @@ For each issue found:
 ```
 
 Severity levels:
-- 🔴 **ERROR** — Must fix. Violates a hard rule (security, correctness, data access pattern)
-- 🟡 **WARNING** — Should fix. Violates a convention (naming, structure, style)
-- 🔵 **INFO** — Consider. Opportunity for improvement (performance, clarity)
+- 🔴 **ERROR** — Must fix. Hard rule violation (security, correctness, data access)
+- 🟡 **WARNING** — Should fix. Convention violation (naming, structure, style)
+- 🔵 **INFO** — Consider. Improvement opportunity (performance, clarity)
 
 ### Summary
 ```
@@ -66,9 +81,9 @@ Top issues: {most common violation types}
 ```
 
 ### Anti-Hallucination
-- Only cite rules that EXIST in .claude/rules/ — verify by reading the file
-- Only report line numbers for lines that EXIST — verify by reading the source
-- If unsure about a violation, mark it INFO not ERROR
+- Only cite rules that EXIST in `.claude/rules/` — verify by reading
+- Only report line numbers that EXIST — verify by reading source
+- Unsure about violation → mark INFO not ERROR
 ```
 
 ## 2. /audit-memory Skill
@@ -90,39 +105,37 @@ description: >
 
 ### Process
 
-1. **Read `.learnings/log.md`** — check for:
-   - Entries stuck in `pending review` for too long (suggest /reflect)
-   - Duplicate entries (same learning recorded multiple times)
-   - Entries without proper status tags
-   - Entries that contradict each other
+1. Read `.learnings/log.md` — check:
+   - Entries stuck `pending review` too long → suggest /reflect
+   - Duplicates (same learning recorded ×2+)
+   - Missing status tags; contradicting entries
 
-2. **Read `.learnings/agent-usage.log`** — check for:
-   - Agents that haven't been used in recent sessions
-   - Agents used very frequently (candidates for optimization)
-   - Missing entries (hook might not be working)
+2. Read `.learnings/agent-usage.log` — check:
+   - Unused agents (no recent sessions)
+   - High-frequency agents → optimization candidates
+   - Missing entries → hook may be broken
 
-3. **Read CLAUDE.md** — check for:
-   - Over 120 lines (needs trimming)
-   - Stale conventions or gotchas (verify they still apply)
-   - Missing sections (compare against template from Module 02)
+3. Read `CLAUDE.md` — check:
+   - Over 120 lines → needs trimming
+   - Stale conventions/gotchas (verify still apply)
+   - Missing sections (compare w/ Module 02 template)
 
-4. **Read `.claude/rules/`** — check for:
-   - Files over 40 lines (need splitting)
-   - Rules that contradict each other
-   - Rules that reference files/patterns that no longer exist
+4. Read `.claude/rules/` — check:
+   - Files >40 lines → need splitting
+   - Contradicting rules
+   - References to files/patterns that no longer exist
 
-5. **Read `.claude/agents/`** — check for:
+5. Read `.claude/agents/` — check:
    - Missing YAML frontmatter
-   - Agents without proper tool restrictions
-   - Agents with descriptions that don't match their actual function
+   - Missing tool restrictions
+   - Description/function mismatch
 
-6. **Check auto-memory** (if accessible):
+6. Check auto-memory (if accessible):
    ```bash
    ls ~/.claude/projects/*/memory/ 2>/dev/null | head -20
    ```
-   - Stale memory entries (reference files/functions that no longer exist)
-   - Duplicate memories
-   - Missing type or description in frontmatter
+   - Stale entries referencing removed files/functions
+   - Duplicates; missing type | description in frontmatter
 
 ### Report
 

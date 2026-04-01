@@ -180,6 +180,13 @@ Stays readable: conversation output, commits, PRs, user docs, code comments.
 Impact: 30-50% savings on always-loaded files, compounds across sessions + subagents.
 Exception: code examples + few-shot patterns → keep full fidelity (quality cliff <65%).
 
+### Output Verification (mandatory before saving)
+Before writing any generated skill/agent/rule file:
+1. Scan body for full-sentence prose → rewrite telegraphic
+2. No sentence-starter articles (The/A/An + verb phrase)
+3. No filler: "in order to", "please note", "it is important", "your job is"
+4. If violation found → rewrite compressed BEFORE saving
+
 ### Principles
 
 1. **Explicit > implicit** — don't assume the agent remembers context
@@ -189,6 +196,7 @@ Exception: code examples + few-shot patterns → keep full fidelity (quality cli
 5. **Handle the empty case** — what if there's nothing to do?
 6. **Match effort** — don't use opus for a simple search
 7. **Token-efficient** — compress Claude-facing content; keep user-facing readable
+8. **Compress-before-save** — ALL generated Claude-facing content MUST pass Output Verification
 ```
 
 ## Checkpoint

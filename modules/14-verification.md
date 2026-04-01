@@ -201,6 +201,26 @@ for f in .claude/agents/*.md; do
 done
 ```
 
+### Compression Compliance Check
+
+```bash
+echo "=== Compression Compliance ==="
+PROSE_COUNT=0
+for f in .claude/agents/*.md .claude/skills/*/SKILL.md; do
+  [ -f "$f" ] || continue
+  if grep -Eq '^(You are a|Your job is|This skill|The agent|This agent|Please note|In order to)' "$f"; then
+    echo "🟡 PROSE DETECTED: $f"
+    grep -En '^(You are a|Your job is|This skill|The agent|This agent|Please note|In order to)' "$f"
+    PROSE_COUNT=$((PROSE_COUNT + 1))
+  else
+    echo "✅ Compressed: $f"
+  fi
+done
+echo "Compression: $(($(ls .claude/agents/*.md .claude/skills/*/SKILL.md 2>/dev/null | wc -l) - PROSE_COUNT)) clean, $PROSE_COUNT prose violations"
+```
+
+- [ ] All agent/skill bodies pass compression check (zero prose-indicator matches)
+
 ### Plugin Collision Check
 
 ```bash
@@ -280,6 +300,7 @@ Hooks: {N} hooks (SessionStart, PreToolUse, SubagentStop, UserPromptSubmit, Post
 Rules: {N} rule files
 Plugins: {N} kept (connectors), {N} replaced (methodology)
 Anti-hallucination: {coverage}% of code-writing agents covered
+Compression: {N} clean, {M} prose violations
 Companion repo: {configured / not applicable}
 Git strategy: {track / companion / ephemeral}
 

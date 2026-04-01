@@ -139,17 +139,13 @@ I've analyzed your project. Before I set up the environment, a few questions:
    B) Gitignore + companion repo — persist privately at ~/.claude-configs/ (work projects)
    C) Gitignore + no sync — regenerate from bootstrap when needed (ephemeral)
 
-2. **Coding style:** Explicit (verbose, clear) or Concise (minimal, terse)?
+2. **Auto-format on save?** Yes / No
 
-3. **Communication style:** Direct (blunt, no fluff) or Diplomatic (gentle, explanatory)?
+3. **Block destructive SQL?** (DROP, TRUNCATE, DELETE without WHERE) Yes / No
 
-4. **Auto-format on save?** Yes / No
+4. **Any MCP servers to configure?** (e.g., database, JIRA, Slack — or "none")
 
-5. **Block destructive SQL?** (DROP, TRUNCATE, DELETE without WHERE) Yes / No
-
-6. **Any MCP servers to configure?** (e.g., database, JIRA, Slack — or "none")
-
-7. **Any directories that should be read-only?** (e.g., vendor/, generated/)
+5. **Any directories that should be read-only?** (e.g., vendor/, generated/)
 
 ```
 

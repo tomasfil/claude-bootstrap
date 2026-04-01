@@ -29,22 +29,22 @@ mkdir -p .claude/rules
 
 ## Git
 - {Adapt to project branching strategy: feature branches for team projects, direct main for solo/personal}
-- Every commit must leave the project in a buildable state
-- Use conventional commit messages: type(scope): description
-- Never force push to shared branches
+- Every commit → buildable state
+- Conventional commits: type(scope): description
+- Never force push shared branches
 
 ## Code Quality
-- No dead code — delete it, don't comment it out
-- No TODO without a linked issue
-- Use English for all code, comments, and documentation
+- No dead code — delete, never comment out
+- No TODO w/o linked issue
+- English for all code, comments, docs
 - Follow existing patterns before inventing new ones
-- When adding functionality, check if similar code already exists — extend, don't duplicate
+- Check for existing similar code before adding — extend, don't duplicate
 
 ## Process
-- Read before write — always understand existing code before modifying
-- Run the relevant test after every change
-- After 2 failed fix attempts, search the web for known solutions
-- Log corrections to .learnings/log.md before continuing
+- READ_BEFORE_WRITE: understand existing code before modifying
+- Run relevant test after every change
+- After 2 failed fix attempts → search web for known solutions
+- Log corrections → .learnings/log.md before continuing
 ```
 
 ### 2. `code-standards-{lang}.md` (one per detected language)
@@ -61,30 +61,30 @@ Template — adapt to the detected language's idioms:
 - Classes: PascalCase
 - Methods: PascalCase, verb-noun (GetUser, ValidateInput)
 - Variables: camelCase
-- Constants: PascalCase or UPPER_SNAKE_CASE
+- Constants: PascalCase | UPPER_SNAKE_CASE
 - Booleans: is/has/should/can prefix (IsReady, HasPermission)
 - Async methods: Async suffix (GetUserAsync)
 - Files: match class name
 
 ## Structure
-- Max function length: 50 lines — split if longer
-- Guard clauses / early returns over nested if-else
-- File-scoped namespaces (C#) / single export per file (TS) / etc.
+- Max function: 50 lines — split if longer
+- Guard clauses + early returns over nested if-else
+- File-scoped namespaces (C#) | single export per file (TS) | etc.
 - One class/component per file
 
 ## Error Handling
-- {Project's pattern: ErrorOr<T> / Result<T> / exceptions / HTTP status}
-- Never swallow exceptions — always log with context
-- Fail loudly — throw/return error instead of silent fallbacks
+- {Project's pattern: ErrorOr<T> | Result<T> | exceptions | HTTP status}
+- Never swallow exceptions — always log w/ context
+- Fail loudly — throw/return error, never silent fallback
 
 ## Constants
-- No magic numbers or strings — extract to named constants
+- No magic numbers | strings — extract to named constants
 - Group related constants in dedicated files/classes
 
 ## Comments
-- Comments explain WHY, not WHAT
-- No redundant comments (don't comment `// get the user` above `GetUser()`)
-- Use XML docs / JSDoc / docstrings only for public APIs
+- Comments: WHY only; if needs WHAT comment → refactor code instead
+- No redundant comments (`// get the user` above `GetUser()`)
+- XML docs | JSDoc | docstrings: public APIs only
 
 ## Style
 {Start mostly empty — populated from real corrections via /reflect}
@@ -93,12 +93,12 @@ Template — adapt to the detected language's idioms:
 {- Prefer pattern matching with is / switch expressions}
 
 ## Verification (Anti-Hallucination)
-- ALWAYS read existing files before modifying or creating similar ones
-- NEVER assume an API/method/type exists — verify via LSP hover or Grep
+- ALWAYS read existing files before modifying | creating similar ones
+- NEVER assume API/method/type exists — verify via LSP hover | Grep
 - NEVER fabricate import paths — check actual namespace/module structure
-- After writing code, run build: `{build_command}`
-- If LSP available, use hover to confirm types are correct
-- If unsure whether something exists, say so rather than guessing
+- After writing code → run build: `{build_command}`
+- LSP available → hover to confirm types correct
+- Unsure if something exists → say so, never guess
 ```
 
 ### 3. `data-access.md` (conditional — if ORM detected)
@@ -111,29 +111,29 @@ Only create if EF Core, Prisma, SQLAlchemy, TypeORM, or similar detected.
 ## {ORM Name} Patterns
 {Extract from project analysis — e.g. for EF Core:}
 - Never inject DbContext directly — use IDataService<Context>
-- Always use .AsNoTracking() on read-only queries
-- Use .Select() projections when full entities aren't needed
+- Always .AsNoTracking() on read-only queries
+- .Select() projections when full entities aren't needed
 - Always parameterize queries — never string-interpolate SQL
-- Extract configurations to separate IEntityTypeConfiguration<T> classes
-- Owned entities (OwnsMany/OwnsOne) still need .AsNoTracking() even in projections
+- Extract configs → separate IEntityTypeConfiguration<T> classes
+- Owned entities (OwnsMany/OwnsOne): still need .AsNoTracking() even in projections
 
 ## Migrations
-- Always review generated migration code before committing
-- Use descriptive migration names: Add{Entity}, Add{Field}To{Entity}
-- Migration command: `{migration_command}`
+- Review generated migration code before committing
+- Descriptive names: Add{Entity}, Add{Field}To{Entity}
+- Command: `{migration_command}`
 
 ## Repository Patterns
 {Extract from project — e.g.:}
-- InsertAsync() for new entities
-- DeleteSoftAsync() for soft deletes (never hard delete)
-- WhereAsQueryable() for filtered queries
-- FirstOrDefaultAsync() for single entity lookup
-- ExistsAsync() for existence checks
+- InsertAsync() → new entities
+- DeleteSoftAsync() → soft deletes (never hard delete)
+- WhereAsQueryable() → filtered queries
+- FirstOrDefaultAsync() → single entity lookup
+- ExistsAsync() → existence checks
 
 ## Transactions
 {Extract from project — e.g.:}
-- TransactionMiddleware wraps HTTP requests — don't create manual transactions in endpoints
-- For multi-operation services, call SaveChangesAsync() once at the end
+- TransactionMiddleware wraps HTTP requests — no manual transactions in endpoints
+- Multi-operation services → SaveChangesAsync() once at end
 ```
 
 ### 4. `lsp-guidance.md` (conditional — only if LSP plugins detected or recommended)
@@ -151,33 +151,33 @@ For EACH detected language with an LSP plugin, add a section:
 # LSP Guidance
 
 ## When to Use LSP vs Grep
-- Use LSP goToDefinition for: navigating to type/method definitions (precise, type-aware)
-- Use LSP findReferences for: finding all usages of a symbol (complete, not pattern-based)
-- Use LSP hover for: checking type information after writing code (verification)
-- Use Grep for: searching across file content, finding patterns, broad text search
-- Default to LSP when available — it understands semantics, Grep only sees text
+- goToDefinition → navigate to type/method/property definitions (precise, type-aware)
+- findReferences → all usages of symbol (complete, not pattern-based)
+- hover → check type info after writing code (verification)
+- Grep → search file content, patterns, broad text search
+- Default: LSP when available (semantics) > Grep (text only)
 
 ## {Language} ({lsp-plugin-name})
 ### Workspace Requirements
 {e.g., for C#: .sln file must be in workspace root for OmniSharp to index properly}
 
 ### Effective Operations
-- goToDefinition: Navigate to class/method/property definitions
-- findReferences: Find all usages of a symbol across the solution
-- hover: Check type information and documentation
-- documentSymbol: List all symbols in a file (classes, methods, properties)
-- workspaceSymbol: Search for symbols across the entire workspace
+- goToDefinition: class/method/property definitions
+- findReferences: all usages across solution
+- hover: type info + documentation
+- documentSymbol: all symbols in file (classes, methods, properties)
+- workspaceSymbol: search symbols across entire workspace
 
 ### Known Limitations
 {e.g., for C#:}
-- .razor.cs code-behind files may show false positive errors — verify with `dotnet build`
-- Large solutions may take 30-60s to index on first load
-- Generic type resolution can be slow for deeply nested generics
+- .razor.cs code-behind → may show false positive errors; verify w/ `dotnet build`
+- Large solutions: ~30-60s to index on first load
+- Deeply nested generics → slow type resolution
 
 ### Tips
-- After writing code, use hover on new type references to verify they resolve
-- Use findReferences before renaming to understand blast radius
-- If LSP seems stale, the workspace may need re-indexing
+- After writing code → hover on new type references to verify resolution
+- Before renaming → findReferences to understand blast radius
+- LSP seems stale → workspace may need re-indexing
 ```
 
 **CRITICAL:** Only include language sections for languages ACTUALLY present in the project. Do not add sections for languages that aren't used.
@@ -193,13 +193,11 @@ find . -name "*.sh" -not -path "./.git/*" -not -path "./.claude/*" 2>/dev/null |
 ```markdown
 # Shell Script Standards
 
-- Always start with `#!/usr/bin/env bash`
-- Always `set -euo pipefail` at the top
-- Quote all variables: "$var" not $var
-- Use `[[ ]]` for conditionals, not `[ ]`
-- Check command existence: `command -v tool >/dev/null 2>&1 || { echo "tool required"; exit 1; }`
-- Use `local` for function variables
-- Prefer `printf` over `echo` for portability
+- Shebang: `#!/usr/bin/env bash`; `set -euo pipefail` at top
+- Quote all variables: `"$var"` not `$var`
+- `[[ ]]` for conditionals, not `[ ]`
+- Check existence: `command -v tool >/dev/null 2>&1 || { echo "tool required"; exit 1; }`
+- `local` for function variables; `printf` over `echo`
 ```
 
 ### 6. `token-efficiency.md` (always create)
@@ -211,30 +209,26 @@ rules, skills, agents, or CLAUDE.md files.
 # Token Efficiency Standards
 
 ## Scope
-- Applies to: CLAUDE.md, .claude/rules/, .claude/skills/, .claude/agents/, memory files
-- Does NOT apply to: conversation output, commit messages, PR descriptions, user-facing docs
+- Applies: CLAUDE.md, .claude/rules/, .claude/skills/, .claude/agents/, memory files
+- NOT: conversation output, commits, PRs, user-facing docs
 
 ## Compression Rules
 - Strip articles (a, an, the), filler, unnecessary prepositions
-- Telegraphic style: `READ_BEFORE_WRITE: modules,techniques` not full sentences
-- Symbols: → (then/results in) | (or) + (and) ~ (approximately) × (times) w/ (with)
-- Key:value + bullets over prose paragraphs
-- Merge related short rules onto single lines w/ `;` separators
+- Telegraphic: `READ_BEFORE_WRITE: modules,techniques` not full sentences
+- Symbols: → (then/results in) | (or) + (and) ~ (approx) × (times) w/ (with)
+- Key:value + bullets over prose; merge short rules w/ `;`
 - YAML/markdown over JSON (11-20% fewer tokens)
-- Abbreviate repeated terms; add legend at top if needed
-- One concept per bullet — but multiple sub-points can share a bullet via `;`
+- Abbreviate repeated terms; legend at top if needed
+- One concept per bullet; multiple sub-points can share via `;`
 
-## What Stays Readable
-- Conversation replies to user
-- Git commit messages + PR descriptions
-- README and user-facing documentation
-- Code comments (explain WHY, still in English)
+## Stays Readable
+- Conversation replies; commit messages + PRs; READMEs; code comments
 
 ## Why
-- CLAUDE.md + rules load every conversation; 30-50% savings compounds across all sessions
-- Skills/agents load on every invocation; savings multiply by usage frequency
-- Claude parses telegraphic notation identically to prose — no quality loss
-- Subagent prompts benefit doubly: smaller parent context + smaller child context
+- CLAUDE.md + rules load every conversation → 30-50% savings compounds across sessions
+- Skills/agents load per invocation → savings × usage frequency
+- Claude parses telegraphic identically to prose — no quality loss
+- Subagents benefit doubly: smaller parent + child context
 ```
 
 ## Copy Technique References

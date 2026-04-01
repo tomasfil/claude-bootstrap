@@ -67,6 +67,8 @@ effort: medium
 ---
 ```
 
+**Generation rule:** Write all generated agent/skill content in compressed telegraphic notation — Claude is the only reader. Strip articles/filler, use symbols (→ | + ~), key:value over sentences. Exception: code examples + few-shot patterns keep full fidelity. See `techniques/prompt-engineering.md` → Token Optimization.
+
 ### Required Sections
 
 #### 1. Role + Project Context

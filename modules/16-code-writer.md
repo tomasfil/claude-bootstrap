@@ -30,7 +30,7 @@ Seven phases (0-6), executed in order:
 1. **Project Analysis** — Deep-read the codebase AND any existing code-writer agents. If `.claude/agents/code-writer-*.md` already exist, read them to extract project-specific knowledge (component types, patterns, gotchas) as input for regeneration. Then detect all languages, classify component types, map architecture layers, trace file co-occurrence patterns, extract conventions
 2. **Web Research** — Search for current best practices per detected language/framework combo (~15-20 searches per language) — architecture, idioms, DI, error handling, performance, security, LSP tools, MCP servers
 3. **Generate Orchestrator** — Create the `/code-write` skill with pipeline traces, layer dependencies, and specialist dispatch logic
-4. **Generate Specialists** — Create per-language agents with 8 required sections, each grounded in research findings and project patterns
+4. **Generate Specialists** — Create per-language agents with 9 required sections, each grounded in research findings and project patterns
 5. **Generate Supporting Files** — Pipeline trace reference, component examples
 6. **Verification** — Validate all outputs against project reality
 
@@ -292,7 +292,7 @@ Files (in order):
 
 Create `.claude/agents/code-writer-{lang}.md` for each detected language.
 
-### Required Sections (all 8)
+### Required Sections (all 9)
 
 Every specialist agent MUST contain these sections, with project-specific content in each:
 
@@ -392,7 +392,16 @@ AFTER writing:
 4. Report: "Build {pass/fail}, {N} tests passed, {M} failed"
 ```
 
-#### Section 8: Project-Specific Knowledge
+#### Section 8: Technique References
+```markdown
+## Technique References
+- `techniques/prompt-engineering.md` → RCCF framework, token optimization, structured outputs
+- `techniques/anti-hallucination.md` → verification patterns, false-claims mitigation
+- `techniques/agent-design.md` → subagent constraints, orchestrator patterns
+Apply applicable patterns when generating | modifying code. These are starting-point knowledge — validate against project state.
+```
+
+#### Section 9: Project-Specific Knowledge
 ```markdown
 ## Gotchas & Internal Knowledge
 
@@ -436,12 +445,13 @@ effort: medium
 ### Checklist
 - [ ] Orchestrator skill has YAML frontmatter (name, description)
 - [ ] Orchestrator references pipeline-traces.md correctly
-- [ ] Each specialist has all 8 sections with project-specific content
+- [ ] Each specialist has all 9 sections with project-specific content
 - [ ] No generic placeholder text — all code examples from actual project
 - [ ] Plugin/LSP/MCP requirements are accurate for each specialist
 - [ ] Pipeline traces match actual project structure
 - [ ] Classification trees cover all detected component types
 - [ ] Anti-hallucination sections present in every specialist
+- [ ] Technique reference section present in every specialist
 - [ ] Build command works (verify by running it)
 - [ ] Skill routing hook lists /code-write
 

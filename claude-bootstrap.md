@@ -42,13 +42,15 @@ MANDATORY RULES — VIOLATIONS CAUSE SETUP FAILURE:
 10. After 2 failed troubleshooting attempts, **search the web** before trying more fixes.
 11. Apply anti-hallucination patterns from `techniques/anti-hallucination.md` to every generated agent.
 12. Apply RCCF framework from `techniques/prompt-engineering.md` to every generated skill/agent.
+13. **TaskCreate per module.** Before executing each module, create a task via TaskCreate. Update to `in_progress` when starting, `completed` when done.
+14. **All Claude-facing generated content** (agent bodies, skill bodies, rule files, specs, plans) MUST use compressed telegraphic notation. Full-sentence prose only in user-facing output.
 
 ANTI-SHORTCUT RULES — do not rationalize around these:
 
-13. **Create the files the module specifies.** If a module says to create `guard-git.sh` as a separate script file, create it as a separate script file. Do NOT inline script logic into settings.json one-liners. Separate files exist for maintainability, readability, and debuggability — a 200-character bash one-liner in JSON is unmaintainable.
-14. **Do not skip the UserPromptSubmit routing hook.** Claude Code's native `user-invocable: true` detection only works when the user types the exact slash command. The routing hook catches natural language ("add a field to X") and nudges toward the right skill. These are complementary, not redundant. Module 14 MUST generate it.
-15. **Do not skip or abbreviate web research in Modules 16-18.** The research phase exists because training data goes stale and projects use specific framework versions. You MUST conduct the searches, print how many you ran and key findings, BEFORE generating agents. "I'll do the research later" or "8 out of 15 is enough" are not acceptable.
-16. **Do not decide a module's output is "not needed".** Every module was designed as part of an integrated system. If you believe something is unnecessary, flag it to the user and let THEM decide — do not skip it silently or with a one-line justification.
+15. **Create the files the module specifies.** If a module says to create `guard-git.sh` as a separate script file, create it as a separate script file. Do NOT inline script logic into settings.json one-liners. Separate files exist for maintainability, readability, and debuggability — a 200-character bash one-liner in JSON is unmaintainable.
+16. **Do not skip the UserPromptSubmit routing hook.** Claude Code's native `user-invocable: true` detection only works when the user types the exact slash command. The routing hook catches natural language ("add a field to X") and nudges toward the right skill. These are complementary, not redundant. Module 14 MUST generate it.
+17. **Do not skip or abbreviate web research in Modules 16-18.** The research phase exists because training data goes stale and projects use specific framework versions. You MUST conduct the searches, print how many you ran and key findings, BEFORE generating agents. "I'll do the research later" or "8 out of 15 is enough" are not acceptable.
+18. **Do not decide a module's output is "not needed".** Every module was designed as part of an integrated system. If you believe something is unnecessary, flag it to the user and let THEM decide — do not skip it silently or with a one-line justification.
 </rules>
 
 ---
@@ -80,7 +82,7 @@ No mode detection needed. Run the bootstrap any time — it brings everything to
 ## Master Checklist
 
 - [ ] Module 01: Project discovered — OS, languages, frameworks, architecture, pipeline traces
-- [ ] Module 02: CLAUDE.md created (<120 lines, self-improvement triggers, compact instructions)
+- [ ] Module 02: CLAUDE.md created (<120 lines, Behavior section, compression directive, self-improvement triggers, compact instructions)
 - [ ] Module 03: `.claude/rules/` created (per-language code standards, anti-hallucination rules); `.claude/references/techniques/` populated
 - [ ] Module 04: `.claude/settings.json` with hooks (skill routing, env detection, git guard, failure logging)
 - [ ] Module 05: `/reflect` skill created (self-improvement engine)
@@ -88,11 +90,11 @@ No mode detection needed. Run the bootstrap any time — it brings everything to
 - [ ] Module 07: `/write-prompt` skill created
 - [ ] Module 08: `CLAUDE.local.md` created, .gitignore updated
 - [ ] Module 09: Scoped CLAUDE.md files (only if needed — skip is valid)
-- [ ] Module 10: `.claude/agents/` with 10 base agents (quick-check, researcher, plan-writer, debugger, verifier, reflector, consistency-checker, tdd-runner, module-writer, project-code-reviewer)
+- [ ] Module 10: `.claude/agents/` with 8 base agents (quick-check, researcher, plan-writer, debugger, verifier, reflector, consistency-checker, tdd-runner)
 - [ ] Module 11: `.learnings/` initialized (log, instincts, patterns, decisions, environment, tracking)
 - [ ] Module 12: MCP servers + external plugin recommendations (connectors only)
 - [ ] Module 13: Plugin replacement skills generated (replaces superpowers, feature-dev, etc.) + `/migrate-bootstrap` + `/consolidate` skills
-- [ ] Module 14: Wiring verification — all checks pass
+- [ ] Module 14: Wiring verification — all checks pass, compression compliance check
 - [ ] Module 15: Companion repo sync (only if git_strategy == "companion")
 - [ ] Module 16: Code writer agents generated (orchestrator skill + per-language specialists)
 - [ ] Module 17: Test writer agent generated (test writer + coverage skills)

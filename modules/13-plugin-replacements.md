@@ -61,18 +61,18 @@ effort: high
 ```markdown
 ## /brainstorm — Design Before Build
 
-1. **Understand the request** — ask clarifying questions one at a time
-2. **Explore project context** — read relevant files, check architecture
-3. **Propose 2-3 approaches** — with trade-offs and your recommendation
-4. **Present design section by section** — get approval after each
-5. **Save design** — write to `.claude/specs/{date}-{topic}.md`
-6. **Transition** — invoke /write-plan to create implementation plan
+1. Clarify request — one question per message, prefer multiple choice
+2. Explore context — read relevant files + architecture
+3. Propose 2-3 approaches w/ trade-offs + recommendation
+4. Present section by section — get approval after each
+5. Save → `.claude/specs/{date}-{topic}.md`
+   Specs → .claude/specs/ MUST use compressed telegraphic notation
+6. Transition → invoke /write-plan
 
 ### Knowledge Base
-Read `.claude/references/techniques/INDEX.md` (if exists) — use it to decide which technique files are relevant. These are starting-point knowledge, not definitive. Skip for tasks unrelated to architecture/prompt-engineering.
+Read `.claude/references/techniques/INDEX.md` (if exists) → decide relevant technique files. Starting-point knowledge, not definitive; skip if unrelated to architecture/prompt-engineering.
 
-DO NOT write any code until the user approves the design.
-Prefer multiple choice questions. One question per message.
+DO NOT write code until user approves design.
 ```
 
 ### 2. /write-plan (replaces superpowers:writing-plans)
@@ -98,12 +98,13 @@ effort: medium
 ```markdown
 ## /write-plan — Implementation Planning
 
-1. **Read the spec** — from `.claude/specs/` or conversation context
-2. **Identify pipeline traces** — read `.claude/skills/code-write/references/pipeline-traces.md` if it exists
-3. **Break into tasks** — each task should be independently completable and verifiable
-4. **Order by dependency** — data layer first, API second, UI last
-5. **Assign verification** — each task has a build/test command to verify completion
-6. **Write plan** — save to `.claude/specs/{date}-{topic}-plan.md`
+1. Read spec from `.claude/specs/` | conversation context
+2. Read `.claude/skills/code-write/references/pipeline-traces.md` if exists
+3. Break into tasks — each independently completable + verifiable
+4. Order by dependency: data → API → UI
+5. Assign verification command per task
+6. Save → `.claude/specs/{date}-{topic}-plan.md`
+   Plans → .claude/specs/ MUST use compressed telegraphic notation
 
 ### Task Format
 ```
@@ -119,9 +120,9 @@ Agent: {which specialist handles this — or "main"}
 ```
 
 ### Anti-Hallucination
-- Verify all referenced files exist before including in the plan
-- Each task must have a concrete verification command
-- Don't plan changes to files you haven't read
+- Verify referenced files exist before including in plan
+- Every task needs concrete verification command
+- Never plan changes to unread files
 ```
 
 ### 3. /execute-plan (replaces superpowers:executing-plans)
@@ -148,35 +149,30 @@ effort: high
 ```markdown
 ## /execute-plan — Plan Execution
 
-1. **Read the plan** — from `.claude/specs/` or ask user for path
-2. **Review with user** — confirm the plan is still correct
-3. **Execute task by task** — in dependency order
-4. **Verify each task** — run the verification command after completing each task
-5. **Checkpoint** — after each task, print status and ask if user wants to continue
-6. **Final verification** — run full build + test suite at the end
-7. **Review** — invoke `/review` on all changed files before suggesting commit. This is mandatory, not optional.
+0. TaskCreate for each task in the plan before starting execution
+1. Read plan from `.claude/specs/` | ask user for path
+2. Confirm plan w/ user — still correct?
+3. Execute task by task in dependency order
+4. Verify each task — run verification command after completion
+5. Checkpoint after each task — print status, ask to continue
+6. Final verification — full build + test suite
+7. Invoke `/review` on all changed files — mandatory, not optional
 
 ### Per-Task Protocol
-- Read-before-write: read all files in the task's file list before starting
-- MUST dispatch the agent specified in each task's `Agent:` field — do not execute tasks inline if an agent is specified
-- Execute steps in order
-- Run verification command
-- If verification fails: fix, retry once, then ask user
-- Mark task complete and move to next
+- Read-before-write: read all files in task's file list first
+- MUST dispatch agent specified in `Agent:` field — never execute inline if agent specified
+- Execute steps in order → run verification → fix + retry once on fail → ask user
+- Mark complete → next task
 
-### If plan needs to change mid-execution:
-- Stop implementing
-- Explain what changed and why
-- Update the plan file
-- Get user approval before continuing
+### Plan Changes Mid-Execution
+Stop → explain change + why → update plan file → get approval before continuing
 
 ### Post-Execution (mandatory)
-After all tasks complete:
-1. Run `/review` on all changed files — do NOT skip this
-2. If review finds issues: fix them before proceeding
-3. Only after review passes, tell the user changes are ready to `/commit`
+1. Run `/review` on all changed files — DO NOT skip
+2. Review finds issues → fix before proceeding
+3. Only after review passes → tell user ready to `/commit`
 
-Never say "ready to commit" without having run /review first.
+NEVER say "ready to commit" without /review first.
 ```
 
 ### 4. /tdd (replaces superpowers:test-driven-development)
@@ -202,24 +198,26 @@ effort: high
 ```markdown
 ## /tdd — Red-Green-Refactor
 
-### RED: Write a failing test
-1. Read existing test files to match conventions (naming, structure, assertions)
-2. Write the test that describes expected behavior
-3. Run it: `{test_single_command}` — confirm it FAILS
-4. If it passes, the test isn't testing new behavior — rethink
+0. TaskCreate per RED-GREEN-REFACTOR cycle before starting
 
-### GREEN: Write minimal code to pass
-1. Read-before-write: understand the codebase context
-2. Write the minimum code to make the test pass
-3. Run the test: `{test_single_command}` — confirm it PASSES
-4. If it fails, fix the implementation (not the test)
+### RED — Failing Test
+1. Read existing tests → match conventions (naming, structure, assertions)
+2. Write test describing expected behavior
+3. Run `{test_single_command}` — must FAIL
+4. Passes → not testing new behavior, rethink
 
-### REFACTOR: Clean up
-1. Look for duplication, unclear names, or overly complex logic
-2. Refactor while keeping tests green
+### GREEN — Minimal Pass
+1. Read-before-write: understand codebase context
+2. Write minimum code to pass test
+3. Run `{test_single_command}` — must PASS
+4. Fails → fix implementation, not test
+
+### REFACTOR — Clean Up
+1. Find duplication, unclear names, excess complexity
+2. Refactor w/ tests green
 3. Run tests after each refactoring step
 
-### Repeat for each behavior/scenario
+Repeat per behavior/scenario.
 ```
 
 ### 5. /debug (replaces superpowers:systematic-debugging)
@@ -245,34 +243,36 @@ effort: high
 ```markdown
 ## /debug — Systematic Investigation
 
+0. TaskCreate per debug phase (Reproduce → Locate → Diagnose → Fix)
+
 ### Phase 1: Reproduce
-1. Understand the symptom — what's expected vs what's happening
-2. Find the minimal reproduction (test, command, input)
-3. Run it and capture the EXACT error output
+1. Identify symptom — expected vs actual behavior
+2. Find minimal reproduction (test | command | input)
+3. Run + capture EXACT error output
 
 ### Phase 2: Locate
-1. Read the error message carefully — what file, line, type of error?
-2. Trace the call stack — goToDefinition / findReferences / Grep
-3. Identify the exact line where behavior diverges from expectation
-4. Read surrounding code to understand context
+1. Read error message — file, line, error type
+2. Trace call stack via goToDefinition / findReferences / Grep
+3. Identify exact divergence point
+4. Read surrounding code for context
 
 ### Phase 3: Diagnose
-1. Why does this line produce the wrong result?
-2. What assumption is violated?
-3. Is it a logic error, data error, environment error, or timing error?
-4. Check `.learnings/log.md` — has this been seen before?
+1. Why does this line produce wrong result?
+2. Which assumption violated?
+3. Classify: logic | data | environment | timing error
+4. Check `.learnings/log.md` — seen before?
 
 ### Phase 4: Fix
-1. Write a test that reproduces the bug (TDD red phase)
-2. Fix the root cause (not a symptom)
-3. Run the test — confirm it passes
-4. Run surrounding tests — confirm nothing else broke
-5. Log the finding to `.learnings/log.md` if it's a pattern
+1. Write test reproducing bug (TDD red phase)
+2. Fix root cause, not symptom
+3. Run test → confirm pass
+4. Run surrounding tests → confirm no regression
+5. Log to `.learnings/log.md` if pattern
 
 ### Anti-Hallucination
-- Do NOT propose a fix before completing Phase 2 (Locate)
-- Do NOT guess at the root cause — trace the actual execution
-- After 2 failed fix attempts, search the web for known issues
+- DO NOT propose fix before Phase 2 (Locate) complete
+- DO NOT guess root cause — trace actual execution
+- After 2 failed fix attempts → search web for known issues
 ```
 
 ### 6. /verify (replaces superpowers:verification-before-completion)
@@ -296,17 +296,17 @@ effort: medium
 ```markdown
 ## /verify — Pre-Completion Checklist
 
-Run ALL of these. Do not claim completion until all pass.
+Run ALL — never claim completion until all pass.
 
-1. **Build**: `{build_command}` — must succeed with zero errors
-2. **Lint**: `{lint_command}` — must pass (if applicable)
-3. **Tests**: `{test_suite_command}` — run at minimum the tests related to changes
-4. **Review changes**: `git diff` — scan for accidental changes, debug code, TODOs
-5. **Check for common issues**:
-   - [ ] No hardcoded secrets or credentials
-   - [ ] No console.log / print statements left in
+1. Build: `{build_command}` — zero errors
+2. Lint: `{lint_command}` — pass (if applicable)
+3. Tests: `{test_suite_command}` — minimum: tests related to changes
+4. `git diff` — scan for accidental changes, debug code, TODOs
+5. Common issues:
+   - [ ] No hardcoded secrets/credentials
+   - [ ] No console.log/print statements
    - [ ] No commented-out code
-   - [ ] All new files follow naming conventions
+   - [ ] New files follow naming conventions
    - [ ] Pipeline trace complete (if multi-layer change)
 
 ### Report
@@ -318,7 +318,7 @@ Tests: {N passed, M failed}
 Issues found: {list or "none"}
 ```
 
-If ANY check fails, fix it before claiming done.
+ANY check fails → fix before claiming done.
 ```
 
 ### 7. /commit (replaces commit-commands)
@@ -342,23 +342,22 @@ effort: medium
 ```markdown
 ## /commit — Project-Aware Commit
 
-> Assumes /review and /verify have already run per CLAUDE.md automation. Do not embed verify/review here.
+> Assumes /review + /verify already ran per CLAUDE.md automation. Do not embed verify/review here.
 
-1. Run `git status` to see what's changed
-2. Run `git diff --staged` and `git diff` to understand changes
-3. Check recent commits: `git log --oneline -5` for message style
-4. Draft commit message following project convention:
-   - Use conventional commits: `type(scope): description`
-   - Types: feat, fix, refactor, test, docs, chore, style
-   - Keep subject < 72 chars
-   - Body explains WHY, not WHAT
-5. Stage relevant files (prefer specific files over `git add .`)
+1. `git status` — see changes
+2. `git diff --staged` + `git diff` — understand changes
+3. `git log --oneline -5` — match message style
+4. Draft message:
+   - Conventional commits: `type(scope): description`
+   - Types: feat | fix | refactor | test | docs | chore | style
+   - Subject < 72 chars; body explains WHY, not WHAT
+5. Stage specific files (not `git add .`)
 6. Create commit
-7. If git_strategy is "companion": export to companion repo
+7. If git_strategy = "companion" → export to companion repo
 
-### Do NOT commit:
-- .env files, credentials, secrets
-- Large binary files
+### DO NOT commit:
+- .env, credentials, secrets
+- Large binaries
 - Unrelated changes (split into separate commits)
 ```
 
@@ -383,13 +382,11 @@ effort: medium
 ```markdown
 ## /pr — Create Pull Request
 
-1. Run `git status` and `git log main..HEAD` to understand all changes
-2. Draft PR:
-   - Title: < 70 chars, describes the change
-   - Body: summary bullets, test plan, any migration notes
-3. Push branch if needed: `git push -u origin {branch}`
-4. Create PR: `gh pr create --title "..." --body "..."`
-5. Return the PR URL
+1. `git status` + `git log main..HEAD` — understand all changes
+2. Draft PR: title < 70 chars; body = summary bullets + test plan + migration notes
+3. Push if needed: `git push -u origin {branch}`
+4. `gh pr create --title "..." --body "..."`
+5. Return PR URL
 
 ### PR Body Template
 ```
@@ -428,15 +425,15 @@ effort: medium
 ```markdown
 ## /review — Request Code Review
 
-1. Run `git diff` to see what's changed
-2. Read `.claude/references/techniques/INDEX.md` (if exists) — use it to decide which technique files are relevant to the review
-3. Dispatch the `project-code-reviewer` agent with:
-   - List of changed files
-   - Summary of what the changes do
-   - Which code standards apply
-   - Relevant technique references (paths from INDEX.md)
-4. Present the review results
-5. If issues found: fix them, then re-review
+1. `git diff` — identify changed files
+2. Read `.claude/references/techniques/INDEX.md` (if exists) → decide relevant technique files
+3. Dispatch `project-code-reviewer` agent w/:
+   - Changed files list + change summary
+   - Applicable code standards
+   - Relevant technique refs (paths from INDEX.md)
+4. Files in `.claude/` (agents/ | skills/ | rules/): flag full-sentence prose, missing RCCF structure, articles/filler. Severity: WARNING
+5. Present review results
+6. Issues found → fix → re-review
 ```
 
 ### 10. /migrate-bootstrap
@@ -466,12 +463,12 @@ effort: medium
 
 Read `.claude/bootstrap-state.json`.
 
-**File exists:** extract `last_migration` + `applied[]`. Continue to Step 2.
+**Exists:** extract `last_migration` + `applied[]` → Step 2.
 
-**File missing — retrofit detection:**
-- Check `.claude/settings.json` exists AND contains `"hooks"`
-- Check `CLAUDE.md` exists AND contains bootstrap fingerprints (any of: "self-improvement", ".learnings/log.md", "Module")
-- BOTH pass → project bootstrapped pre-migration. Create `.claude/bootstrap-state.json`:
+**Missing — retrofit detection:**
+- `.claude/settings.json` exists + contains `"hooks"`
+- `CLAUDE.md` exists + contains fingerprints ("self-improvement" | ".learnings/log.md" | "Module")
+- BOTH pass → pre-migration bootstrap. Create `.claude/bootstrap-state.json`:
 ```json
 {
   "bootstrap_repo": "tomasfil/claude-bootstrap",
@@ -482,7 +479,7 @@ Read `.claude/bootstrap-state.json`.
   ]
 }
 ```
-- Conditions DON'T pass → not bootstrapped. Tell user: "This project has not been bootstrapped yet. Run the full bootstrap first by executing `claude-bootstrap.md`."
+- DON'T pass → not bootstrapped. Tell user: "Run full bootstrap first via `claude-bootstrap.md`."
 
 ### Step 2: Fetch migration index
 
@@ -490,30 +487,30 @@ Read `.claude/bootstrap-state.json`.
 gh api repos/tomasfil/claude-bootstrap/contents/migrations --jq '[.[] | select(.name != "_template.md") | .name] | sort'
 ```
 
-Fallback if `gh` unavailable — WebFetch:
+Fallback (no `gh`):
 ```
 https://api.github.com/repos/tomasfil/claude-bootstrap/contents/migrations
 ```
-Filter out `_template.md`, sort by filename.
+Filter `_template.md`, sort by filename.
 
-### Step 3: Identify pending migrations
+### Step 3: Identify pending
 
-Extract numeric IDs from filenames (e.g., `001_best-practices-and-migrations.md` → `"001"`).
-Filter to IDs > `last_migration`. Sort ascending.
-None pending → print "Already up to date at migration {last_migration}" and STOP.
+Extract numeric IDs from filenames (`001_best-practices-and-migrations.md` → `"001"`).
+Filter IDs > `last_migration`, sort ascending.
+None pending → "Already up to date at migration {last_migration}" → STOP.
 
-### Step 4: Apply each pending migration in order
+### Step 4: Apply each in order
 
-1. **Fetch** migration file: `gh api repos/tomasfil/claude-bootstrap/contents/migrations/{filename} --jq '.content' | base64 -d`
+1. Fetch: `gh api repos/tomasfil/claude-bootstrap/contents/migrations/{filename} --jq '.content' | base64 -d`
    Fallback: `https://raw.githubusercontent.com/tomasfil/claude-bootstrap/main/migrations/{filename}`
-2. **If `breaking: true`** → warn user + STOP. Wait for explicit confirmation.
-3. **Print** `## Changes` summary to user.
-4. **Execute** `## Actions` — read-before-write for all file modifications.
-5. **Run** `## Verify` — any check fails → STOP. Do NOT update state file.
-6. **Update state**: append `{ "id": "{id}", "applied_at": "{timestamp}", "commit": "{base_commit}" }` to `applied[]`, update `last_migration` + `last_applied`.
-7. **Print** `✅ Migration {id} applied — {description}`
+2. `breaking: true` → warn user + STOP, wait for confirmation
+3. Print `## Changes` summary
+4. Execute `## Actions` — read-before-write for all file modifications
+5. Run `## Verify` — any fail → STOP, do NOT update state
+6. Update state: append `{ "id": "{id}", "applied_at": "{timestamp}", "commit": "{base_commit}" }` to `applied[]`, update `last_migration` + `last_applied`
+7. Print `✅ Migration {id} applied — {description}`
 
-### Step 5: Report summary
+### Step 5: Report
 
 ```
 ✅ Migrations complete: applied {N} migrations ({id_list})
@@ -521,10 +518,10 @@ Current state: migration {last_migration}
 ```
 
 ### Gotchas
-- Migrations apply in strict numeric order — never skip
-- Retrofit requires BOTH `.claude/settings.json` w/ hooks AND `CLAUDE.md` w/ fingerprints
-- Migration fails mid-apply → state NOT updated — safe to retry
-- `.claude/bootstrap-state.json` always tracked — never gitignored
+- Strict numeric order — never skip
+- Retrofit requires BOTH settings.json w/ hooks AND CLAUDE.md w/ fingerprints
+- Fail mid-apply → state NOT updated — safe to retry
+- `.claude/bootstrap-state.json` always tracked, never gitignored
 ```
 
 ### 11. /consolidate (learning system maintenance)
@@ -551,46 +548,45 @@ effort: medium
 ```markdown
 ## /consolidate — Learning Consolidation
 
-Dispatch the `reflector` agent for heavy analysis. Main thread applies approved changes.
+Dispatch `reflector` agent for analysis. Main thread applies approved changes.
 
 ### Phase 1: Orient
-Read current state:
-- `.learnings/log.md` — raw corrections and discoveries
+Read:
+- `.learnings/log.md` — raw corrections + discoveries
 - `.learnings/instincts/` — existing instinct files
 - `.learnings/patterns.md` — recurring patterns
 - MEMORY.md — auto-memory index
 
 ### Phase 2: Gather
-Dispatch `reflector` agent with all learnings paths. Agent:
-- Scans for corrections, decisions, recurring themes
-- Clusters entries by domain (code-style, testing, git, debugging, security, architecture, tooling)
-- Identifies entries that should become instincts (2+ similar corrections)
-- Identifies instincts to reinforce (+0.1) or contradict (-0.05)
+Dispatch `reflector` w/ all learnings paths:
+- Scan corrections, decisions, recurring themes
+- Cluster by domain (code-style | testing | git | debugging | security | architecture | tooling)
+- Identify instinct candidates (2+ similar corrections)
+- Identify reinforcements (+0.1) | contradictions (-0.05)
 
 ### Phase 3: Consolidate
-Present reflector's proposals to user:
-- New instincts to create (with initial confidence 0.5)
-- Existing instincts to reinforce or contradict
-- Duplicate entries to merge
-- Contradictions to resolve
+Present proposals to user:
+- New instincts (initial confidence 0.5)
+- Existing instincts to reinforce | contradict
+- Duplicates to merge; contradictions to resolve
 
 Apply approved changes.
 
-### Phase 4: Prune & Promote
-- High-confidence instincts (0.8+) — propose promotion to `.claude/rules/`
-- Low-confidence instincts (<0.3) — archive or remove
+### Phase 4: Prune + Promote
+- Confidence 0.8+ → propose promotion to `.claude/rules/`
+- Confidence <0.3 → archive | remove
 - Clear processed entries from `log.md` (delete after promoting/dismissing)
 - Keep instinct index lean
 
 ### Phase 5: Update Tracking
-- Run `date +%s` and write the output (Unix epoch seconds) to `.learnings/.last-dream`
+- `date +%s` → write to `.learnings/.last-dream`
 - Reset `.learnings/.session-count` to 0
-- Write current entry count (`grep -c '^##\+ [0-9]\{4\}-' .learnings/log.md`) to `.learnings/.last-reflect-lines`
+- Write entry count (`grep -c '^##\+ [0-9]\{4\}-' .learnings/log.md`) → `.learnings/.last-reflect-lines`
 
 ### Anti-Hallucination
-- Only analyze entries that actually exist in the files
-- Don't invent patterns not present in the data
-- Don't create instincts from single occurrences — require 2+ similar entries
+- Only analyze entries that exist in files
+- Never invent patterns not in data
+- Require 2+ similar entries before creating instinct
 ```
 
 ## Checkpoint

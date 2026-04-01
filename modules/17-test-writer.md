@@ -58,6 +58,7 @@ Execute ALL phases below to produce a complete, project-specific test writer age
 9. When documenting a gotcha, include the failure mode (what goes wrong if you don't know this) — not just the rule.
 10. Every code example in the generated agent must compile against the project's actual types and APIs. Do not use hypothetical class names.
 11. The generated agent should be self-contained — an AI reading only that file should be able to write correct tests without additional context beyond the source file under test and LSP.
+12. Write all generated agent/skill content in compressed telegraphic notation — Claude is the only reader. Strip articles/filler, use symbols (→ | + ~), key:value over sentences. Exception: code examples + few-shot patterns keep full fidelity. See `techniques/prompt-engineering.md` → Token Optimization.
 </rules>
 
 ---

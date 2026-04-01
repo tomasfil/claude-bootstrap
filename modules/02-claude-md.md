@@ -56,7 +56,6 @@ Keep total under 120 lines. Cut sections that don't apply.
 
 **IMPORTANT:** This file loads every conversation. Write it in compressed telegraphic notation —
 Claude parses it identically, but at 30-50% fewer tokens. See Token Efficiency Principle above.
-Only the `## Communication` preference and user-facing output need natural prose.
 
 ```markdown
 # {Project Name}
@@ -79,12 +78,12 @@ Only the `## Communication` preference and user-facing output need natural prose
 {Add dev server, migration, or other project-specific commands}
 
 ## Workflow
-- READ_BEFORE_WRITE: always read existing code/patterns before generating
 - Test: single file for changed code, not full suite
 - COMPACT@~70%: proactive, don't wait
 - Commits: {detected convention or "conventional commits"}
 - Complex features → spec first (.claude/specs/), implement second
 - `/code-write` for feature impl (auto-invoked via skill routing)
+- TaskCreate for multi-step work (3+ steps); update status across compaction
 
 ## Conventions
 {3-10 project-specific rules — only non-obvious ones, telegraphic style}
@@ -101,13 +100,6 @@ Only the `## Communication` preference and user-facing output need natural prose
 {- .razor.cs LSP errors → often false positive, verify w/ dotnet build}
 {- OwnsMany/OwnsOne → still needs .AsNoTracking() in projections}
 {- Firebase JWT → email at firebase.identities.email[0], not simple claim}
-
-## Token Efficiency
-- Claude-facing files (CLAUDE.md, rules, skills, agents, memory): compressed telegraphic notation
-- Human-facing output (conversation, commits, PRs, docs): normal readable prose
-- Strip articles/filler; use symbols (→ | + ~); key:value over sentences
-- Merge small rules into single lines w/ `;` separators
-- YAML/markdown over JSON where possible
 
 ## Compact Instructions
 PRESERVE on compaction:
@@ -137,7 +129,16 @@ Auto per-agent (see techniques/agent-design.md):
 - Complex (architecture, refactor): effort=high
 
 ## Communication
-{User preference: "Direct — no fluff, lead with the answer" or "Diplomatic — explain reasoning"}
+Direct — lead w/ answer, no filler. Concise code.
+
+## Behavior
+- READ_BEFORE_WRITE: read existing code/patterns before generating | modifying
+- Verify before done: run build+test before claiming complete; if can't verify, say so
+- No false claims: if tests fail say so; if unverified say so; never fabricate results
+- Collaborator not executor: push back on bad ideas; flag adjacent bugs; use judgment
+- Comments: WHY only; no redundant; no commented-out code
+- Output: lead w/ answer|action; 1 sentence > 3; skip filler/preamble/transitions
+- Claude-facing = compressed telegraphic (specs, plans, skills, agents, rules, memory, learnings, reasoning); human-facing = normal prose (answers, commits, PRs, questions)
 
 ## Self-Improvement
 BEFORE fixing any error or continuing after user correction:
