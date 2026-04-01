@@ -45,6 +45,7 @@ mkdir -p .claude/rules
 - Run relevant test after every change
 - After 2 failed fix attempts → search web for known solutions
 - Log corrections → .learnings/log.md before continuing
+- When plan|skill specifies agent → dispatch it; agent IS the quality layer; never substitute inline work
 ```
 
 ### 2. `code-standards-{lang}.md` (one per detected language)

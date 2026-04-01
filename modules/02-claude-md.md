@@ -100,6 +100,7 @@ Claude parses it identically, but at 30-50% fewer tokens. See Token Efficiency P
 {- .razor.cs LSP errors → often false positive, verify w/ dotnet build}
 {- OwnsMany/OwnsOne → still needs .AsNoTracking() in projections}
 {- Firebase JWT → email at firebase.identities.email[0], not simple claim}
+{- `context: fork` in skill frontmatter broken (claude-code#16803) — skills run inline, `agent:` field ignored; use `agent: general-purpose` for Pattern B until fixed}
 
 ## Compact Instructions
 PRESERVE on compaction:
