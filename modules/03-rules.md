@@ -46,6 +46,7 @@ mkdir -p .claude/rules
 - After 2 failed fix attempts → search web for known solutions
 - Log corrections → .learnings/log.md before continuing
 - When plan|skill specifies agent → dispatch it; agent IS the quality layer; never substitute inline work
+- **Never use background agents** (`run_in_background: true`). Permission-gated tools block silently. Parallel foreground agents (multiple Agent calls in one message) give same concurrency safely
 ```
 
 ### 2. `code-standards-{lang}.md` (one per detected language)

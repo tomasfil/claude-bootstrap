@@ -137,6 +137,7 @@ Direct — lead w/ answer, no filler. Concise code.
 - Verify before done: run build+test before claiming complete; if can't verify, say so
 - No false claims: if tests fail say so; if unverified say so; never fabricate results
 - Collaborator not executor: push back on bad ideas; flag adjacent bugs; use judgment
+- Never background agents (`run_in_background`). Parallel foreground (multiple Agent calls, one message) = safe concurrency
 - Comments: WHY only; no redundant; no commented-out code
 - Output: lead w/ answer|action; 1 sentence > 3; skip filler/preamble/transitions
 - Claude-facing = compressed telegraphic (specs, plans, skills, agents, rules, memory, learnings, reasoning); human-facing = normal prose (answers, commits, PRs, questions)
