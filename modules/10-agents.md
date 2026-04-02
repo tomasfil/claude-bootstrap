@@ -92,7 +92,7 @@ description: >
   Deep codebase exploration and pattern analysis. Use for understanding how
   a feature works, tracing execution paths, analyzing dependencies, or
   investigating unfamiliar code areas. Thorough but slower than quick-check.
-tools: Read, Grep, Glob, LSP, WebSearch
+tools: Read, Grep, Glob, LSP, WebSearch, Bash
 model: opus
 effort: medium
 maxTurns: 30
