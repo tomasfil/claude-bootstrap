@@ -148,7 +148,7 @@ BEFORE fixing any error or continuing after user correction:
 2. THEN proceed with fix/task
 
 Format: telegraphic compressed (log.md is Claude-facing, not human-facing)
-Categories: correction | failure | gotcha | agent-candidate | environment
+Categories: correction | failure | gotcha | agent-candidate | environment | review-finding
 Hook auto-logs Bash failures (exit≠0) → manual log only: corrections, gotchas, agent-candidates
 Recurs this session → update `.claude/rules/` immediately
 2 failed fix attempts → search web

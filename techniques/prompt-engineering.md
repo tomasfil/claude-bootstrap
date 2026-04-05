@@ -440,10 +440,58 @@ Same tool sequence in >50% of runs → composite tool | pre_command. Examples: `
 
 ---
 
+## Modern LLM Guidance (2025-2026) — applies to all major models
+
+Modern instruction-tuned LLMs (Claude 4.x (and modern LLMs), GPT-4/5, Gemini 2.x, Llama 3.x+) trend toward **precise literal instruction following** vs older models. Less "helpful guessing", more explicit-scope requirement.
+
+### LLM-General Rules (Claude, GPT, Gemini, open models)
+1. **Be explicit** — modern models don't infer "helpful" additions; state requirements
+2. **Structural delimiters** for sections — improves attention to boundaries on all models
+3. **Positive framing** for style ("prefer X"); reserve NEVER/DO NOT for safety-critical + front-load
+4. **Literal interpretation** — models take instructions at face value; pair negative rules w/ positive equivalent
+5. **Request behaviors explicitly** vs trusting defaults
+6. **Context-budget awareness** — hint long-running agents about remaining headroom
+7. **Scope locks** for strong models — reduce overengineering tendency on high-capability tiers
+
+### Compression Ranges per File Type (LLM-general, verified across Claude + GPT research)
+| File Type | Safe Range | Source |
+|-----------|-----------|--------|
+| agent definition | 30-50% compression | telegraphic bullets, tokenizer-neutral |
+| skill (procedural) | 40-60% | classification/routing tolerates 5-10× (NAACL 2025) |
+| system prompt | 20-35% max | code-gen cliff <65% retention (arXiv 2503.19114) |
+| always-loaded (CLAUDE.md) | T2_AGGRESSIVE (~50%) | amortizes infinitely |
+
+### Claude-Specific (adjust per target LLM when generating configs)
+| Concern | Claude | Other LLMs |
+|---------|--------|-----------|
+| Section delimiters | XML tags (`<instructions>`, `<context>`) preferred | GPT: markdown headers equivalent; Gemini: either |
+| Instruction placement | user turn > system prompt (Anthropic guidance) | GPT/Gemini: less dependent, system prompt fine |
+| `effort` parameter | Claude 4.5+ Opus only | N/A |
+| Per-model quirks | Haiku=literal, Sonnet=parallel-tools, Opus=overengineers | each family has own quirks — verify per target |
+
+### RCCF Caveat
+RCCF (Role/Context/Constraints/Format) is a **3rd-party synthesis**, not vendor-canonical. It aligns w/ the "be explicit" principle held by all modern LLM vendors. Keep as internal convention. Extension: RCCF-V adds Verification (build/test commands, false-claims prevention).
+
+### Compression Eval Harness (recommended, LLM-agnostic)
+Before shipping a compressed prompt:
+1. Golden prompt set: 10-20 representative tasks
+2. Run both versions (full + compressed) on target LLM
+3. Compare outputs: pass/fail + token count
+4. Ship compressed only if ≥95% pass rate match
+
+Per-target harness — a prompt safe at 40% on Claude may fail on Llama 3.1 7B.
+
+---
+
 ## See Also
 - `techniques/anti-hallucination.md` — verification patterns
-- `techniques/agent-design.md` — agent YAML templates + dispatch patterns
+- `techniques/agent-design.md` — agent YAML templates + dispatch patterns + inter-agent handoff formats
+- `techniques/token-efficiency.md` — compression tiers, per-role retention floors, protected content passthrough
 
 ## Sources
-- RCCF Framework: Internal — Role, Context, Constraints, Format
+- RCCF Framework: 3rd-party synthesis (promptbestie.com, sterlingchin) — NOT Anthropic canon
+- Claude 4.x best practices: docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/claude-4-best-practices
+- XML tags: docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags
+- Compression cliffs: arXiv 2503.19114 (Information Preservation), NAACL 2025 (Li et al.)
+- LLMLingua-2: arXiv 2403.12968; CompactPrompt: arXiv 2510.18043
 - Structured outputs, context caching, taxonomy, few-shot, front-loading: General patterns

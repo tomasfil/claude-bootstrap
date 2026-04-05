@@ -10,6 +10,8 @@
 | `prompt-engineering.md` | RCCF framework, structured outputs, classification trees, few-shot patterns, context caching, token optimization, scope locks, verify-and-fix | Writing skills, agents, prompts; optimizing token usage |
 | `anti-hallucination.md` | Read-before-write, CoVe, negative instructions, LSP verification, build verification, package detection, claim-evidence ledger | Building any code-writing agent; research-to-output skills |
 | `agent-design.md` | Subagent constraints, orchestrator-as-skill, YAML templates, tool restrictions, invocation quality, turn efficiency, tool call batching, search batching | Designing agents, dispatching subagents, pipeline architecture |
+| `token-efficiency.md` | Compression tiers, retention floors per agent role, protected regions, algorithmic tools, turn reduction rules | Optimizing token usage; designing inter-agent handoffs; writing always-loaded config |
+| `glyph-notation.md` | Symbol legend, compression rules + tiers, per-role retention floors, protected regions, handoff schema, file-type ranges | Reference for compressed notation; authoring Claude-facing files; validating glyph content |
 
 ## Canonical Ownership (deduplication)
 
@@ -22,3 +24,6 @@ Shared concepts live in ONE file; the other cross-references it:
 | Tool call batching | agent-design.md |
 | Search batching | agent-design.md |
 | Pre-computed context | agent-design.md |
+| Compression tiers | token-efficiency.md |
+| Glyph symbol legend | glyph-notation.md |
+| Handoff schema | agent-design.md |

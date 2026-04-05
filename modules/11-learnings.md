@@ -63,6 +63,7 @@ Domain: {tag1} | {tag2}
 - gotcha — non-obvious behavior
 - agent-candidate — task needing dedicated agent
 - environment — OS/tool/platform discovery
+- review-finding — code review identified systematic issue; tag format: agent:{specialist-name}
 
 ---
 

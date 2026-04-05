@@ -61,7 +61,7 @@ description: >
   Deep code review with project-specific knowledge. Use after writing code,
   before committing, or when asked to review. Knows architecture layers,
   pipeline traces, security patterns, and common project bugs.
-tools: Read, Grep, Glob, LSP
+tools: Read, Grep, Glob, LSP, Edit
 model: opus
 # Model is fixed based on task complexity. Override in CLAUDE.local.md if needed.
 effort: medium
@@ -183,6 +183,24 @@ Build a checklist based on the project's component classification:
 ### Verdict: {APPROVE / REQUEST CHANGES}
 ```
 
+#### 7b. Log-Ready Finding Schema
+
+For each MUST FIX or SHOULD FIX finding that is systematic (recurring pattern or missing rule, not a one-off typo), produce a log entry:
+
+```
+### {YYYY-MM-DD} — review-finding: {concise pattern name}
+Status: pending review
+Agent: {agent-name-that-produced-the-code}
+Pattern: {compressed — what rule was violated}
+Evidence: {file}:{line} — {one-line description}
+Domain: {code-style | security | architecture | testing | tooling}
+```
+
+Rules:
+- One entry per finding pattern per review — not one per occurrence
+- `Agent:` must name the specialist that wrote the code; use `agent:unknown` if not determinable
+- Systematic = recurring pattern or missing rule; one-off typos and trivial naming do NOT qualify
+
 #### 8. Anti-Hallucination
 ```markdown
 - Only cite rules that EXIST in .claude/rules/ — read them first
@@ -210,6 +228,20 @@ After all specialist agents finish:
 
 Set `agent: project-code-reviewer` in `.claude/skills/review/SKILL.md` YAML frontmatter. This routes /review directly to the enhanced reviewer — no body dispatch logic needed.
 
+## Phase 6 — Emit Findings to Learnings
+
+After producing the report, append systematic findings to `.learnings/log.md`.
+
+1. Check `.learnings/log.md` exists — if missing, skip Phase 6 entirely
+2. Read `.learnings/log.md` — extract all `review-finding` entries w/ `Status: pending review`
+3. For each MUST FIX / SHOULD FIX finding that qualifies as systematic:
+   - Build entry using schema from Section 7b
+   - Skip if entry w/ same `Pattern:` value already exists w/ `Status: pending review`
+   - Use Edit to append entry to `.learnings/log.md`
+4. Do NOT append: one-off typos, trivial formatting, variable naming
+5. Do NOT edit any file except `.learnings/log.md` — Edit tool is restricted to log append only
+6. Report: "Logged {N} systematic finding(s) to .learnings/log.md" (N may be 0)
+
 ## Checkpoint
 
 ```
@@ -220,4 +252,5 @@ Set `agent: project-code-reviewer` in `.claude/skills/review/SKILL.md` YAML fron
   Known gotchas: {N} items (from .learnings/)
   Pipeline trace verification: enabled
   Auto-review after code-write: configured
+  Learnings: {N} systematic finding(s) logged
 ```

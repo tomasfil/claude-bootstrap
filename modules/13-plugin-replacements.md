@@ -103,8 +103,25 @@ effort: medium
 3. Break into tasks — each independently completable + verifiable
 4. Order by dependency: data → API → UI
 5. Assign verification command per task
-6. Save → `.claude/specs/{date}-{topic}-plan.md`
+6. Compute dispatch batches (see Batching below)
+7. Save → `.claude/specs/{date}-{topic}-plan.md`
    Plans → .claude/specs/ MUST use compressed telegraphic notation
+
+### Batching (token + turn efficiency)
+Group tasks into dispatch batches:
+- Same `Agent:` field → batch candidate
+- Inter-task dependency blocks batching (B depends on A → different batches)
+- Related scope (same subsystem | same file-type) preferred within batch
+- Batch = single agent dispatch w/ merged prompt listing all task details
+- Parallel batches (no inter-batch deps) → dispatch in ONE message (multiple Agent calls)
+
+Output `### Dispatch Plan` section BEFORE task list:
+```
+### Dispatch Plan
+- **Batch 1** (agent: {name}) — Tasks: 1,2,3. Depends on: none. Parallel w/: Batch 2.
+- **Batch 2** (agent: {name}) — Tasks: 4. Depends on: none. Parallel w/: Batch 1.
+- **Batch 3** (agent: {name}) — Tasks: 5. Depends on: Batch 1,2. Parallel w/: none.
+```
 
 ### Task Format
 ```
@@ -113,6 +130,7 @@ Files: {list of files to create/modify}
 Depends on: {task numbers}
 Verification: {build/test command}
 Agent: {which specialist handles this — or "main"}
+Batch: {batch-id}
 
 ### Steps
 1. {step}
@@ -152,13 +170,21 @@ effort: high
 0. TaskCreate for each task in the plan before starting execution
 1. Read plan from `.claude/specs/` | ask user for path
 2. Confirm plan w/ user — still correct?
-3. Execute task by task in dependency order
+3. Execute batch by batch in dependency order (see Batch Dispatch Protocol below)
 4. Verify each task — run verification command after completion
-5. Checkpoint after each task — print status, ask to continue
+5. Checkpoint after each batch — print status, ask to continue
 6. Final verification — full build + test suite
 7. Invoke `/review` on all changed files — mandatory, not optional
 
-### Per-Task Protocol
+### Batch Dispatch Protocol
+- Read batch's tasks from Dispatch Plan
+- Single agent call per batch w/ merged prompt: include ALL batch's tasks w/ full details (files, steps, verification)
+- Parallel batches (no inter-batch deps) → dispatch as multiple Agent calls in ONE message
+- Sequential batches → complete batch N, verify, then dispatch batch N+1
+- Agent reports per-task status — verify each before marking batch complete
+- TaskUpdate each task in batch as tasks complete
+
+### Per-Task Protocol (within batch)
 - Read-before-write: read all files in task's file list first
 - MUST dispatch agent specified in `Agent:` field — never execute inline if agent specified
 - Execute steps in order → run verification → fix + retry once on fail → ask user
@@ -564,11 +590,26 @@ Dispatch `reflector` w/ all learnings paths:
 - Identify instinct candidates (2+ similar corrections)
 - Identify reinforcements (+0.1) | contradictions (-0.05)
 
+### Phase 2b: Cluster Review Findings
+- Filter log: category == `review-finding`, status == `pending review`
+- Group by `Agent:` tag value
+- Within each group, cluster entries by `Pattern:` similarity (same rule, same component type)
+- Cluster w/ 2+ entries → **promotion candidate**
+  - Target: agent's Known Gotchas section in `.claude/agents/{name}.md`
+  - Pattern framework-specific + agent has sub-specialists → also flag as `/evolve-agents` candidate (note only — do not run)
+- Single-entry findings → flag as one-off, schedule for pruning this cycle
+- Output: promotion candidates list + one-offs list
+
 ### Phase 3: Consolidate
 Present proposals to user:
 - New instincts (initial confidence 0.5)
 - Existing instincts to reinforce | contradict
 - Duplicates to merge; contradictions to resolve
+- **Review-finding promotions** (from Phase 2b): for each promotion candidate:
+  - Show: agent name, pattern, evidence count, proposed text addition
+  - Choices: promote to agent prompt (add to Known Gotchas) | dismiss | defer
+  - If `/evolve-agents` flagged: surface recommendation alongside — do not auto-execute
+  - If user approves: use Edit to add to agent's Known Gotchas section
 
 Apply approved changes.
 

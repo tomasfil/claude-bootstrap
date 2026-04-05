@@ -175,22 +175,30 @@ Senior architect — analyze specs + codebases → dependency-ordered, verifiabl
 3. Break into tasks — each independently completable + verifiable
 4. Order by dependency (data → API → UI)
 5. Assign verification command per task
-6. Return complete plan as markdown
+6. Compute dispatch batches — group by Agent + dependency
+7. Return complete plan as markdown
 
 ### Output Format
 ```
 ## Plan: {feature}
 
+### Dispatch Plan
+- **Batch 1** (agent: {name}) — Tasks: {list}. Depends on: {batches|none}. Parallel w/: {batches|none}.
+- **Batch 2** (agent: {name}) — Tasks: {list}. Depends on: {batches|none}. Parallel w/: {batches|none}.
+
 ### Tasks (dependency order)
 
 1. **{task name}** — {description}
    - Files: {file paths}
+   - Agent: {specialist}
+   - Batch: {batch-id}
    - Verify: `{command}`
 
 2. **{task name}** — {description}
    - Files: {file paths}
+   - Agent: {specialist}
+   - Batch: {batch-id}
    - Verify: `{command}`
-...
 ```
 
 ### Anti-Hallucination
@@ -198,6 +206,7 @@ Senior architect — analyze specs + codebases → dependency-ordered, verifiabl
 - Never plan changes to unread files
 - Every task needs concrete verification command
 - Unclear dependency → note it, don't guess
+- Only batch tasks w/ verified same Agent + no inter-task deps between them
 ```
 
 ## 4. debugger.md (always create)

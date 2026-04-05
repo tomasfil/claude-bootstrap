@@ -322,9 +322,79 @@ Mechanical jobs: hard `maxTurns` (5-10) — deterministic.
 
 Agent `.md` = system prompts — Claude only reader. Compress w/ telegraphic notation (`techniques/prompt-engineering.md` → Token Optimization). Code examples → full fidelity. 30-50% smaller × invocation count.
 
+## Inter-Agent Handoff Formats (LLM-general, verified via 2025-2026 docs)
+
+Multi-agent systems in production (AutoGen, CrewAI, LangGraph, OpenAI Agents SDK, A2A protocol) converge on similar handoff schemas. Summary + essential fields below.
+
+### Production System Patterns
+| System | Format | Key Idea |
+|--------|--------|----------|
+| AutoGen HandoffMessage | id, source, target, content, context[prior], metadata, models_usage | explicit routing + inline usage metrics |
+| OpenAI Agents SDK | `handoff(agent, on_handoff, input_filter)` — handoff-as-tool | input_filter trims prior history per target |
+| LangGraph State | TypedDict/Pydantic w/ reducer fns per key | typed end-to-end, merge semantics |
+| CrewAI Task | description, expected_output, context[task_refs], output_json | typed output contract + task-ref chaining |
+| A2A Protocol v0.3 | Message{parts[TextPart|FilePart|DataPart], taskId, contextId, referenceTaskIds} | typed parts discriminator, multi-link refs |
+| Claude Agent SDK subagents | prompt string in → single message out, fresh context | strict isolation forces explicit injection |
+
+### Essential Handoff Fields (synthesis)
+```yaml
+handoff:
+  id: <ulid>                       # stable chain identifier
+  parent_id: <ulid>?               # chain link (A2A referenceTaskIds)
+  context_id: <ulid>               # groups multi-agent conversation
+  source: {agent, step?}           # routing + audit
+  target: {agent, role}            # scope-lock + compression profile lookup
+  task: <telegraphic intent>
+  scope:
+    include: [paths|modules]
+    exclude: [negatives]           # hard negative injections (under-used, biggest quality win)
+    constraints: [rules]
+  context:
+    files: [paths]                 # Conductor-injected, not agent-fetched
+    prior_refs: [<handoff_id>]     # A2A-style, not inline re-embed
+    instincts: [ids]               # Cortex refs
+    injected: {k: v}               # pre-computed data
+  output:
+    findings: <role-shaped payload>
+    evidence:                      # pattern 9, REQUIRED for research roles
+      - {claim, source_url, confidence: h|m|l, corroborated: bool}
+    unresolved: [trail-lost items] # explicit gaps prevent fabrication
+    confidence: h|m|l
+  budget: {tokens, tools: {web: int}}
+  meta: {profile: code|research|review|route, tokens_in_out, created}
+```
+
+### Key Design Rules (from research synthesis)
+1. **Typed parts discriminator** (A2A pattern): payload carries region type (text/file/data/evidence) → enables structured evidence tracking + per-region compression
+2. **Chain by reference, not embed**: `prior_refs: [ids]` — Conductor dereferences at dispatch; prevents context bloat across long chains
+3. **Mandate evidence[] for research roles**: scout/survey/researcher handoffs w/ empty evidence → auto-reject (Pattern 9 enforcement)
+4. **Forbid evidence[] for code-writer roles**: dilutes token budget, not their job
+5. **Scope.exclude hard-injects into target system prompt**: biggest under-used quality lever
+6. **Tag compression_profile in meta**: prevents silent lossy chains (research 70% → code-writer expects 80%)
+7. **Budget inline** (AutoGen models_usage pattern): enforced pre-dispatch via Ledger
+8. **Handoff → Manifest promotion**: approval-gated handoffs wrap in Manifest sections; single source-of-truth record per chain step
+
+### Novel Patterns Worth Adopting
+| Pattern | Source | What It Adds |
+|---------|--------|--------------|
+| AgentCard discovery | A2A /.well-known/agent-card.json | capability cards for Conductor routing |
+| referenceTaskIds multi-link | A2A | fan-in from multiple parallel agents |
+| on_handoff callbacks | OpenAI | pre-dispatch side effects (prefetch, warmup) |
+| input_filter | OpenAI | automatic prior-context trimming per target |
+| Typed streaming deltas | LangGraph stream_version v2 | emit handoff deltas during long runs, not just completion |
+| Hash-chain audit log | arXiv 2512.20985 | tamper-evident append-only event log |
+
+---
+
 ## Sources
 - Claude Code Docs: sub-agents, agent-teams, tools-reference
 - claudefa.st: sub-agent best practices
 - OpenDev Paper (arxiv 2603.05344)
 - Anthropic: Building Effective AI Agents
 - lst97/claude-code-sub-agents; wshobson/agents
+- AutoGen: microsoft.github.io/autogen/stable/
+- CrewAI: docs.crewai.com/en/concepts/tasks
+- LangGraph: docs.langchain.com/oss/python/langgraph
+- OpenAI Agents SDK: openai.github.io/openai-agents-python/handoffs/
+- A2A Protocol v0.3: a2a-protocol.org/latest/specification/
+- Google ADK: google.github.io/adk-docs/a2a/intro/
