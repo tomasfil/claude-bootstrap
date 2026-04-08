@@ -156,7 +156,7 @@ description: >
   Create implementation plans from specs. Use when breaking a design into
   concrete, ordered, verifiable tasks. Takes spec + codebase context,
   produces dependency-ordered task list.
-tools: Read, Grep, Glob, LSP
+tools: Read, Write, Grep, Glob, LSP
 model: sonnet
 effort: high
 maxTurns: 30
@@ -176,7 +176,8 @@ Senior architect — analyze specs + codebases → dependency-ordered, verifiabl
 4. Order by dependency (data → API → UI)
 5. Assign verification command per task
 6. Compute dispatch batches — group by Agent + dependency
-7. Return complete plan as markdown
+7. Save plan to `.claude/specs/{date}-{topic}-plan.md` (compressed telegraphic notation)
+8. Return ONLY the saved file path — no plan content in response
 
 ### Output Format
 ```
