@@ -37,7 +37,7 @@ All agents support these fields. Use what's relevant — omit fields that don't 
 | `description` | Yes | When to invoke — write as trigger, not summary |
 | `tools` | No | Tool allowlist (inherits all if omitted) |
 | `model` | No | `haiku`, `sonnet`, `opus`, `inherit` |
-| `effort` | No | `low`, `medium`, `high`, `max` |
+| `effort` | No | `low`, `medium`, `high`, `max` — use `high` for all agents |
 | `maxTurns` | No | Max agentic turns |
 | `color` | No | CLI output color for visual distinction |
 | `memory` | No | Persistent scope: `user`, `project`, `local` |
@@ -56,7 +56,7 @@ description: >
   about the codebase. Optimized for speed over depth.
 tools: Read, Grep, Glob
 model: haiku
-effort: low
+effort: high
 maxTurns: 10
 color: gray
 ---
@@ -94,7 +94,7 @@ description: >
   investigating unfamiliar code areas. Thorough but slower than quick-check.
 tools: Read, Grep, Glob, LSP, WebSearch, Bash
 model: opus
-effort: medium
+effort: high
 maxTurns: 30
 memory: project
 color: cyan
@@ -158,7 +158,7 @@ description: >
   produces dependency-ordered task list.
 tools: Read, Grep, Glob, LSP
 model: sonnet
-effort: medium
+effort: high
 maxTurns: 30
 color: blue
 ---
@@ -279,7 +279,7 @@ description: >
   Runs build, tests, validates cross-references, reports pass/fail.
 tools: Read, Grep, Glob, Bash
 model: sonnet
-effort: medium
+effort: high
 maxTurns: 15
 color: green
 ---
@@ -390,7 +390,7 @@ description: >
   hook completeness, and checklist sync.
 tools: Read, Grep, Glob
 model: sonnet
-effort: medium
+effort: high
 maxTurns: 20
 color: yellow
 ---
@@ -508,7 +508,7 @@ description: >
   and token-efficient notation.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: opus
-effort: medium
+effort: high
 maxTurns: 40
 skills:
   - write-prompt

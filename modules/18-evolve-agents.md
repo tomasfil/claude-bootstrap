@@ -250,7 +250,7 @@ description: >
   lifecycle. Falls back to code-writer-{lang} for cross-cutting concerns.
 tools: Read, Write, Edit, Bash, Grep, Glob, LSP, WebSearch
 model: opus
-effort: medium
+effort: high
 maxTurns: 30
 color: blue
 scope: "{framework} components, {pattern1}, {pattern2}, ..."

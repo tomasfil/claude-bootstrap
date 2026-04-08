@@ -64,7 +64,7 @@ description: >
 tools: Read, Grep, Glob, LSP, Edit
 model: opus
 # Model is fixed based on task complexity. Override in CLAUDE.local.md if needed.
-effort: medium
+effort: high
 maxTurns: 20
 color: yellow
 ---

@@ -156,20 +156,14 @@ Skip if `review-finding` entry already present.
 
 ### Step 5 — Sync technique files from bootstrap repo
 
-Fetch updated technique files from bootstrap repo into project's `techniques/` directory. Per the rule "Technique update = sync step in migration", client projects need these files copied.
-
-If project lacks `techniques/` directory, create it first:
+Fetch updated technique files from bootstrap repo into project's `.claude/references/techniques/` directory. Per the rule "Technique update = sync step in migration", client projects need these files copied.
 
 ```bash
-mkdir -p techniques
-```
+mkdir -p .claude/references/techniques
 
-Fetch files (use `gh api` per project conventions):
-
-```bash
 for file in prompt-engineering.md agent-design.md glyph-notation.md token-efficiency.md INDEX.md; do
   gh api repos/{owner}/{repo}/contents/techniques/$file \
-    --jq '.content' | base64 -d > techniques/$file
+    --jq '.content' | base64 -d > .claude/references/techniques/$file
 done
 ```
 
@@ -244,9 +238,9 @@ Read `.claude/agents/plan-writer.md`. Skip step if file missing. In Output Forma
 3. Confirm Section 7b finding schema in reviewer body
 4. Confirm Phase 2b block in `.claude/skills/consolidate/SKILL.md`
 5. Confirm `review-finding` in CLAUDE.md categories line
-6. Confirm `techniques/` has 5 files (INDEX + 4 technique files)
-7. Confirm `techniques/prompt-engineering.md` has "Modern LLM Guidance" section
-8. Confirm `techniques/agent-design.md` has "Inter-Agent Handoff Formats" section
+6. Confirm `.claude/references/techniques/` has 5 files (INDEX + 4 technique files)
+7. Confirm `.claude/references/techniques/prompt-engineering.md` has "Modern LLM Guidance" section
+8. Confirm `.claude/references/techniques/agent-design.md` has "Inter-Agent Handoff Formats" section
 9. Confirm `.claude/skills/write-plan/SKILL.md` has "Dispatch Plan" + "Batching" content
 10. Confirm `.claude/skills/execute-plan/SKILL.md` has "Batch Dispatch Protocol"
 11. Confirm `.claude/agents/plan-writer.md` has "Dispatch Plan" in Output Format

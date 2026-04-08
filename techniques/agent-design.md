@@ -80,7 +80,7 @@ description: >
   .cs file. Knows project conventions, DI patterns, error handling.
 tools: Read, Write, Edit, Bash, Grep, Glob, LSP, WebSearch
 model: sonnet
-effort: medium
+effort: high
 ---
 ```
 

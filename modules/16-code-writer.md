@@ -243,7 +243,7 @@ description: >
   error handling, and framework-specific gotchas.
 tools: Read, Write, Edit, Bash, Grep, Glob, LSP, WebSearch
 model: opus
-effort: medium
+effort: high
 maxTurns: 30
 color: blue
 scope: "{comma-separated framework/concern areas this agent covers — e.g., 'Blazor components, Razor pages, JS interop'}"
