@@ -62,7 +62,11 @@ Sections (in order):
 11. Behavior — READ_BEFORE_WRITE, verify-before-done, no-false-claims, collaborator,
     never-background-agents, comments-WHY-only, output-lead-w/-answer,
     Claude-facing=compressed/human-facing=prose,
-    'Main thread = pure orchestrator. Dispatches agents, handles questions. Never generates file content.'
+    'Main thread = pure orchestrator. Dispatches agents, handles questions. Never generates file content.',
+    Anti-patterns (ban these escape hatches):
+    - No ownership-dodging: don't deflect w/ "pre-existing issue" | "not caused by my changes" | "known limitation" — own it, fix it
+    - No premature stopping: don't quit at "good stopping point" | "natural checkpoint" — push through to complete solution
+    - No permission-seeking: don't ask "should I continue?" | "want me to keep going?" — if solvable, solve it
 12. Self-Improvement — .learnings/log.md gate, categories, hook auto-logs, 2-fail→web
 
 Write to CLAUDE.md. Return ONLY: path + 1-line summary <100 chars."
