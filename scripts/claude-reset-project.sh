@@ -11,9 +11,10 @@ set -euo pipefail
 # What it removes:
 #   LOCAL (in project dir):
 #     .claude/           — project settings, local config
-#     CLAUDE.md          — project instructions (optional)
-#     CLAUDE.local.md    — personal project instructions (optional)
-#     .mcp.json          — MCP server config (optional)
+#     .learnings/        — accumulated learnings
+#     CLAUDE.md          — project instructions
+#     CLAUDE.local.md    — personal project instructions
+#     .mcp.json          — MCP server config
 #
 #   GLOBAL (in ~/.claude/):
 #     projects/{encoded}/         — sessions, memory, subagents, tool-results
@@ -23,13 +24,62 @@ set -euo pipefail
 #     todos/{session}-*.json      — todo files per session
 #     sessions/*.json             — session metadata (where cwd matches)
 
-CLAUDE_HOME="${HOME}/.claude"
+# --- Detect CLAUDE_HOME ---
+# Claude Code on Windows stores data under the Windows user profile, regardless
+# of whether bash is Git Bash, WSL, or MSYS2. Prioritize USERPROFILE over $HOME.
+CLAUDE_HOME=""
+if [[ -n "${USERPROFILE:-}" ]]; then
+    candidate="$(echo "$USERPROFILE" | sed 's|\\|/|g')/.claude"
+    [[ -d "$candidate" ]] && CLAUDE_HOME="$candidate"
+fi
+if [[ -z "$CLAUDE_HOME" ]] && [[ -d "/mnt/c/Users" ]]; then
+    win_user="$(cmd.exe /C "echo %USERNAME%" 2>/dev/null | tr -d '\r')"
+    candidate="/mnt/c/Users/${win_user}/.claude"
+    [[ -d "$candidate" ]] && CLAUDE_HOME="$candidate"
+fi
+if [[ -z "$CLAUDE_HOME" ]] && [[ -d "${HOME}/.claude/projects" ]]; then
+    CLAUDE_HOME="${HOME}/.claude"
+fi
+if [[ -z "$CLAUDE_HOME" ]]; then
+    echo "ERROR: Cannot find Claude Code data directory"
+    echo "  Checked: \${USERPROFILE}/.claude, /mnt/c/Users/.../.claude, \${HOME}/.claude"
+    exit 1
+fi
+
+# --- Normalize any path to C:/Users/... format (for encoding & display) ---
+normalize_to_win() {
+    local p="$1"
+    p="$(echo "$p" | sed 's|\\|/|g')"
+    if [[ "$p" =~ ^/mnt/([a-zA-Z])/(.*) ]]; then
+        p="${BASH_REMATCH[1]^^}:/${BASH_REMATCH[2]}"
+    elif [[ "$p" =~ ^/([a-zA-Z])/(.*) ]]; then
+        p="${BASH_REMATCH[1]^^}:/${BASH_REMATCH[2]}"
+    fi
+    echo "$p"
+}
+
+# --- Convert C:/Users/... to a path the current shell can access ---
+to_local_path() {
+    local p="$1"
+    # Test if the path works as-is (Git Bash can access C:/ paths)
+    if [[ -e "$p" ]] || [[ -e "$(dirname "$p")" ]]; then
+        echo "$p"
+        return
+    fi
+    # WSL: convert C:/Users/... to /mnt/c/Users/...
+    if [[ "$p" =~ ^([A-Za-z]):/(.*) ]]; then
+        local drive="${BASH_REMATCH[1],,}"
+        echo "/mnt/${drive}/${BASH_REMATCH[2]}"
+        return
+    fi
+    echo "$p"
+}
 
 # --- Resolve project path ---
 if [[ $# -ge 1 ]]; then
     INPUT_PATH="$1"
 else
-    CWD="$(pwd -W 2>/dev/null || pwd)"
+    CWD="$(normalize_to_win "$(pwd -W 2>/dev/null || pwd)")"
     echo "No path provided."
     echo ""
     read -rp "Enter project path (or press Enter for ${CWD}): " INPUT_PATH
@@ -42,26 +92,24 @@ fi
 INPUT_PATH="${INPUT_PATH%/}"
 INPUT_PATH="${INPUT_PATH%\\}"
 
-# Normalize: accept Windows paths (C:\foo), Unix paths (/c/foo), or relative paths
-if [[ "$INPUT_PATH" =~ ^[A-Za-z]:[/\\] ]]; then
-    # Already an absolute Windows-style path — normalize slashes to forward
-    PROJECT_PATH="$(echo "$INPUT_PATH" | sed 's|\\|/|g')"
-elif [[ "$INPUT_PATH" =~ ^/([a-zA-Z])/ ]]; then
-    # Unix-style /c/Users/... → C:/Users/...
-    drive="${BASH_REMATCH[1]}"
-    PROJECT_PATH="${drive^^}:${INPUT_PATH:2}"
-elif [[ -d "$INPUT_PATH" ]]; then
-    # Relative path — resolve it
-    PROJECT_PATH="$(cd "$INPUT_PATH" && pwd -W 2>/dev/null || pwd)"
-else
-    echo "ERROR: Path does not exist: ${INPUT_PATH}"
-    exit 1
+# Normalize to forward-slash Windows path for encoding (C:/Users/...)
+PROJECT_WIN="$(normalize_to_win "$INPUT_PATH")"
+
+# Verify it looks like a valid absolute path
+if [[ ! "$PROJECT_WIN" =~ ^[A-Za-z]:/ ]]; then
+    if [[ -d "$INPUT_PATH" ]]; then
+        PROJECT_WIN="$(normalize_to_win "$(cd "$INPUT_PATH" && pwd -W 2>/dev/null || pwd)")"
+    else
+        echo "ERROR: Cannot resolve path: ${INPUT_PATH}"
+        exit 1
+    fi
 fi
 
-# Ensure forward slashes for internal use
-PROJECT_PATH="$(echo "$PROJECT_PATH" | sed 's|\\|/|g')"
-# Backslash version for matching session cwd fields
-WIN_PATH_BS="$(echo "$PROJECT_PATH" | sed 's|/|\\|g')"
+# Local path that the current shell can actually access for file operations
+PROJECT_LOCAL="$(to_local_path "$PROJECT_WIN")"
+
+# Backslash version for matching session cwd fields in JSON
+WIN_PATH_BS="$(echo "$PROJECT_WIN" | sed 's|/|\\|g')"
 
 echo "============================================"
 echo "  Claude Code Project Reset"
@@ -71,16 +119,13 @@ echo "Project:       ${WIN_PATH_BS}"
 echo ""
 
 # --- Encode project path to folder name ---
-# Convention: each : / \ becomes a single dash
-# C:\Users\Tomas\source\repos\foo → C--Users-Tomas-source-repos-foo
-# (C: → C- and \ → - so C:\ produces C--)
+# Convention: any non-alphanumeric, non-dash character becomes a dash
 encode_path() {
     local p="$1"
-    # Replace every : / \ with a single dash
-    echo "$p" | sed 's|[:/\\]|-|g'
+    echo "$p" | sed 's|[^a-zA-Z0-9-]|-|g'
 }
 
-ENCODED="$(encode_path "$PROJECT_PATH")"
+ENCODED="$(encode_path "$PROJECT_WIN")"
 PROJECT_GLOBAL_DIR="${CLAUDE_HOME}/projects/${ENCODED}"
 
 echo "Global state:  ~/.claude/projects/${ENCODED}"
@@ -91,15 +136,15 @@ declare -a TO_DELETE_DIRS=()
 declare -a TO_DELETE_FILES=()
 declare -a SESSION_UUIDS=()
 
-# Local project files
-[[ -d "${PROJECT_PATH}/.claude" ]] && TO_DELETE_DIRS+=("${PROJECT_PATH}/.claude")
-[[ -f "${PROJECT_PATH}/CLAUDE.md" ]] && TO_DELETE_FILES+=("${PROJECT_PATH}/CLAUDE.md")
-[[ -f "${PROJECT_PATH}/CLAUDE.local.md" ]] && TO_DELETE_FILES+=("${PROJECT_PATH}/CLAUDE.local.md")
-[[ -f "${PROJECT_PATH}/.mcp.json" ]] && TO_DELETE_FILES+=("${PROJECT_PATH}/.mcp.json")
+# Local project files & directories
+[[ -d "${PROJECT_LOCAL}/.claude" ]] && TO_DELETE_DIRS+=("${PROJECT_LOCAL}/.claude")
+[[ -d "${PROJECT_LOCAL}/.learnings" ]] && TO_DELETE_DIRS+=("${PROJECT_LOCAL}/.learnings")
+[[ -f "${PROJECT_LOCAL}/CLAUDE.md" ]] && TO_DELETE_FILES+=("${PROJECT_LOCAL}/CLAUDE.md")
+[[ -f "${PROJECT_LOCAL}/CLAUDE.local.md" ]] && TO_DELETE_FILES+=("${PROJECT_LOCAL}/CLAUDE.local.md")
+[[ -f "${PROJECT_LOCAL}/.mcp.json" ]] && TO_DELETE_FILES+=("${PROJECT_LOCAL}/.mcp.json")
 
 # Global project directory (sessions, memory, etc.)
 if [[ -d "${PROJECT_GLOBAL_DIR}" ]]; then
-    # Extract session UUIDs from .jsonl filenames
     for jsonl in "${PROJECT_GLOBAL_DIR}"/*.jsonl; do
         [[ -f "$jsonl" ]] || continue
         uuid="$(basename "$jsonl" .jsonl)"
@@ -114,7 +159,6 @@ for uuid in "${SESSION_UUIDS[@]}"; do
     [[ -d "${CLAUDE_HOME}/tasks/${uuid}" ]] && TO_DELETE_DIRS+=("${CLAUDE_HOME}/tasks/${uuid}")
     [[ -d "${CLAUDE_HOME}/session-env/${uuid}" ]] && TO_DELETE_DIRS+=("${CLAUDE_HOME}/session-env/${uuid}")
 
-    # Todos: {session-uuid}-agent-*.json
     for todo in "${CLAUDE_HOME}/todos/${uuid}-"*.json; do
         [[ -f "$todo" ]] && TO_DELETE_FILES+=("$todo")
     done
@@ -124,7 +168,6 @@ done
 if [[ -d "${CLAUDE_HOME}/sessions" ]]; then
     for sess_file in "${CLAUDE_HOME}/sessions"/*.json; do
         [[ -f "$sess_file" ]] || continue
-        # Check if cwd matches our project path
         if grep -q "\"cwd\":\"${WIN_PATH_BS//\\/\\\\}\"" "$sess_file" 2>/dev/null; then
             TO_DELETE_FILES+=("$sess_file")
         fi
@@ -142,33 +185,36 @@ if [[ ${#TO_DELETE_DIRS[@]} -eq 0 && ${#TO_DELETE_FILES[@]} -eq 0 ]]; then
     exit 0
 fi
 
-# Categorize directories for summary display
+# Categorize for summary display
 local_dirs=0
+local_dir_names=()
 global_project_dir=""
 file_history_count=0
 tasks_count=0
 session_env_count=0
-other_dirs=()
 
 for d in "${TO_DELETE_DIRS[@]}"; do
     case "$d" in
-        "${PROJECT_PATH}"/*) local_dirs=$((local_dirs + 1)) ;;
+        "${PROJECT_LOCAL}"/*)
+            local_dirs=$((local_dirs + 1))
+            local_dir_names+=("$(basename "$d")/")
+            ;;
         *"/projects/"*) global_project_dir="$d" ;;
         *"/file-history/"*) file_history_count=$((file_history_count + 1)) ;;
         *"/tasks/"*) tasks_count=$((tasks_count + 1)) ;;
         *"/session-env/"*) session_env_count=$((session_env_count + 1)) ;;
-        *) other_dirs+=("$d") ;;
     esac
 done
 
 echo "LOCAL (project directory):"
-if [[ -d "${PROJECT_PATH}/.claude" ]]; then
-    size="$(du -sh "${PROJECT_PATH}/.claude" 2>/dev/null | cut -f1 || echo "?")"
-    echo "  [${size}]  .claude/"
-fi
+for dname in "${local_dir_names[@]+"${local_dir_names[@]}"}"; do
+    local_full="${PROJECT_LOCAL}/${dname%/}"
+    size="$(du -sh "$local_full" 2>/dev/null | cut -f1 || echo "?")"
+    echo "  [${size}]  ${dname}"
+done
 for f in "${TO_DELETE_FILES[@]}"; do
     case "$f" in
-        "${PROJECT_PATH}"/*) echo "  $(basename "$f")" ;;
+        "${PROJECT_LOCAL}"/*) echo "  $(basename "$f")" ;;
     esac
 done
 echo ""
@@ -183,21 +229,15 @@ fi
 [[ $tasks_count -gt 0 ]] && echo "  tasks/         — ${tasks_count} session dirs"
 [[ $session_env_count -gt 0 ]] && echo "  session-env/   — ${session_env_count} session dirs"
 
-# Count todo files for this project
 todo_count=0
 for f in "${TO_DELETE_FILES[@]}"; do
-    case "$f" in
-        *"/todos/"*) todo_count=$((todo_count + 1)) ;;
-    esac
+    case "$f" in *"/todos/"*) todo_count=$((todo_count + 1)) ;; esac
 done
 [[ $todo_count -gt 0 ]] && echo "  todos/         — ${todo_count} files"
 
-# Count session metadata files
 sess_meta_count=0
 for f in "${TO_DELETE_FILES[@]}"; do
-    case "$f" in
-        *"/sessions/"*) sess_meta_count=$((sess_meta_count + 1)) ;;
-    esac
+    case "$f" in *"/sessions/"*) sess_meta_count=$((sess_meta_count + 1)) ;; esac
 done
 [[ $sess_meta_count -gt 0 ]] && echo "  sessions/      — ${sess_meta_count} metadata files"
 
@@ -217,13 +257,11 @@ fi
 echo ""
 echo "Deleting..."
 
-# Delete directories
 for d in "${TO_DELETE_DIRS[@]}"; do
     rm -rf "$d"
     echo "  Deleted: ${d}"
 done
 
-# Delete files
 for f in "${TO_DELETE_FILES[@]}"; do
     rm -f "$f"
     echo "  Deleted: ${f}"
