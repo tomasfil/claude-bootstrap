@@ -98,21 +98,14 @@ effort: medium
 ```markdown
 ## /write-plan — Implementation Planning
 
-### Step 1: Read Spec (main thread)
-Read spec from `.claude/specs/` | conversation context. Identify pipeline traces from `.claude/skills/code-write/references/pipeline-traces.md` if exists.
-
-### Step 2: Confirm Scope (main thread)
-Present brief scope summary: what's being planned, affected areas, estimated tasks. Wait for user confirmation.
-
-### Step 3: Dispatch plan-writer Agent
-Dispatch `plan-writer` agent with: full spec content, pipeline traces (if found), project conventions from CLAUDE.md, existing file structure context.
-
-Agent writes plan directly to `.claude/specs/{date}-{topic}-plan.md` and returns the file path.
-
-> **Fallback:** If `plan-writer` agent doesn't exist, perform work on main thread.
-
-### Step 4: Report (main thread)
-Read the saved plan file. Present summary: total tasks, dependency chain, dispatch batches, any ambiguities.
+1. Read spec from `.claude/specs/` | conversation context
+2. Read `.claude/skills/code-write/references/pipeline-traces.md` if exists
+3. Break into tasks — each independently completable + verifiable
+4. Order by dependency: data → API → UI
+5. Assign verification command per task
+6. Compute dispatch batches (see Batching below)
+7. Save → `.claude/specs/{date}-{topic}-plan.md`
+   Plans → .claude/specs/ MUST use compressed telegraphic notation
 
 ### Batching (token + turn efficiency)
 Group tasks into dispatch batches:
