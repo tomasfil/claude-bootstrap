@@ -1,30 +1,34 @@
-# Claude Code — Project Bootstrap Prompt v5.0
+# Claude Code — Project Bootstrap Prompt v6.0
 
-> Paste this into a Claude Code session at your project root. Claude will analyze the codebase and set up a self-improving, self-contained development environment. Alternatively: `cat claude-bootstrap.md | claude -p`
+> Paste into a Claude Code session at project root. Claude analyzes codebase, sets up self-improving dev environment. Alt: `cat claude-bootstrap.md | claude -p`
 
-**Is this for you?** Best for projects you'll actively develop over multiple Claude Code sessions. Overkill for one-off scripts or quick experiments. This bootstrap builds a complete self-improving infrastructure — modular, plugin-independent, with anti-hallucination patterns baked into every generated agent.
+**Is this for you?** Best for projects w/ multiple Claude Code sessions. Overkill for one-off scripts. Builds complete self-improving infrastructure — modular, plugin-independent, anti-hallucination baked in.
 
 ---
 
 <role>
-You are a senior engineering lead setting up a Claude Code environment. You are meticulous, systematic, and never skip steps. You treat this setup like production infrastructure — every component must be created AND wired to the components it depends on.
+Senior engineering lead setting up Claude Code environment. Meticulous, systematic, never skip steps. Treat setup like production infrastructure — every component created AND wired to dependencies.
 </role>
 
 <task>
 Before executing modules, check migration state:
 
 **If `.claude/bootstrap-state.json` exists:**
-→ Read `last_migration`. Invoke `/migrate-bootstrap` to check for and apply pending migrations.
-→ Do NOT re-run all modules unless the user explicitly requests a full re-bootstrap.
+→ Read `last_migration`. Invoke `/migrate-bootstrap` to check for + apply pending migrations.
+→ Do NOT re-run all modules unless user explicitly requests full re-bootstrap.
 
-**If no `.claude/bootstrap-state.json` but `.claude/settings.json` (with hooks) AND `CLAUDE.md` (with bootstrap fingerprints) exist:**
-→ Pre-migration install detected. Retrofit: create `.claude/bootstrap-state.json` stamping migration 000 as applied.
-→ Then invoke `/migrate-bootstrap` to apply any pending migrations.
-
-**If neither exists:**
-→ Fresh install. Execute ALL modules below to set up a complete environment.
+**If `.claude/bootstrap-state.json` does not exist:**
+→ Fresh install. Execute ALL modules below.
 → Each module handles its own idempotency (creates if missing, updates if stale).
-→ After all modules complete, create `.claude/bootstrap-state.json` stamped at the **highest migration ID** found in the `migrations/` directory. List migration files, extract the highest numeric prefix, and use that as `last_migration`. A fresh bootstrap runs the latest module code, so all migrations are already reflected — stamping at the latest prevents redundant migration runs.
+→ After all modules complete, create `.claude/bootstrap-state.json`:
+```json
+{
+  "bootstrap_version": "6.0",
+  "last_migration": "000",
+  "bootstrapped_at": "{ISO-8601 timestamp}",
+  "modules_completed": [1,2,3,4,5,6,7,8,9]
+}
+```
 </task>
 
 <rules>
@@ -34,32 +38,35 @@ MANDATORY RULES — VIOLATIONS CAUSE SETUP FAILURE:
 2. After each module, print: `✅ Module N complete — {what was created/updated}`
 3. If a module requires user input, STOP and wait for their answer.
 4. Every file that references another file MUST use its exact path. Verify after creation.
-5. At the end (Module 14), run the WIRING VERIFICATION checklist. Fix failures before reporting.
+5. At the end (Module 08), run wiring verification checklist. Fix failures before reporting.
 6. Do not invent files or structures not specified in the modules.
 7. Hooks receive JSON on **stdin** — there is no `$CLAUDE_TOOL_INPUT` env var.
-8. All skill files: YAML frontmatter with `name`, `description`, `model`, `effort`, `allowed-tools` between `---` markers. Orchestrator skills add `context: fork`, `agent`. Use `paths` for auto-activation, `argument-hint` for discoverability.
-9. All agent files: YAML frontmatter with `name`, `description`, `tools`, `model`, `effort`, `maxTurns`, `color`. Add `memory: project` for stateful agents, `skills` list for preloaded domain knowledge.
+8. All skill files: YAML frontmatter w/ `name`, `description`, `model`, `effort`, `allowed-tools` between `---` markers. Orchestrator skills add `context: fork`, `agent`. Use `paths` for auto-activation, `argument-hint` for discoverability.
+9. All agent files: YAML frontmatter w/ `name`, `description`, `tools`, `model`, `effort`, `maxTurns`, `color`. Add `memory: project` for stateful agents, `skills` list for preloaded domain knowledge.
 10. After 2 failed troubleshooting attempts, **search the web** before trying more fixes.
 11. Apply anti-hallucination patterns from `techniques/anti-hallucination.md` to every generated agent.
 12. Apply RCCF framework from `techniques/prompt-engineering.md` to every generated skill/agent.
 13. **TaskCreate per module.** Before executing each module, create a task via TaskCreate. Update to `in_progress` when starting, `completed` when done.
 14. **All Claude-facing generated content** (agent bodies, skill bodies, rule files, specs, plans) MUST use compressed telegraphic notation. Full-sentence prose only in user-facing output.
+15. **Main thread = pure orchestrator.** Dispatch agents, handle user questions. Never generate file content directly (except Module 01 foundation agents and Module 04 learnings init).
+16. **Agent dispatch uses inline prompts during bootstrap.** BOOTSTRAP_DISPATCH_PROMPT from Module 01. Agent .md files created mid-session are NOT loaded — no hot-reload (claude-code#6497).
+17. **Pass-by-reference.** Agents write to files, return path + 1-line summary (<100 chars). Main reads files only when needed for dispatch decisions.
+18. **Code-writing agents run sequentially.** Each must leave project in building state. Parallel dispatch only for researchers/doc agents.
 
 ANTI-SHORTCUT RULES — do not rationalize around these:
 
-15. **Create the files the module specifies.** If a module says to create `guard-git.sh` as a separate script file, create it as a separate script file. Do NOT inline script logic into settings.json one-liners. Separate files exist for maintainability, readability, and debuggability — a 200-character bash one-liner in JSON is unmaintainable.
-16. **Do not skip the UserPromptSubmit routing hook.** Claude Code's native `user-invocable: true` detection only works when the user types the exact slash command. The routing hook catches natural language ("add a field to X") and nudges toward the right skill. These are complementary, not redundant. Module 14 MUST generate it.
-17. **Do not skip or abbreviate web research in Modules 16-17.** The research phase exists because training data goes stale and projects use specific framework versions. You MUST conduct the searches, print how many you ran and key findings, BEFORE generating agents. "I'll do the research later" or "8 out of 15 is enough" are not acceptable.
-18. **Do not decide a module's output is "not needed".** Every module was designed as part of an integrated system. If you believe something is unnecessary, flag it to the user and let THEM decide — do not skip it silently or with a one-line justification.
+19. **Create the files the module specifies.** If a module says to create `guard-git.sh` as a separate script file, create it as a separate script file. Do NOT inline script logic into settings.json one-liners. Separate files exist for maintainability, readability, debuggability.
+20. **Do not skip the routing infrastructure.** Tier 1 (skill descriptions) + Tier 2 (rules/skill-routing.md) + Tier 3 (UserPromptSubmit nudge) are complementary. Module 08 MUST verify all three tiers.
+21. **Do not skip or abbreviate web research in Module 07.** Research phase exists because training data goes stale and projects use specific framework versions. MUST conduct searches, print count + key findings BEFORE generating agents. "I'll research later" or "8 of 15 is enough" are not acceptable.
+22. **Do not decide a module's output is "not needed".** Every module is part of an integrated system. If you believe something unnecessary, flag to user and let THEM decide — do not skip silently.
 </rules>
 
 ---
 
-## Per-File Idempotency (replaces A/B/C modes)
+## Per-File Idempotency
 
 Every module follows this protocol for each file it creates:
 
-**For ALL files (rules, CLAUDE.md, hooks, scripts, agents, skills):**
 ```
 IF file exists → READ it, EXTRACT project-specific knowledge, then REGENERATE:
   - Project-specific content (conventions, patterns, gotchas, commands) carried forward
@@ -67,44 +74,52 @@ IF file exists → READ it, EXTRACT project-specific knowledge, then REGENERATE:
   - Outdated boilerplate replaced with current version
   - This is always a MERGE+UPGRADE — never a blind preserve
 IF file doesn't exist → CREATE from template
-IF file is obsolete/superseded → DELETE it (e.g., old agent replaced by new one, dead skill)
+IF file is obsolete/superseded → DELETE it (e.g., old agent replaced, dead skill)
 ```
 
-Every file must meet the current bootstrap standard after every run. A file from a previous
+Every file must meet current bootstrap standard after every run. A file from a previous
 bootstrap that's missing sections, uses old patterns, or has stale content is OUTDATED — it
-gets upgraded while carrying forward the project-specific knowledge it contains. Nothing is
-preserved just because it exists.
+gets upgraded while carrying forward project-specific knowledge. Nothing preserved just because it exists.
 
-No mode detection needed. Run the bootstrap any time — it brings everything to current spec.
+No mode detection needed. Run bootstrap any time — brings everything to current spec.
 
 ---
 
 ## Master Checklist
 
-- [ ] Module 01: Project discovered — OS, languages, frameworks, architecture, pipeline traces
-- [ ] Module 02: CLAUDE.md created (<120 lines, Behavior section, compression directive, self-improvement triggers, compact instructions)
-- [ ] Module 03: `.claude/rules/` created (per-language code standards, anti-hallucination rules); `.claude/references/techniques/` populated
-- [ ] Module 04: `.claude/settings.json` with hooks (skill routing, env detection, git guard, failure logging)
-- [ ] Module 05: `/reflect` skill created (self-improvement engine)
-- [ ] Module 06: `/audit-file` + `/audit-memory` skills created
-- [ ] Module 07: `/write-prompt` skill created
-- [ ] Module 08: `CLAUDE.local.md` created, .gitignore updated
-- [ ] Module 09: Scoped CLAUDE.md files (only if needed — skip is valid)
-- [ ] Module 10: `.claude/agents/` with 9 base agents (quick-check, researcher, plan-writer, debugger, verifier, reflector, consistency-checker, tdd-runner + code-writer-markdown)
-- [ ] Module 11: `.learnings/` initialized (log, instincts, patterns, decisions, environment, tracking)
-- [ ] Module 12: MCP servers + external plugin recommendations (connectors only)
-- [ ] Module 13: Plugin replacement skills generated (replaces superpowers, feature-dev, etc.) + `/migrate-bootstrap` + `/consolidate` skills
-- [ ] Module 14: Wiring verification — all checks pass, compression compliance check
-- [ ] Module 15: Companion repo sync (only if git_strategy == "companion")
-- [ ] Module 16: Code writer + test writer agents generated (per-language specialists, coverage skills, persistent reference artifacts)
-- [ ] Module 17: Code reviewer enhanced (deep project-specific review with pipeline trace checks and per-language knowledge)
-- [ ] Module 18: `/evolve-agents` skill for framework sub-specialist creation + audit
+- [ ] Module 01: Project discovered — OS, languages, frameworks, architecture, pipeline traces; 3 foundation agents created (code-writer-markdown, researcher, code-writer-bash)
+- [ ] Module 02: CLAUDE.md + `.claude/rules/` + CLAUDE.local.md + technique refs + .gitignore — all via agent dispatch
+- [ ] Module 03: Hook scripts + `.claude/settings.json` — all via code-writer-bash dispatch
+- [ ] Module 04: `.learnings/` initialized (log, instincts, patterns, decisions, environment, tracking)
+- [ ] Module 05: 7 core agents created (quick-check, plan-writer, consistency-checker, debugger, verifier, reflector, tdd-runner)
+- [ ] Module 06: ~23 skills generated (dev workflow, quality, git/lifecycle, maintenance, reporting, utilities)
+- [ ] Module 07: Per-language code-writer + test-writer + code-reviewer agents via 7-phase research pipeline; agent index + capability index + pipeline traces
+- [ ] Module 08: Wiring verification, routing infrastructure (3 tiers), scoped CLAUDE.md, MCP/plugin setup, plugin collision check
+- [ ] Module 09: Companion repo sync (conditional — only if git_strategy == "companion")
+
+---
+
+## Module Execution
+
+Read and execute each module file in order. Each module is self-contained with full instructions.
+
+| # | File | Summary |
+|---|------|---------|
+| 01 | `modules/01-discovery.md` | Scan project + create 3 foundation agents |
+| 02 | `modules/02-project-config.md` | CLAUDE.md, rules, local config, technique refs, .gitignore |
+| 03 | `modules/03-hooks.md` | Hook scripts + settings.json via code-writer-bash |
+| 04 | `modules/04-learnings.md` | `.learnings/` directory init (inline — mkdir + touch) |
+| 05 | `modules/05-core-agents.md` | 7 utility/diagnostic agents via code-writer-markdown |
+| 06 | `modules/06-skills.md` | ~23 skills — all via agent dispatch, batched by dependency |
+| 07 | `modules/07-code-specialists.md` | Research-driven per-language specialists (7-phase pipeline) |
+| 08 | `modules/08-verification.md` | Wiring verification, routing, scoped configs, MCP, plugins |
+| 09 | `modules/09-companion.md` | Companion repo sync (conditional on git_strategy) |
 
 ---
 
 ## Remote Execution
 
-If modules are not available locally (user pasted a GitHub URL or only this file), fetch them from the public repository:
+If modules are not available locally (user pasted a GitHub URL or only this file), fetch from public repository:
 
 ```
 REPO: https://github.com/tomasfil/claude-bootstrap
@@ -116,60 +131,29 @@ To fetch any module or technique file:
 gh api repos/tomasfil/claude-bootstrap/contents/{path} --jq '.content' | base64 -d
 ```
 
-For example: `gh api repos/tomasfil/claude-bootstrap/contents/modules/01-discovery.md --jq '.content' | base64 -d`
+Example: `gh api repos/tomasfil/claude-bootstrap/contents/modules/01-discovery.md --jq '.content' | base64 -d`
 
-If `gh` is not available, use WebFetch with the raw URL:
+If `gh` not available, use WebFetch with raw URL:
 `https://raw.githubusercontent.com/tomasfil/claude-bootstrap/main/modules/01-discovery.md`
 
-**Check local first**: If the file exists locally (e.g., `modules/01-discovery.md`), read it with the Read tool. Only fetch from GitHub if the local file doesn't exist.
-
----
-
-## Module Execution
-
-Read and execute each module file in order. Each module is self-contained with full instructions.
-
-**Foundation (must run first):**
-1. Read and execute `modules/01-discovery.md` — project analysis
-2. Read and execute `modules/02-claude-md.md` — root CLAUDE.md
-3. Read and execute `modules/03-rules.md` — code standards and rules
-4. Read and execute `modules/04-hooks.md` — hooks and skill routing
-
-**Skills and agents:**
-5. Read and execute `modules/05-skills-reflect.md` — /reflect skill
-6. Read and execute `modules/06-skills-audit.md` — audit skills
-7. Read and execute `modules/07-skills-write-prompt.md` — prompt writing skill
-8. Read and execute `modules/08-local-config.md` — local configuration
-9. Read and execute `modules/09-scoped-claude-md.md` — directory-scoped configs
-10. Read and execute `modules/10-agents.md` — base subagents
-11. Read and execute `modules/11-learnings.md` — self-improvement log
-
-**Integration and verification:**
-12. Read and execute `modules/12-mcp-plugins.md` — MCP and plugin recommendations
-13. Read and execute `modules/13-plugin-replacements.md` — replace methodology plugins
-14. Read and execute `modules/14-verification.md` — wiring verification
-15. Read and execute `modules/15-companion-repo.md` — companion repo sync (conditional)
-
-**Code generation agents (require web research — these take longer):**
-16. Read and execute `modules/16-code-writer.md` — code writer orchestrator + language specialists
-17. Read and execute `modules/17-code-reviewer.md` — deep project-specific code reviewer
-18. Read and execute `modules/18-evolve-agents.md` — /evolve-agents skill for sub-specialist creation + audit
+**Check local first**: If the file exists locally (e.g., `modules/01-discovery.md`), read it with Read tool. Only fetch from GitHub if local file doesn't exist.
 
 ---
 
 ## Reference Documents
 
-These are reference materials for modules to consult, not steps to execute:
+Reference materials for modules to consult — not steps to execute:
 
 - `techniques/prompt-engineering.md` — RCCF framework, structured outputs, taxonomy-guided prompting
 - `techniques/anti-hallucination.md` — CoVe, read-before-write, LSP grounding, verification patterns
 - `techniques/agent-design.md` — subagent constraints, orchestrator patterns, YAML templates
+- `techniques/token-efficiency.md` — compression techniques, cache economics, telegraphic notation
 
 ---
 
 ## Quick Start for Returning Users
 
 If you've run this bootstrap before:
-1. Run `/migrate-bootstrap` to apply any pending migrations (fastest path)
+1. Run `/migrate-bootstrap` to apply pending migrations (fastest path)
 2. Or paste this prompt again — migration detection handles the rest automatically
 3. Run `/reflect` periodically to promote learnings and evolve agents

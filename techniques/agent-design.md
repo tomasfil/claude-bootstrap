@@ -102,6 +102,19 @@ effort: high
 | `scope` | N | Comma-separated framework/concern list; used by orchestrators for sub-specialist routing |
 | `parent` | N | Name of parent agent this sub-specialist was split from; prevents re-splitting |
 
+### maxTurns Configuration
+maxTurns = zero-cost safety cap. Set high enough no legitimate task ever hits it.
+effort: high (mandatory for all agents) consumes more turns per step.
+
+| Role | minTurns | Rationale |
+|------|----------|-----------|
+| quick-check | 25 | Fast lookups, text return |
+| verifier, consistency-checker | 75 | Read + validate + write report |
+| researcher, code-writer, plan-writer, debugger, reflector | 100 | Complex multi-phase work |
+| tdd-runner | 150 | Multiple red-green-refactor cycles |
+
+All agents MUST have Write tool (or Bash for heredoc writers). Without it, pass-by-reference breaks.
+
 **Skill authoring** (Anthropic docs): description third-person max 1024 chars; body <500 lines (split to `references/`); refs one level deep; TOC for >100-line files; project-specific only ("would Claude get this wrong?"); match freedom to fragility; validate→fix→repeat loops; test 3+ scenarios before writing docs
 
 **Model selection:** GENERATES code | SUBTLE errors → `opus`; ANALYZES → `sonnet`; CHECKS → `haiku`
@@ -127,6 +140,42 @@ effort: high
 | Standard | `Read, Write, Edit, Bash, Grep, Glob, LSP` | implementation |
 | Extended | Standard + `WebSearch, WebFetch` | current docs/APIs |
 | Orchestrator | `Agent(...), Read, Grep, Glob, Bash` | main-thread only |
+
+## Pass-by-Reference Protocol
+
+Every agent dispatch follows this contract:
+
+Orchestrator → Agent: "Write output to {target_path}. Return ONLY: path + 1-line summary <100 chars."
+Agent → executes → writes file → returns: "{path} — {summary}"
+Orchestrator → reads file ONLY IF: needed for next dispatch | error in summary | verification required
+
+### Write Mechanism by Agent Type
+| Agent | Write method | Reason |
+|---|---|---|
+| code-writer-markdown | Write/Edit tools | Content creation — reliable |
+| code-writer-bash | Write/Edit tools | Same |
+| researcher | Write tool | Writes reference docs |
+| debugger | Bash heredoc | GitHub #9458 workaround |
+| tdd-runner | Bash heredoc | Same |
+| verifier | Bash heredoc | Writes to .claude/reports/ |
+| reflector | Bash heredoc | Writes proposals to .claude/reports/ |
+| consistency-checker | Bash heredoc | Writes report to .claude/reports/ |
+| quick-check | Text return | Fast lookups — file overhead not worth it |
+
+Report directory: `.claude/reports/` — transient agent output, not git-tracked.
+
+## Self-Bootstrapping Pattern
+
+Foundation agents (code-writer-markdown, researcher, code-writer-bash) created inline during
+Module 01 — they ARE the tools that create everything else. Circular dependency prevents using
+agents to create agents.
+
+Rule: Only foundation agents may be created inline. All other agents dispatched to code-writer-markdown.
+
+### Agent Loading Constraint
+Agent .md files loaded at session start ONLY (no hot-reload — claude-code#6497, #22050, #29202).
+During bootstrap, modules use inline `Agent(prompt: "...")` dispatch, not `subagent_type`.
+The .md files serve post-bootstrap sessions.
 
 ## Communication + Errors + Teams
 
@@ -306,6 +355,11 @@ Sequence in >50% runs → extract to pre_command | include_file.
 
 Mechanical jobs: hard `maxTurns` (5-10) — deterministic.
 
+### Build Integrity — Sequential Code Agents
+Code-writing and test-writing agents run SEQUENTIALLY. Each must leave the project in a
+building/passing state. Parallel dispatch only safe for non-source-code agents (researchers,
+documentation writers, read-only analysis).
+
 ## File Size + Token Efficiency
 
 | Lines | Action |
@@ -383,6 +437,35 @@ handoff:
 | input_filter | OpenAI | automatic prior-context trimming per target |
 | Typed streaming deltas | LangGraph stream_version v2 | emit handoff deltas during long runs, not just completion |
 | Hash-chain audit log | arXiv 2512.20985 | tamper-evident append-only event log |
+
+---
+
+## Agent Index
+
+`.claude/agents/agent-index.yaml` — generated during bootstrap (Module 07 Phase 6), updated by `/evolve-agents`.
+
+Schema:
+```yaml
+agents:
+  - name: {agent-name}           # matches .md filename w/o extension
+    scope: "{what this agent covers}"  # code-write orchestrator reads for routing
+    model: {opus|sonnet|haiku}
+    parent: {parent-agent-name|null}   # null = top-level; parent name = sub-specialist
+    type: {code-writer|test-writer|utility|review}
+    last-updated: {YYYY-MM-DD}
+```
+
+| Field | Purpose |
+|-------|---------|
+| `name` | Matches `.md` filename — `code-writer-typescript` → `.claude/agents/code-writer-typescript.md` |
+| `scope` | Free-text describing coverage; `/code-write` orchestrator matches tasks → agents via this field |
+| `model` | Claude model for the agent |
+| `parent` | Sub-specialist lineage; `/evolve-agents` uses for audit + prevents re-splitting |
+| `type` | Category filter — orchestrator filters by type before scope-matching |
+| `last-updated` | Creation/update date; `/evolve-agents` uses for staleness detection |
+
+**Generated:** Module 07 Phase 6 reads all agent frontmatter → writes index.
+**Consumed:** `/code-write` skill reads index for dispatch decisions; `/evolve-agents` reads for audit + staleness.
 
 ---
 

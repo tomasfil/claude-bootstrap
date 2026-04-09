@@ -247,6 +247,19 @@ Legal topics:
 
 Start 2-3×, measure, increase if holds. Code generation: hard cliff 55-65%.
 
+> For detailed compression rules and Claude-facing file optimization, see `techniques/token-efficiency.md`.
+
+### Skill Description Optimization
+
+Every skill `description:` field serves as API documentation for the LLM routing layer.
+Claude Code natively loads descriptions via the Skill tool definition.
+
+Rules:
+- Start with "Use when..." trigger phrases
+- Include key distinguishing keywords
+- Keep under 2 lines
+- Example: "Use when implementing features, writing code, or creating files. Routes to language-specific code-writer agents."
+
 ### Algorithmic Compression
 
 For large variable contexts (RAG, research, inter-stage):
@@ -397,6 +410,9 @@ Phase 1 (PLAN): List every file to read/create/modify. List every command
 to run. Do NOT execute anything yet.
 Phase 2 (ACT): Execute the plan. Do not deviate unless blocking error.
 ```
+
+Plans should be split into separate task files — one per task/batch — so executing agents
+receive focused context. Master plan = index + execution order. Task files are self-contained.
 
 ### Runtime Behavioral Steering (system-reminder)
 

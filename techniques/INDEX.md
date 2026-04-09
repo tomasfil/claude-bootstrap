@@ -9,8 +9,8 @@
 |------|--------|----------|
 | `prompt-engineering.md` | RCCF framework, structured outputs, classification trees, few-shot patterns, context caching, token optimization, scope locks, verify-and-fix | Writing skills, agents, prompts; optimizing token usage |
 | `anti-hallucination.md` | Read-before-write, CoVe, negative instructions, LSP verification, build verification, package detection, claim-evidence ledger | Building any code-writing agent; research-to-output skills |
-| `agent-design.md` | Subagent constraints, orchestrator-as-skill, YAML templates, tool restrictions, invocation quality, turn efficiency, tool call batching, search batching | Designing agents, dispatching subagents, pipeline architecture |
-| `token-efficiency.md` | Compression tiers, retention floors per agent role, protected regions, algorithmic tools, turn reduction rules | Optimizing token usage; designing inter-agent handoffs; writing always-loaded config |
+| `agent-design.md` | Subagent constraints, orchestrator-as-skill, YAML templates, tool restrictions, invocation quality, turn efficiency, tool call batching, search batching, pass-by-reference protocol, maxTurns config, self-bootstrapping, agent index, build integrity | Designing agents, dispatching subagents, pipeline architecture |
+| `token-efficiency.md` | Compression tiers, retention floors per agent role, protected regions, algorithmic tools, turn reduction rules, format selection, @import pattern, cache economics | Canonical compression source; optimizing token usage; designing inter-agent handoffs; writing always-loaded config |
 | `glyph-notation.md` | Symbol legend, compression rules + tiers, per-role retention floors, protected regions, handoff schema, file-type ranges | Reference for compressed notation; authoring Claude-facing files; validating glyph content |
 
 ## Canonical Ownership (deduplication)
@@ -27,3 +27,15 @@ Shared concepts live in ONE file; the other cross-references it:
 | Compression tiers | token-efficiency.md |
 | Glyph symbol legend | glyph-notation.md |
 | Handoff schema | agent-design.md |
+| Pass-by-reference protocol | agent-design.md |
+| maxTurns configuration | agent-design.md |
+| Self-bootstrapping pattern | agent-design.md |
+| Agent index schema | agent-design.md |
+| Build integrity rule | agent-design.md |
+| Agent loading constraint | agent-design.md |
+| Format selection (YAML/JSON/TSV) | token-efficiency.md |
+| Cache economics | token-efficiency.md |
+| Agent output verification | anti-hallucination.md |
+| Build state invariant | anti-hallucination.md |
+| Skill description optimization | prompt-engineering.md |
+| Split-plan pattern | prompt-engineering.md |

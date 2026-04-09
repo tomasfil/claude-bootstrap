@@ -295,17 +295,41 @@ WHEN REPORTING RESULTS:
 - Never claim partial work is complete
 ```
 
+## 11. Agent Output Verification
+
+### Pass-by-Reference Verification
+When orchestrator dispatches agent with pass-by-reference contract:
+1. Agent returns path + summary → verify file exists at path
+2. If file missing → agent failed silently, re-dispatch or flag error
+3. If file empty → agent wrote nothing useful, re-dispatch with clearer prompt
+4. Only read file content when needed for next dispatch decision
+
+### Agent Loading Verification
+Agent .md files loaded at session start only (no hot-reload).
+- During bootstrap: use inline Agent(prompt: "...") dispatch
+- Post-bootstrap: subagent_type works normally
+- Never assume mid-session agent edits take effect
+
+## 12. Build State Invariant
+
+### Build State Invariant
+Sequential code agents must maintain build integrity:
+- Before dispatch: verify build passes (or document known state)
+- After dispatch: verify build still passes
+- If build broken by agent: fix before next dispatch
+- Parallel code agents violate this — never parallelize source-modifying agents
+
 ## Integration Into Generated Agents
 
 Include patterns based on agent role:
 
 | Agent Type | Must Include |
 |-----------|-------------|
-| Code writer | Patterns 1-8, 10 |
+| Code writer | Patterns 1-8, 10, 12 |
 | Code reviewer | Patterns 1, 3, 4, 7, 10 |
-| Test writer | Patterns 1, 2, 3, 5, 6, 10 |
+| Test writer | Patterns 1, 2, 3, 5, 6, 10, 12 |
 | Quick-check / researcher | Patterns 3, 7, 10 |
-| Orchestrator skill | Patterns 2, 7, 8, 10 |
+| Orchestrator skill | Patterns 2, 7, 8, 10, 11 |
 | Research-to-output skill | Pattern 9 (Claim-Evidence Ledger) + Patterns 3, 7, 10 |
 | ALL agents | Pattern 10 (False Claims) — every task completion claim |
 
