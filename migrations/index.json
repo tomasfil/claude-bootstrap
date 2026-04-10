@@ -18,6 +18,12 @@
       "file": "003-skill-dispatch-hardening.md",
       "description": "Complete the agent rename from migration 001 by catching prose-form references missed by its narrow sed, inject AGENT_DISPATCH_POLICY_BLOCK into every dispatching skill, and normalize **Dispatch X** bold prose to the canonical subagent_type=\"proj-X\" form.",
       "breaking": false
+    },
+    {
+      "id": "004",
+      "file": "004-plan-writer-discipline.md",
+      "description": "Strengthen proj-plan-writer discipline to forbid implementation code in task files, and update /execute-plan to instruct specialists to read domain rules before writing code.",
+      "breaking": false
     }
   ]
 }

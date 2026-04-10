@@ -126,16 +126,25 @@ Body sections:
   - task-01-{name}.md — {summary}
 - Output format for task files:
   ## Task {NN}: {name}
-  ### Context (what executing agent needs to know)
-  ### Steps (concrete, ordered)
-  ### Files (paths to create/modify)
+  ### Context (1-3 sentences — what executing agent needs to know + WHY this task)
+  ### Contract (interface shapes, method signatures, data types — intent, NOT bodies)
+  ### Steps (concrete ordered actions — imperative prose, NOT code)
+  ### Files (paths + what changes — "add method X", "modify class Y", NOT literal snippets)
   ### Verification: `{command}`
   ### Agent: {specialist name}
   ### Batch: {batch-id}
 - Build integrity rule: code-writing tasks SEQUENTIAL, research/doc tasks parallelizable
+- Task file discipline (HARD RULES — violated = plan rejected):
+  * Task files describe INTENT not IMPLEMENTATION. Specialist agents have domain knowledge; plan-writer does not.
+  * FORBIDDEN in task files: method bodies, using/import statements, full class definitions, error-handling code, ready-to-paste code blocks, translated pseudo-code
+  * ALLOWED: signatures (`public async Task<X> Foo(Y y, CancellationToken ct)`), interface additions (`add byte[] GenerateCsvTemplate();` to IFoo), file paths, data shapes (`record Bar(int Id, string Name)`), step prose
+  * Rationale: specialist reads `.claude/rules/code-standards-{lang}.md` + framework rules. Plan-writer cannot. Pre-written bodies bypass specialist guardrails.
+  * Size cap: task files ≤60 lines. Hard warn at >80. If task needs more → split into sub-tasks or let the specialist decide.
+  * NEVER copy rule file content into task files. Reference path: "specialist MUST read `.claude/rules/code-standards-csharp.md` before writing".
+  * Good: "Add `ReadAsync(byte[], Action<T>?, CT)` that sniffs PK magic bytes → dispatches to ReadExcelAsync or ReadCsvAsync". Bad: 30-line fenced C# block showing the byte check + if/else + delegation.
 - Anti-hallucination: verify all file paths exist before referencing, never plan changes
   to unread files, every task needs concrete verification command, unclear dependency →
-  note it don't guess, only batch tasks w/ verified same Agent + no inter-task deps
+  note it don't guess, only batch tasks w/ verified same Agent + no inter-task deps; if a task file exceeds 80 lines or contains complete method bodies → STOP and restructure (intent over implementation)
 - Parallel tool calls block
 - Scope lock
 ```

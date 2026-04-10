@@ -832,6 +832,8 @@ Body — ## /execute-plan — Plan Execution:
 - Per-task protocol (within batch):
   - Read-before-write: read all files in task's file list first
   - MUST dispatch agent specified in Agent: field — never execute inline if agent specified
+  - Specialist dispatch prompt MUST include: "Read `.claude/rules/code-standards-{lang}.md` + `.claude/rules/data-access.md` (if applicable) BEFORE writing any code. These rules override any code shown in the task file."
+  - If task file contains code snippets → treat as CONTRACT/HINT (signatures + intent), not MANDATE. Specialist applies domain rules + framework guardrails that plan-writer lacked.
   - Execute steps → run verification → fix + retry once on fail → ask user
   - Mark complete → next task
 
