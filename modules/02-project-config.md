@@ -60,13 +60,14 @@ Sections (in order):
 9. Effort Scaling — 'Agents: always effort=high. Skills: effort matches task weight.'
 10. Communication — 'Direct — lead w/ answer, no filler. Concise code.'
 11. Behavior — READ_BEFORE_WRITE, verify-before-done, no-false-claims, collaborator,
-    never-background-agents, comments-WHY-only, output-lead-w/-answer,
+    never-background-agents, no-builtin-explore, comments-WHY-only, output-lead-w/-answer,
     Claude-facing=compressed/human-facing=prose,
     'Main thread = pure orchestrator. Dispatches agents, handles questions. Never generates file content.',
     Anti-patterns (ban these escape hatches):
     - No ownership-dodging: don't deflect w/ "pre-existing issue" | "not caused by my changes" | "known limitation" — own it, fix it
     - No premature stopping: don't quit at "good stopping point" | "natural checkpoint" — push through to complete solution
     - No permission-seeking: don't ask "should I continue?" | "want me to keep going?" — if solvable, solve it
+    - No built-in Explore fallback: code investigation → proj-quick-check (simple) | proj-researcher (complex); NEVER built-in Explore/general-purpose/plugin agents — they bypass project context + evidence tracking
 12. Self-Improvement — .learnings/log.md gate, categories, hook auto-logs, 2-fail→web
 
 Write to CLAUDE.md. Return ONLY: path + 1-line summary <100 chars."
@@ -95,7 +96,7 @@ Create ALWAYS:
    - Git: {branching strategy from git_strategy}, buildable commits, conventional commits, no force-push shared
    - Code quality: no dead code, no TODO w/o issue, English, follow existing patterns, extend not duplicate
    - Process: READ_BEFORE_WRITE, test after change, 2-fail→web, log corrections,
-     dispatch agents when specified, never background agents
+     dispatch agents when specified, no built-in Explore/general-purpose/plugin agents (use proj-quick-check | proj-researcher), never background agents
 
 2. .claude/rules/code-standards-{lang}.md (one per detected language)
    - Naming conventions (from codebase analysis)
@@ -112,7 +113,7 @@ Create ALWAYS:
    - Compression rules: strip articles/filler, telegraphic, symbols (→|+~w/), key:value+bullets
    - Why: 30-50% savings, compounds across sessions + subagents
 
-4. .claude/rules/skill-routing.md (~150 tokens, behavioral guidance ONLY)
+4. .claude/rules/skill-routing.md (~200 tokens, behavioral guidance ONLY)
    Content:
    # Skill Routing
    ## Rule
@@ -129,6 +130,13 @@ Create ALWAYS:
    - Simple questions, file reads, explanations
    - Follow-up in active skill workflow
    - Design discussion (unless user asks to formalize)
+   ## Forbidden
+   NEVER use built-in `Explore` / `general-purpose` / plugin agents for code exploration.
+   - Simple fact/lookup → proj-quick-check
+   - Deep multi-source investigation → proj-researcher
+   - Bug investigation → /debug (if disable-model-invocation blocks invocation → ask user to run /debug manually; do NOT fall back to Explore)
+   - Plain code reading → Read/Grep/Glob directly
+   Built-in agents bypass project evidence tracking + conventions = quality regression.
    ## Critical
    NEVER refuse or block because no skill matches.
    Uncertain → respond normally. False blocks worse than missed routing.

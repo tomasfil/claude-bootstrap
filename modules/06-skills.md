@@ -77,8 +77,11 @@ Reusable block injected into every skill that dispatches agents. Content:
 
 ```
 **Agent Dispatch Policy**: Use `subagent_type="proj-<name>"` explicitly.
-NEVER substitute built-in `Explore` / `general-purpose` / plugin agents.
-If custom agent missing → STOP + inform user. See `techniques/agent-design.md § Agent Dispatch Policy`.
+NEVER substitute built-in `Explore` / `general-purpose` / plugin agents — not during skill execution, not as a fallback, not for "quick" lookups.
+If custom agent missing → STOP + inform user.
+If this skill has `disable-model-invocation` and the main thread cannot invoke it → STOP + ask user to run the slash command manually; do NOT fall back to Explore / general-purpose / inline work.
+For any code exploration inside this skill: use Read/Grep/Glob directly OR dispatch `proj-quick-check` (simple) / `proj-researcher` (deep) — never built-in.
+See `techniques/agent-design.md § Agent Dispatch Policy`.
 ```
 
 Skill specs below reference this via `{AGENT_DISPATCH_POLICY_BLOCK — see top of module}` — agent generating the skill MUST expand the reference to the literal block above.

@@ -48,6 +48,12 @@
       "file": "008-fix-techniques-path.md",
       "description": "Detect and relocate orphan technique files from techniques/ at project root into .claude/references/techniques/. Fixes damage from migrations 001/005/007 which wrote to the wrong path.",
       "breaking": false
+    },
+    {
+      "id": "009",
+      "file": "009-forbid-builtin-explore.md",
+      "description": "Forbid built-in Explore/general-purpose/plugin agent fallback — patch CLAUDE.md + .claude/rules/skill-routing.md + .claude/rules/general.md to add always-loaded rule; strengthen AGENT_DISPATCH_POLICY_BLOCK in all dispatching skills.",
+      "breaking": false
     }
   ]
 }
