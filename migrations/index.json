@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "migrations": [
+    {
+      "id": "001",
+      "file": "001-agent-rename-mcp-propagation.md",
+      "description": "Rename all project agents to proj-* prefix to avoid built-in Explore/general-purpose capture, and fix MCP tool propagation by removing tools: whitelists from read-only agents + injecting mcp__<server>__* entries into write agents.",
+      "breaking": false
+    },
+    {
+      "id": "002",
+      "file": "002-index-json-and-repo-fix.md",
+      "description": "Switch /migrate-bootstrap skill to use migrations/index.json for discovery; fix bootstrap_repo placeholder in .claude/bootstrap-state.json.",
+      "breaking": false
+    }
+  ]
+}

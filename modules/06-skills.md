@@ -1245,17 +1245,22 @@ FUTURE migrations applied to child projects.
     Don't pass → not bootstrapped, tell user to run full bootstrap
 
 - Step 2: Fetch migration index
-  gh api repos/{bootstrap_repo}/contents/migrations --jq '[.[] | select(.name != "_template.md") | .name] | sort'
-  Fallback (no gh): https://api.github.com/repos/{bootstrap_repo}/contents/migrations
+  Read bootstrap_repo from .claude/bootstrap-state.json
+  Primary: gh api repos/${bootstrap_repo}/contents/migrations/index.json --jq '.content' | base64 -d > /tmp/mig-index.json
+  Fallback (no gh): curl -sSL https://raw.githubusercontent.com/${bootstrap_repo}/main/migrations/index.json -o /tmp/mig-index.json
+  Parse JSON → extract .migrations array (each entry: { id, file, description, breaking })
+  Empty array → "No migrations defined in bootstrap repo" → STOP
 
 - Step 3: Identify pending
-  Extract numeric IDs from filenames, filter > last_migration, sort ascending
+  Filter entries where id > last_migration (string compare works for zero-padded IDs)
+  Sort ascending by id
   None pending → "Already up to date" → STOP
 
 - Step 4: Apply each in order
-  1. Fetch content (gh api | raw.githubusercontent.com fallback)
-  2. breaking: true → warn + STOP, wait for confirmation
-  3. Print Changes summary
+  1. Use entry.breaking flag from index — true → warn + STOP, wait for confirmation
+  2. Fetch migration content: gh api repos/${bootstrap_repo}/contents/migrations/${entry.file} --jq '.content' | base64 -d
+     Fallback: curl -sSL https://raw.githubusercontent.com/${bootstrap_repo}/main/migrations/${entry.file}
+  3. Print Changes summary (parse Changes section from fetched file)
   4. Execute Actions — read-before-write for all modifications
   5. Run Verify — any fail → STOP, do NOT update state
   6. Update state: append to applied[], update last_migration + last_applied

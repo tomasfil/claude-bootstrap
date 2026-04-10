@@ -166,7 +166,8 @@ Body sections:
   3. Verify skill/agent YAML frontmatter validity (required fields present)
   4. Check routing config lists all skills
   5. Verify master checklist matches actual modules
-  6. Report issues w/ file:line references
+  6. Verify migrations index: every `migrations/NNN-*.md` file (excluding `_template.md`) has a matching entry in `migrations/index.json`, and every entry in `index.json` references an existing file. Mismatches → FAIL w/ list of orphan files or dangling entries.
+  7. Report issues w/ file:line references
 - Output format:
   ## Consistency Report: {PASS | FAIL}
   ### File References: {PASS | FAIL} — broken refs listed
@@ -174,6 +175,7 @@ Body sections:
   ### Frontmatter: {PASS | FAIL} — missing fields listed
   ### Routing: {PASS | FAIL}
   ### Checklist Sync: {PASS | FAIL}
+  ### Migration Index: {PASS | FAIL} — orphan files + dangling entries listed
 - Anti-hallucination: report only issues verified by reading referenced files,
   read file before claiming path is broken, check actual contents not just names
 - Parallel tool calls block

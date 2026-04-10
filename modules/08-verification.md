@@ -412,7 +412,7 @@ cat > .claude/bootstrap-state.json << 'EOF'
 {
   "version": "6.0",
   "bootstrapped": "{date}",
-  "bootstrap_repo": "{bootstrap_repo}",
+  "bootstrap_repo": "tomasfil/claude-bootstrap",
   "last_migration": "000",
   "last_applied": "{date}",
   "applied": [

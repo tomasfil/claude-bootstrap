@@ -70,6 +70,28 @@ List files touched, files created, files deleted. Cross-reference techniques/mod
 - **Technique sync** — if migration updates techniques, add a step to fetch updated technique files from bootstrap repo into `techniques/` (child projects copy at bootstrap time; updates don't auto-propagate)
 - **Abort on error** — `set -euo pipefail` in any bash blocks; any failure → do NOT update state
 
+### Required: register in migrations/index.json
+
+Every migration file MUST have a matching entry in `migrations/index.json` — the `/migrate-bootstrap` skill reads this index to discover pending migrations (directory listing is not used).
+
+Add an entry to the `migrations` array:
+
+```json
+{
+  "id": "{ID}",
+  "file": "{ID}-{slug}.md",
+  "description": "{1-sentence description matching the migration's blockquote}",
+  "breaking": false
+}
+```
+
+- `id`: must match the migration's metadata `id` field and the filename prefix
+- `file`: exact filename (e.g., `002-example.md`)
+- `description`: short human-readable summary (shown by `/migrate-bootstrap` before applying)
+- `breaking`: must match the metadata `breaking` flag (true → `/migrate-bootstrap` warns and waits for confirmation)
+
+Missing index entry → `/check-consistency` fails + `/migrate-bootstrap` cannot discover the migration.
+
 ---
 
 ## Verify
