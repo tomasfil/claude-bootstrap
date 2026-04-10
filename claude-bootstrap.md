@@ -41,8 +41,8 @@ MANDATORY RULES — VIOLATIONS CAUSE SETUP FAILURE:
 5. At the end (Module 08), run wiring verification checklist. Fix failures before reporting.
 6. Do not invent files or structures not specified in the modules.
 7. Hooks receive JSON on **stdin** — there is no `$CLAUDE_TOOL_INPUT` env var.
-8. All skill files: YAML frontmatter w/ `name`, `description`, `model`, `effort`, `allowed-tools` between `---` markers. Orchestrator skills add `context: fork`, `agent`. Use `paths` for auto-activation, `argument-hint` for discoverability.
-9. All agent files: YAML frontmatter w/ `name`, `description`, `tools`, `model`, `effort`, `maxTurns`, `color`. Add `memory: project` for stateful agents, `skills` list for preloaded domain knowledge.
+8. All skill files: YAML frontmatter w/ `name`, `description`, `model`, `effort`, `allowed-tools` between `---` markers. Orchestrator skills add `context: fork`, `agent`. Use `paths` for auto-activation, `argument-hint` for discoverability. **Skill `allowed-tools` is SPACE-separated** (`allowed-tools: Read Write Grep`), per Claude Code skill spec — never comma-separated (comma form breaks on `Bash(git add *)` patterns).
+9. All agent files: YAML frontmatter w/ `name`, `description`, `tools`, `model`, `effort`, `maxTurns`, `color`. Add `memory: project` for stateful agents, `skills` list for preloaded domain knowledge. **Agent `tools` is COMMA-separated** (`tools: Read, Grep, Glob`), per Claude Code sub-agents spec — DIFFERENT from skill `allowed-tools`. Yes the inconsistency is in the official spec.
 10. After 2 failed troubleshooting attempts, **search the web** before trying more fixes.
 11. Apply anti-hallucination patterns from `techniques/anti-hallucination.md` to every generated agent.
 12. Apply RCCF framework from `techniques/prompt-engineering.md` to every generated skill/agent.

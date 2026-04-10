@@ -17,6 +17,7 @@ All skills MUST include:
 - Keep body under 500 lines; split to `references/` subdirectory if longer
 - `context: fork` + `agent: general-purpose` on orchestrator skills — NOTE: `context:fork` broken (claude-code#16803), skills run inline regardless; keep for forward compat
 - Agent dispatch: use `Agent()` call w/ explicit prompt, NOT implicit `subagent_type` (inline during bootstrap, `subagent_type` post-bootstrap)
+- **`allowed-tools` is SPACE-separated** per Claude Code skill spec (`allowed-tools: Read Write Grep`), never comma-separated. NOTE: skill `allowed-tools:` is space-separated; agent `tools:` is comma-separated (`tools: Read, Grep, Glob`). They are different fields with different separators per Claude Code spec — do not unify.
 
 **Canonical dispatch form** (enforced by migration 003 verify):
 - Procedure text MUST use literal `Dispatch agent via \`subagent_type="proj-<name>"\` w/ …` — NEVER weak prose like `**Dispatch proj-X**`, `Dispatch **proj-X** agent`, or bare `**Dispatch X**` without the `subagent_type=` annotation. Weak prose gives the main agent permission to misroute to built-in `Explore` / `general-purpose` or to inline the work.
@@ -392,12 +393,16 @@ Reference skill — no agent dispatch, provides guidance for manual use.
 Include these sections (from techniques/prompt-engineering.md + techniques/anti-hallucination.md):
 
 - Skill structure: YAML frontmatter template w/ name, description ("Use when..."),
-  argument-hint, allowed-tools, model, effort. Body: procedure steps, decision trees,
-  templates, verification. References: references/ subdirectory for progressive disclosure.
+  argument-hint, allowed-tools (SPACE-separated single line — `allowed-tools: Read Write Grep`,
+  per Claude Code skill spec; never comma-separated, breaks on `Bash(git add *)` patterns),
+  model, effort. Body: procedure steps, decision trees, templates, verification.
+  References: references/ subdirectory for progressive disclosure.
 
 - Agent structure: YAML frontmatter w/ name, description, tools, model, effort: high,
-  maxTurns, color. Body: role, pass-by-reference contract, process, anti-hallucination,
-  scope lock, parallel tool calls block.
+  maxTurns, color. `tools:` is COMMA-separated (`tools: Read, Grep, Glob`) per Claude Code
+  sub-agents spec — DIFFERENT from skill `allowed-tools:` which is space-separated. The
+  spec is inconsistent across file types; don't try to unify. Body: role, pass-by-reference
+  contract, process, anti-hallucination, scope lock, parallel tool calls block.
 
 - RCCF framework: Role (who) → Context (what) → Constraints (boundaries) → Format (output)
 
@@ -452,7 +457,7 @@ Frontmatter:
     Dispatches proj-quick-check for triage, then proj-debugger for root cause analysis.
   context: fork
   agent: general-purpose
-  allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob
+  allowed-tools: Agent Read Write Edit Bash Grep Glob
   model: opus
   effort: high
 
@@ -499,7 +504,7 @@ Frontmatter:
     confidence. Red-green-refactor cycle with test-driven development.
   context: fork
   agent: general-purpose
-  allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob
+  allowed-tools: Agent Read Write Edit Bash Grep Glob
   model: opus
   effort: high
 
@@ -543,7 +548,7 @@ Frontmatter:
     Dispatches proj-code-reviewer agent for thorough review.
   context: fork
   agent: general-purpose
-  allowed-tools: Agent, Read, Grep, Glob, Bash
+  allowed-tools: Agent Read Grep Glob Bash
   model: opus
   effort: high
 
@@ -586,7 +591,7 @@ Frontmatter:
     automated test/build failures. Reads CI output, identifies root cause.
   context: fork
   agent: general-purpose
-  allowed-tools: Agent, Read, Bash, Grep, Glob
+  allowed-tools: Agent Read Bash Grep Glob
   model: opus
   effort: high
 
@@ -632,7 +637,7 @@ Frontmatter:
   argument-hint: "[module-or-file-path]"
   context: fork
   agent: general-purpose
-  allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob
+  allowed-tools: Agent Read Write Edit Bash Grep Glob
   model: opus
   effort: high
 
@@ -683,7 +688,7 @@ Frontmatter:
     exploration and produces spec directly.
   context: fork
   agent: general-purpose
-  allowed-tools: Agent, Read, Write, Grep, Glob
+  allowed-tools: Agent Read Write Grep Glob
   model: opus
   effort: high
 
@@ -740,7 +745,7 @@ Frontmatter:
   argument-hint: "[spec-file-path]"
   context: fork
   agent: general-purpose
-  allowed-tools: Agent, Read, Write, Grep, Glob
+  allowed-tools: Agent Read Write Grep Glob
   model: opus
   effort: high
 
@@ -805,7 +810,7 @@ Frontmatter:
   argument-hint: "[plan-file-path]"
   context: fork
   agent: general-purpose
-  allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob, Skill
+  allowed-tools: Agent Read Write Edit Bash Grep Glob Skill
   model: opus
   effort: high
 
@@ -866,7 +871,7 @@ Frontmatter:
     and proj-consistency-checker agents.
   context: fork
   agent: general-purpose
-  allowed-tools: Agent, Read, Bash, Grep, Glob
+  allowed-tools: Agent Read Bash Grep Glob
   model: opus
   effort: high
 
@@ -926,7 +931,7 @@ Frontmatter:
     Run when SessionStart reports REFLECT_DUE=true.
   context: fork
   agent: general-purpose
-  allowed-tools: Agent, Read, Write, Edit, Grep, Glob, Bash
+  allowed-tools: Agent Read Write Edit Grep Glob Bash
   model: opus
   effort: high
 
@@ -1027,7 +1032,7 @@ Frontmatter:
     promotes/prunes instincts.
   context: fork
   agent: general-purpose
-  allowed-tools: Agent, Read, Write, Edit, Grep, Glob
+  allowed-tools: Agent Read Write Edit Grep Glob
   model: opus
   effort: high
 
@@ -1105,7 +1110,7 @@ Frontmatter:
     discovery — globs .claude/agents/proj-code-writer-*.md for available specialists.
   context: fork
   agent: general-purpose
-  allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob
+  allowed-tools: Agent Read Write Edit Bash Grep Glob
   model: opus
   effort: high
 
@@ -1162,7 +1167,7 @@ Frontmatter:
     recommends evolution. Post-bootstrap only — audit + create-new, NOT split.
   context: fork
   agent: general-purpose
-  allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob
+  allowed-tools: Agent Read Write Edit Bash Grep Glob
   model: opus
   effort: high
 
@@ -1233,7 +1238,7 @@ Frontmatter:
     Use when applying bootstrap updates to this project from the bootstrap
     repo. Fetches pending migrations, applies in order, updates state.
   argument-hint: "[migration-id]"
-  allowed-tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch
+  allowed-tools: Read Write Edit Bash Grep Glob WebFetch
   model: sonnet
   effort: high
 

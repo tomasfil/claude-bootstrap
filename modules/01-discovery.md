@@ -245,6 +245,7 @@ Optional `references/` subdirectory for progressive disclosure. Keep under 500 l
 
 ### Agent (`.claude/agents/{name}.md`)
 YAML frontmatter w/ `name`, `description`, `tools`, `model`, `effort: high`, `maxTurns`, `color`.
+`tools:` is COMMA-separated (`tools: Read, Write, Edit`) — DIFFERENT from skill `allowed-tools:` which is SPACE-separated, per Claude Code spec.
 Single file per agent. Tools whitelist: only what's needed. All agents need Write (or Bash for heredoc).
 
 ### Rule (`.claude/rules/{name}.md`)

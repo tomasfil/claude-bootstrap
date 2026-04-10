@@ -749,7 +749,7 @@ description: >
   specialist agents in dependency order.
 context: fork
 agent: general-purpose
-allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob, Skill
+allowed-tools: Agent Read Write Edit Bash Grep Glob Skill
 model: opus
 effort: high
 paths: "src/**"

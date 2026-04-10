@@ -52,6 +52,8 @@ Read techniques/agent-design.md for pass-by-reference contract + maxTurns table.
 After each dispatch: verify file exists, check frontmatter has required fields
 (`name`, `description`, `tools`, `model`, `effort`, `maxTurns`, `color`).
 
+NOTE: agent `tools:` is COMMA-separated (`tools: Read, Grep, Glob`), per Claude Code sub-agents spec. This is DIFFERENT from skill `allowed-tools:` which is SPACE-separated. Do not unify — spec is inconsistent across file types.
+
 ---
 
 ### 1. Dispatch: proj-quick-check.md

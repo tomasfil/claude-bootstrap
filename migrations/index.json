@@ -24,6 +24,12 @@
       "file": "004-plan-writer-discipline.md",
       "description": "Strengthen proj-plan-writer discipline to forbid implementation code in task files, and update /execute-plan to instruct specialists to read domain rules before writing code.",
       "breaking": false
+    },
+    {
+      "id": "005",
+      "file": "005-skill-allowed-tools-space-separated.md",
+      "description": "Convert skill allowed-tools frontmatter from non-standard comma-separated form to spec-compliant space-separated form. Comma form breaks with Bash(git add *) patterns. Agent tools field is unchanged (correctly comma-separated per spec).",
+      "breaking": false
     }
   ]
 }

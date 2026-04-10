@@ -50,6 +50,11 @@ Skill files use `allowed-tools:` — DIFFERENT semantics: controls skill's own i
 does NOT cascade to sub-dispatches, inheriting behavior N/A. DO NOT strip `allowed-tools:` from
 skill files — not a whitelist side-effect bug, just Claude Code's skill permission model.
 
+FORMAT difference too: agent `tools:` uses COMMA separators (`tools: Read, Grep, Glob`);
+skill `allowed-tools:` uses SPACE separators (`allowed-tools: Read Grep Glob`). Yes the
+spec is inconsistent across the two file types — see https://code.claude.com/docs/en/skills
+vs https://code.claude.com/docs/en/sub-agents. Don't try to unify — document and move on.
+
 ## Orchestrator-as-Skill Pattern
 
 Skills run in main conversation where Agent tool IS available → orchestrate specialists w/o nested-subagent constraint.
@@ -72,7 +77,7 @@ description: >
   generation task.
 context: fork
 agent: general-purpose
-allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob, Skill
+allowed-tools: Agent Read Write Edit Bash Grep Glob Skill
 model: opus
 effort: high
 paths: "src/**"
