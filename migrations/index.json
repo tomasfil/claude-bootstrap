@@ -42,6 +42,12 @@
       "file": "007-orchestrator-skill-dispatch-fix.md",
       "description": "Fix orchestrator skill dispatch — reclassify main-thread vs forkable, enforce frontmatter contract (no context:fork on orchestrators), inject pre-flight gate, audit agent tool whitelists per role table, promote /test-fork as permanent diagnostic.",
       "breaking": false
+    },
+    {
+      "id": "008",
+      "file": "008-fix-techniques-path.md",
+      "description": "Detect and relocate orphan technique files from techniques/ at project root into .claude/references/techniques/. Fixes damage from migrations 001/005/007 which wrote to the wrong path.",
+      "breaking": false
     }
   ]
 }

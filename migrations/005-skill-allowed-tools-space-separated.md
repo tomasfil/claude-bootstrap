@@ -41,7 +41,7 @@ Both convert to: `allowed-tools: Agent Read Write`.
 ## Changes
 
 1. **Convert all skills** — walk `.claude/skills/*/SKILL.md`; rewrite `allowed-tools:` values that use comma-separated form OR YAML list form into space-separated single-line form. Skip files already in that form.
-2. **Sync `techniques/agent-design.md`** — fetch updated technique file from bootstrap repo (FORMAT difference paragraph + space-separated skill example). Idempotent: compares fetched copy to local before overwriting.
+2. **Sync `.claude/references/techniques/agent-design.md`** — fetch updated technique file from bootstrap repo (FORMAT difference paragraph + space-separated skill example) into the client-project technique location. Idempotent: compares fetched copy to local before overwriting.
 3. **State update** — `last_migration` → "005".
 
 ---
@@ -189,42 +189,45 @@ sys.exit(1 if any_fail else 0)
 PY
 ```
 
-### Step 2 — Sync `techniques/agent-design.md` from bootstrap repo
+### Step 2 — Sync `.claude/references/techniques/agent-design.md` from bootstrap repo
 
-Per `.claude/rules/general.md`: technique updates must sync to child projects. This changeset modified `techniques/agent-design.md` (added FORMAT difference paragraph in SCOPE block; converted skill example `allowed-tools` to space-separated). Idempotent: fetches to a `.new` tempfile, compares to existing, only replaces on diff.
+Per `.claude/rules/general.md`: technique updates must sync to child projects. This changeset modified `techniques/agent-design.md` (added FORMAT difference paragraph in SCOPE block; converted skill example `allowed-tools` to space-separated). Techniques live at `.claude/references/techniques/` in client projects (see `modules/02-project-config.md`). Idempotent: fetches to a `.new` tempfile, compares to existing, only replaces on diff.
 
 ```bash
 set -euo pipefail
 
-if [[ ! -d "techniques" ]]; then
-  echo "SKIP: no techniques/ directory — project did not copy techniques at bootstrap"
+TECH_DIR=".claude/references/techniques"
+TECH_FILE="${TECH_DIR}/agent-design.md"
+
+if [[ ! -d "$TECH_DIR" ]]; then
+  echo "SKIP: no ${TECH_DIR} directory — project did not copy techniques at bootstrap"
 else
   BOOTSTRAP_REPO=$(python3 -c "import json; print(json.load(open('.claude/bootstrap-state.json'))['bootstrap_repo'])" 2>/dev/null || echo "tomasfil/claude-bootstrap")
 
   if command -v gh >/dev/null 2>&1; then
-    if ! gh api "repos/${BOOTSTRAP_REPO}/contents/techniques/agent-design.md" --jq '.content' 2>/dev/null | base64 -d > techniques/agent-design.md.new; then
+    if ! gh api "repos/${BOOTSTRAP_REPO}/contents/techniques/agent-design.md" --jq '.content' 2>/dev/null | base64 -d > "${TECH_FILE}.new"; then
       echo "ERROR: gh fetch of techniques/agent-design.md from ${BOOTSTRAP_REPO} failed"
-      rm -f techniques/agent-design.md.new
+      rm -f "${TECH_FILE}.new"
       exit 1
     fi
   elif command -v curl >/dev/null 2>&1; then
-    if ! curl -fsSL "https://raw.githubusercontent.com/${BOOTSTRAP_REPO}/main/techniques/agent-design.md" -o techniques/agent-design.md.new; then
+    if ! curl -fsSL "https://raw.githubusercontent.com/${BOOTSTRAP_REPO}/main/techniques/agent-design.md" -o "${TECH_FILE}.new"; then
       echo "ERROR: curl fetch of techniques/agent-design.md from ${BOOTSTRAP_REPO} failed"
-      rm -f techniques/agent-design.md.new
+      rm -f "${TECH_FILE}.new"
       exit 1
     fi
   else
-    echo "ERROR: neither gh nor curl available — cannot sync techniques/agent-design.md"
+    echo "ERROR: neither gh nor curl available — cannot sync ${TECH_FILE}"
     exit 1
   fi
 
   # Idempotency: skip if identical to existing
-  if [[ -f techniques/agent-design.md ]] && cmp -s techniques/agent-design.md techniques/agent-design.md.new; then
-    rm techniques/agent-design.md.new
-    echo "SKIP: techniques/agent-design.md already up to date"
+  if [[ -f "$TECH_FILE" ]] && cmp -s "$TECH_FILE" "${TECH_FILE}.new"; then
+    rm "${TECH_FILE}.new"
+    echo "SKIP: ${TECH_FILE} already up to date"
   else
-    mv techniques/agent-design.md.new techniques/agent-design.md
-    echo "UPDATED: techniques/agent-design.md"
+    mv "${TECH_FILE}.new" "$TECH_FILE"
+    echo "UPDATED: ${TECH_FILE}"
   fi
 fi
 ```
@@ -297,15 +300,15 @@ else
   echo "SKIP: no .claude/skills directory"
 fi
 
-# 3. techniques/agent-design.md contains the FORMAT difference paragraph
-if [[ -f techniques/agent-design.md ]]; then
-  if grep -q "FORMAT difference" techniques/agent-design.md 2>/dev/null; then
-    echo "PASS: techniques/agent-design.md has FORMAT difference paragraph"
+# 3. .claude/references/techniques/agent-design.md contains the FORMAT difference paragraph
+if [[ -f .claude/references/techniques/agent-design.md ]]; then
+  if grep -q "FORMAT difference" .claude/references/techniques/agent-design.md 2>/dev/null; then
+    echo "PASS: .claude/references/techniques/agent-design.md has FORMAT difference paragraph"
   else
-    echo "WARN: techniques/agent-design.md present but missing FORMAT difference paragraph (sync may have skipped)"
+    echo "WARN: .claude/references/techniques/agent-design.md present but missing FORMAT difference paragraph (sync may have skipped)"
   fi
 else
-  echo "SKIP: no techniques/agent-design.md in project"
+  echo "SKIP: no .claude/references/techniques/agent-design.md in project"
 fi
 
 # 4. State file updated
@@ -333,7 +336,7 @@ Any failure → `/migrate-bootstrap` aborts + does NOT update `bootstrap-state.j
 - **Paren-depth-aware splitter** — `split_respecting_parens` correctly handles `Bash(git add *), Read` as two tokens, not three.
 - **Agents untouched** — migration operates ONLY on `.claude/skills/*/SKILL.md`. Agent `tools:` field uses comma-separated form per Claude Code spec; do NOT modify `.claude/agents/*.md` in this migration.
 - **Abort on error** — `set -euo pipefail`; Step 3 state update only runs after Steps 1 and 2 succeed.
-- **Technique sync** — Step 2 fetches updated `techniques/agent-design.md` from bootstrap repo per `.claude/rules/general.md` rule ("technique update = sync step in migration"). Idempotent via `cmp -s` compare-before-replace. Projects without `techniques/` directory are skipped cleanly.
+- **Technique sync** — Step 2 fetches updated `techniques/agent-design.md` from bootstrap repo into `.claude/references/techniques/agent-design.md` (client-project location per `modules/02-project-config.md`) per `.claude/rules/general.md` rule ("technique update = sync step in migration"). Idempotent via `cmp -s` compare-before-replace. Projects without `.claude/references/techniques/` directory are skipped cleanly.
 
 ### Required: register in migrations/index.json
 

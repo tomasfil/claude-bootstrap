@@ -224,14 +224,15 @@ fi
 # Bootstrap v6 agent-design.md now contains MCP Tool Propagation + Agent Dispatch Policy
 BOOTSTRAP_REPO=$(python3 -c "import json; print(json.load(open('.claude/bootstrap-state.json'))['bootstrap_repo'])" 2>/dev/null || echo "tomasfil/claude-bootstrap")
 
+mkdir -p .claude/references/techniques
 if command -v gh >/dev/null 2>&1; then
   gh api "repos/${BOOTSTRAP_REPO}/contents/techniques/agent-design.md" \
-    --jq '.content' | base64 -d > techniques/agent-design.md
+    --jq '.content' | base64 -d > .claude/references/techniques/agent-design.md
 else
   curl -sSL "https://raw.githubusercontent.com/${BOOTSTRAP_REPO}/main/techniques/agent-design.md" \
-    -o techniques/agent-design.md
+    -o .claude/references/techniques/agent-design.md
 fi
-echo "UPDATED techniques/agent-design.md from ${BOOTSTRAP_REPO}"
+echo "UPDATED .claude/references/techniques/agent-design.md from ${BOOTSTRAP_REPO}"
 ```
 
 ### Step 8 — Update bootstrap-state.json
@@ -340,8 +341,8 @@ else
 fi
 
 # 7. Technique file has new sections
-grep -q "## MCP Tool Propagation" techniques/agent-design.md && echo "PASS: MCP Tool Propagation present" || { echo "FAIL: MCP Tool Propagation missing"; fail=1; }
-grep -q "## Agent Dispatch Policy" techniques/agent-design.md && echo "PASS: Agent Dispatch Policy present" || { echo "FAIL: Agent Dispatch Policy missing"; fail=1; }
+grep -q "## MCP Tool Propagation" .claude/references/techniques/agent-design.md && echo "PASS: MCP Tool Propagation present" || { echo "FAIL: MCP Tool Propagation missing"; fail=1; }
+grep -q "## Agent Dispatch Policy" .claude/references/techniques/agent-design.md && echo "PASS: Agent Dispatch Policy present" || { echo "FAIL: Agent Dispatch Policy missing"; fail=1; }
 
 echo "---"
 [[ $fail -eq 0 ]] && echo "Migration 001 verification: ALL PASS" || { echo "Migration 001 verification: FAILURES — state NOT updated"; exit 1; }
@@ -361,4 +362,4 @@ On success:
 
 ## Rollback
 
-Not automatic. Restore from git (all changes are in `.claude/agents/`, `.claude/skills/`, `techniques/agent-design.md`, `.claude/bootstrap-state.json`). If `.claude/` is gitignored, restore from companion repo or re-bootstrap.
+Not automatic. Restore from git (all changes are in `.claude/agents/`, `.claude/skills/`, `.claude/references/techniques/agent-design.md`, `.claude/bootstrap-state.json`). If `.claude/` is gitignored, restore from companion repo or re-bootstrap.

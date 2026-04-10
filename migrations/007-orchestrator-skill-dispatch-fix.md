@@ -34,7 +34,7 @@ Root cause documented in spec `.claude/specs/2026-04-10-orchestrator-skill-dispa
 
 ## Changes
 
-1. **Re-fetches `techniques/agent-design.md`** from bootstrap repo — new `## Skill Dispatch Reliability` section covers classification table, frontmatter contract, and agent tool audit table.
+1. **Re-fetches `.claude/references/techniques/agent-design.md`** from bootstrap repo — new `## Skill Dispatch Reliability` section covers classification table, frontmatter contract, and agent tool audit table. (Client-project technique location per `modules/02-project-config.md`; NOT `techniques/` at project root.)
 2. **Rewrites orchestrator skill frontmatter** — removes `context: fork` + `agent: general-purpose`, sets `allowed-tools: Agent Read Write` (drops Edit, Bash, Grep, Glob, mcp__* from main-thread orchestrators).
 3. **Injects pre-flight gate** at top of every dispatching skill body — hard STOP if required `proj-*` agent missing; no inline fallback.
 4. **Removes inline escape-hatch prose** (`"fall back.*inline"`, `"perform the work.*main thread"`, `"if.*agents.*not.*exist.*inline"`).
@@ -58,9 +58,9 @@ command -v python3 >/dev/null 2>&1 || { echo "ERROR: python3 required"; exit 1; 
 command -v curl >/dev/null 2>&1 || { echo "ERROR: curl required"; exit 1; }
 ```
 
-### Step 1 — Re-fetch `techniques/agent-design.md`
+### Step 1 — Re-fetch `.claude/references/techniques/agent-design.md`
 
-Reads `bootstrap_repo` from `.claude/bootstrap-state.json`. Converts GitHub repo URL to raw form for curl. Safe to re-run — always fetches fresh.
+Reads `bootstrap_repo` from `.claude/bootstrap-state.json`. Converts GitHub repo URL to raw form for curl. Safe to re-run — always fetches fresh. Target path is `.claude/references/techniques/agent-design.md` per `modules/02-project-config.md` — the canonical client-project location for technique references. (Do NOT write to `techniques/` at the project root — that is the bootstrap repo layout, not the client layout.)
 
 ```bash
 BOOTSTRAP_REPO=$(python3 -c "
@@ -81,9 +81,9 @@ else:
 ")
 
 echo "Bootstrap repo raw base: $BOOTSTRAP_REPO"
-mkdir -p techniques
-curl -fsSL "${BOOTSTRAP_REPO}/techniques/agent-design.md" -o techniques/agent-design.md
-echo "DONE: fetched techniques/agent-design.md"
+mkdir -p .claude/references/techniques
+curl -fsSL "${BOOTSTRAP_REPO}/techniques/agent-design.md" -o .claude/references/techniques/agent-design.md
+echo "DONE: fetched .claude/references/techniques/agent-design.md"
 ```
 
 ### Step 2 — Rewrite skill frontmatter
@@ -559,8 +559,9 @@ PY
 - **Glob agent filenames, never hardcode** — `for agent in .claude/agents/proj-*.md; do ... done`; same for skills via `glob.glob('.claude/skills/**/*.md', recursive=True)`.
 - **Read-before-write** every modification — python3 reads full file content before rewrite.
 - **Idempotent** — every step is detect-then-act; presence checks before modifications; re-running on already-migrated project is a no-op.
-- **Self-contained** — Step 1 is the ONLY remote fetch, and it targets `techniques/agent-design.md` (tracked file in bootstrap repo). No fetch from gitignored `.claude/` paths.
-- **Technique sync** — Step 1 re-fetches `techniques/agent-design.md` because the new `## Skill Dispatch Reliability` section does not auto-propagate to child projects bootstrapped before this migration.
+- **Self-contained** — Step 1 is the ONLY remote fetch. It reads the tracked file `techniques/agent-design.md` from the bootstrap repo and writes it to the client-project location `.claude/references/techniques/agent-design.md`. No fetch from gitignored `.claude/` paths.
+- **Technique sync** — Step 1 re-fetches `techniques/agent-design.md` into `.claude/references/techniques/agent-design.md` because the new `## Skill Dispatch Reliability` section does not auto-propagate to child projects bootstrapped before this migration.
+- **Client vs bootstrap layout** — the bootstrap repo stores techniques at root `techniques/`; client projects store them at `.claude/references/techniques/` (see `modules/02-project-config.md` Step 5). Migrations MUST write to the client location, never the root.
 - **Abort on error** — `set -euo pipefail` in prerequisites; python3 blocks exit non-zero on failure.
 - **MCP preservation** — Step 5 `proj-code-writer-markdown` branch only removes `Bash`; all `mcp__*` entries are preserved to avoid undoing migration 001.
 
@@ -592,11 +593,11 @@ for f in .claude/skills/**/*.md .claude/skills/*.md; do
 done
 shopt -u globstar nullglob
 
-# 1. techniques/agent-design.md exists and contains Skill Dispatch Reliability section
-if [[ -f "techniques/agent-design.md" ]] && grep -q "Skill Dispatch Reliability" techniques/agent-design.md; then
-  echo "PASS: techniques/agent-design.md has Skill Dispatch Reliability section"
+# 1. .claude/references/techniques/agent-design.md exists and contains Skill Dispatch Reliability section
+if [[ -f ".claude/references/techniques/agent-design.md" ]] && grep -q "Skill Dispatch Reliability" .claude/references/techniques/agent-design.md; then
+  echo "PASS: .claude/references/techniques/agent-design.md has Skill Dispatch Reliability section"
 else
-  echo "FAIL: techniques/agent-design.md missing or lacks Skill Dispatch Reliability section"
+  echo "FAIL: .claude/references/techniques/agent-design.md missing or lacks Skill Dispatch Reliability section"
   fail=1
 fi
 
@@ -754,9 +755,9 @@ Not automatically reversible. Changes are confined to:
 - `.claude/skills/**/*.md` (frontmatter rewrites + pre-flight injections)
 - `.claude/agents/proj-*.md` (tools: line modifications)
 - `.claude/agents/agent-index.yaml` (regenerated)
-- `techniques/agent-design.md` (re-fetched)
+- `.claude/references/techniques/agent-design.md` (re-fetched)
 - `.claude/bootstrap-state.json` (state advance)
 
-Restore from git: `git checkout -- .claude/skills/ .claude/agents/ techniques/agent-design.md .claude/bootstrap-state.json`
+Restore from git: `git checkout -- .claude/skills/ .claude/agents/ .claude/references/techniques/agent-design.md .claude/bootstrap-state.json`
 
 If `.claude/` is gitignored, restore from companion repo at `~/.claude-configs/{project}` or re-bootstrap from `modules/05`, `06`, `07` with the pre-007 module files.

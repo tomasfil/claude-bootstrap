@@ -110,7 +110,7 @@ import os, re, glob
 
 POLICY_BLOCK = """**Agent Dispatch Policy**: Use `subagent_type="proj-<name>"` explicitly.
 NEVER substitute built-in `Explore` / `general-purpose` / plugin agents.
-If a custom agent is missing → STOP and inform user. See `techniques/agent-design.md § Agent Dispatch Policy`.
+If a custom agent is missing → STOP and inform user. See `.claude/references/techniques/agent-design.md § Agent Dispatch Policy`.
 """
 
 targets = sorted(set(

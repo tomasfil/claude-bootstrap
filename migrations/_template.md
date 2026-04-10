@@ -67,7 +67,7 @@ List files touched, files created, files deleted. Cross-reference techniques/mod
 - **Read-before-write** every modification — never clobber unknown state
 - **Idempotent** — running twice must be safe (detect already-applied state, skip)
 - **Self-contained** — do NOT reference gitignored paths (`.claude/`, `CLAUDE.md`) for remote fetch. Inline content or reference only tracked files from bootstrap repo
-- **Technique sync** — if migration updates techniques, add a step to fetch updated technique files from bootstrap repo into `techniques/` (child projects copy at bootstrap time; updates don't auto-propagate)
+- **Technique sync** — if migration updates techniques, add a step to fetch updated technique files from bootstrap repo into `.claude/references/techniques/` — NOT `techniques/` at the project root. The bootstrap repo stores techniques at root `techniques/`; client projects store them at `.claude/references/techniques/` (see `modules/02-project-config.md` Step 5). Child projects copy techniques at bootstrap time; updates don't auto-propagate, so the fetch destination MUST be the client layout path. Idempotent: fetch to `.new` tempfile, `cmp -s` before replace.
 - **Abort on error** — `set -euo pipefail` in any bash blocks; any failure → do NOT update state
 
 ### Required: register in migrations/index.json
