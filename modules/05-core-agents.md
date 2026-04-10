@@ -1,14 +1,14 @@
 # Module 05 — Core Agents
 
-> Create remaining 7 utility/diagnostic agents via code-writer-markdown dispatch.
-> Foundation 3 (code-writer-markdown, researcher, code-writer-bash) already exist from Module 01.
+> Create remaining 7 utility/diagnostic agents via proj-code-writer-markdown dispatch.
+> Foundation 3 (proj-code-writer-markdown, proj-researcher, proj-code-writer-bash) already exist from Module 01.
 
 ---
 
 ## Idempotency
 
 Per agent file: READ existing → check `name:` in frontmatter matches expected → skip if current.
-Missing → dispatch code-writer-markdown to create. Stale → dispatch to regenerate.
+Missing → dispatch proj-code-writer-markdown to create. Stale → dispatch to regenerate.
 
 ## Actions
 
@@ -20,7 +20,7 @@ mkdir -p .claude/agents .claude/reports
 
 Verify foundation agents exist:
 ```bash
-for agent in code-writer-markdown researcher code-writer-bash; do
+for agent in proj-code-writer-markdown proj-researcher proj-code-writer-bash; do
   [[ -f ".claude/agents/${agent}.md" ]] || echo "MISSING: ${agent}.md — run Module 01 first"
 done
 ```
@@ -29,7 +29,7 @@ If any missing → STOP. Module 01 must complete first.
 
 ### Dispatch Pattern
 
-Each agent dispatched sequentially to code-writer-markdown using inline BOOTSTRAP_DISPATCH_PROMPT from Module 01.
+Each agent dispatched sequentially to proj-code-writer-markdown using inline BOOTSTRAP_DISPATCH_PROMPT from Module 01.
 Sequential because: each is independent but consistent quality requires full attention per agent.
 
 Every dispatch follows this structure:
@@ -37,7 +37,7 @@ Every dispatch follows this structure:
 ```
 Agent(
   description: "Create {agent-name} agent",
-  prompt: "{BOOTSTRAP_DISPATCH_PROMPT from Module 01, code-writer-markdown section}
+  prompt: "{BOOTSTRAP_DISPATCH_PROMPT from Module 01, proj-code-writer-markdown section}
 
 Write the agent file to .claude/agents/{agent-name}.md with the following specification:
 
@@ -54,14 +54,14 @@ After each dispatch: verify file exists, check frontmatter has required fields
 
 ---
 
-### 1. Dispatch: quick-check.md
+### 1. Dispatch: proj-quick-check.md
 
 **Spec for dispatch prompt:**
 
 ```
-Agent: quick-check
+Agent: proj-quick-check
 Model: haiku | maxTurns: 25 | effort: high | color: gray
-Tools: Read, Grep, Glob
+Tools: OMIT (inherit parent tools incl. MCP — read-only agent)
 Purpose: fast lookups, file searches, existence checks, factual codebase questions
 
 Pass-by-reference: TEXT RETURN EXCEPTION — fast lookups where file write overhead
@@ -74,25 +74,27 @@ the codebase. Optimized for speed over depth.
 Body sections:
 - Scope: find files by name/pattern, check class/method/type existence, read specific
   file sections, answer factual code questions
-- Out of scope: no file modifications, no builds/tests, deep analysis → researcher
+- Out of scope: no file modifications, no builds/tests, deep analysis → proj-researcher
 - Anti-hallucination: report only what's found, not found → say so w/ no speculation,
   always include file paths + line numbers
 - Parallel tool calls block (compact form)
 
 This is the ONLY agent that returns text instead of writing files.
-Do NOT include Write or Bash in tools — read-only agent.
+OMIT `tools:` field entirely — read-only agent inherits parent tools incl. mcp__* servers.
+Any explicit `tools:` list = strict whitelist that excludes ALL MCP tools.
 ```
 
 ---
 
-### 2. Dispatch: plan-writer.md
+### 2. Dispatch: proj-plan-writer.md
 
 **Spec for dispatch prompt:**
 
 ```
-Agent: plan-writer
+Agent: proj-plan-writer
 Model: sonnet | maxTurns: 100 | effort: high | color: blue
 Tools: Read, Write, Grep, Glob
+Tools-note: KEEP (migration-001 injects mcp__<server>__* per project .mcp.json)
 Purpose: create implementation plans from specs, split into per-task files
 
 Pass-by-reference: writes master plan to .claude/specs/{branch}/{date}-{topic}-plan.md
@@ -140,14 +142,14 @@ Body sections:
 
 ---
 
-### 3. Dispatch: consistency-checker.md
+### 3. Dispatch: proj-consistency-checker.md
 
 **Spec for dispatch prompt:**
 
 ```
-Agent: consistency-checker
+Agent: proj-consistency-checker
 Model: sonnet | maxTurns: 75 | effort: high | color: yellow
-Tools: Read, Grep, Glob, Bash
+Tools: OMIT (inherit parent tools incl. MCP — read-only agent)
 Purpose: cross-reference validation, structural integrity checks
 
 Pass-by-reference: writes report via Bash heredoc to .claude/reports/consistency-{timestamp}.md.
@@ -179,14 +181,15 @@ Body sections:
 
 ---
 
-### 4. Dispatch: debugger.md
+### 4. Dispatch: proj-debugger.md
 
 **Spec for dispatch prompt:**
 
 ```
-Agent: debugger
+Agent: proj-debugger
 Model: opus | maxTurns: 100 | effort: high | color: red
 Tools: Read, Grep, Glob, Bash
+Tools-note: KEEP (migration-001 injects mcp__<server>__* per project .mcp.json)
 Purpose: root cause analysis for bugs, test failures, runtime errors
 
 Pass-by-reference: writes diagnosis via Bash heredoc to .claude/reports/debug-{timestamp}.md.
@@ -222,14 +225,14 @@ Body sections:
 
 ---
 
-### 5. Dispatch: verifier.md
+### 5. Dispatch: proj-verifier.md
 
 **Spec for dispatch prompt:**
 
 ```
-Agent: verifier
+Agent: proj-verifier
 Model: sonnet | maxTurns: 75 | effort: high | color: green
-Tools: Read, Grep, Glob, Bash
+Tools: OMIT (inherit parent tools incl. MCP — read-only agent)
 Purpose: structural verification + build/test verification before commit
 
 Pass-by-reference: writes report via Bash heredoc to .claude/reports/verify-{timestamp}.md.
@@ -238,7 +241,7 @@ Return path + summary. Use `cat > file <<'REPORT' ... REPORT` pattern (GitHub #9
 Description: Use when verifying work is complete and correct before committing or
 claiming done. Runs build, tests, validates cross-references, checks for common
 issues. Also performs consistency checking (cross-ref integrity) — dispatched
-together with consistency-checker by /verify skill.
+together with proj-consistency-checker by /verify skill.
 
 Body sections:
 - Role: QA engineer — verify changes are complete, correct, non-breaking
@@ -265,14 +268,14 @@ Body sections:
 
 ---
 
-### 6. Dispatch: reflector.md
+### 6. Dispatch: proj-reflector.md
 
 **Spec for dispatch prompt:**
 
 ```
-Agent: reflector
+Agent: proj-reflector
 Model: opus | maxTurns: 100 | effort: high | color: magenta
-Tools: Read, Grep, Glob, Bash
+Tools: OMIT (inherit parent tools incl. MCP — read-only agent)
 Purpose: analyze accumulated learnings, propose improvements to rules/agents
 
 Pass-by-reference: writes proposals via Bash heredoc to .claude/reports/reflect-{timestamp}.md.
@@ -307,14 +310,15 @@ Body sections:
 
 ---
 
-### 7. Dispatch: tdd-runner.md
+### 7. Dispatch: proj-tdd-runner.md
 
 **Spec for dispatch prompt:**
 
 ```
-Agent: tdd-runner
+Agent: proj-tdd-runner
 Model: opus | maxTurns: 150 | effort: high | color: green
 Tools: Read, Grep, Glob, Bash
+Tools-note: KEEP (migration-001 injects mcp__<server>__* per project .mcp.json)
 Purpose: strict red-green-refactor TDD cycles
 
 Pass-by-reference: writes ALL files via Bash heredoc (`cat > file <<'EOF' ... EOF`).
@@ -366,7 +370,7 @@ Body sections:
 After all 7 agents created, verify:
 
 ```bash
-for agent in quick-check plan-writer consistency-checker debugger verifier reflector tdd-runner; do
+for agent in proj-quick-check proj-plan-writer proj-consistency-checker proj-debugger proj-verifier proj-reflector proj-tdd-runner; do
   if [[ -f ".claude/agents/${agent}.md" ]]; then
     echo "OK: ${agent}.md"
   else
@@ -397,5 +401,5 @@ If any agent missing or incomplete → re-dispatch for that agent only.
 ## Checkpoint
 
 ```
-✅ Module 05 complete — 7 core agents created: quick-check, plan-writer, consistency-checker, debugger, verifier, reflector, tdd-runner
+✅ Module 05 complete — 7 core agents created: proj-quick-check, proj-plan-writer, proj-consistency-checker, proj-debugger, proj-verifier, proj-reflector, proj-tdd-runner
 ```

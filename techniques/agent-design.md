@@ -28,6 +28,28 @@ see-also:
 
 **Exception** — `claude --agent`: agents ARE main thread, CAN spawn subagents + restrict types
 
+## MCP Tool Propagation
+
+GOTCHA: explicit `tools:` in agent frontmatter = strict whitelist.
+ANY `tools:` list excludes ALL `mcp__*` tools — MCP becomes unreachable from subagent.
+
+Fix by agent type:
+- Read-only agents (proj-researcher, proj-quick-check, proj-verifier, proj-consistency-checker, proj-reflector, proj-code-reviewer) → OMIT `tools:` line entirely → inherit parent tools incl. MCP
+- Write agents (proj-plan-writer, proj-debugger, proj-tdd-runner, proj-code-writer-*, proj-test-writer) → keep `tools:` + inject `mcp__<server>__*` per `.mcp.json` servers at bootstrap/migration time
+
+Example: write agent w/ `.mcp.json` containing `context7` + `serena` servers:
+```yaml
+tools: Read, Write, Edit, Bash, Grep, Glob, mcp__context7__*, mcp__serena__*
+```
+
+Injection rule: one glob entry per server key. Server names = top-level `mcpServers` keys in `.mcp.json`.
+Bootstrap Module 08 verifies propagation. Migration 001 retrofits existing projects.
+
+SCOPE: rule applies ONLY to subagent `tools:` frontmatter (files in `.claude/agents/`).
+Skill files use `allowed-tools:` — DIFFERENT semantics: controls skill's own invocation tools,
+does NOT cascade to sub-dispatches, inheriting behavior N/A. DO NOT strip `allowed-tools:` from
+skill files — not a whitelist side-effect bug, just Claude Code's skill permission model.
+
 ## Orchestrator-as-Skill Pattern
 
 Skills run in main conversation where Agent tool IS available → orchestrate specialists w/o nested-subagent constraint.
@@ -73,7 +95,7 @@ paths: "src/**"
 
 ```yaml
 ---
-name: code-writer-dotnet
+name: proj-code-writer-dotnet
 description: >
   .NET/C# code writer specialist. Use when writing C# code for FastEndpoints
   APIs, EF Core entities/configurations, services, DTOs, mappers, or any
@@ -108,10 +130,10 @@ effort: high (mandatory for all agents) consumes more turns per step.
 
 | Role | minTurns | Rationale |
 |------|----------|-----------|
-| quick-check | 25 | Fast lookups, text return |
-| verifier, consistency-checker | 75 | Read + validate + write report |
-| researcher, code-writer, plan-writer, debugger, reflector | 100 | Complex multi-phase work |
-| tdd-runner | 150 | Multiple red-green-refactor cycles |
+| proj-quick-check | 25 | Fast lookups, text return |
+| proj-verifier, proj-consistency-checker | 75 | Read + validate + write report |
+| proj-researcher, proj-code-writer-*, proj-plan-writer, proj-debugger, proj-reflector | 100 | Complex multi-phase work |
+| proj-tdd-runner | 150 | Multiple red-green-refactor cycles |
 
 All agents MUST have Write tool (or Bash for heredoc writers). Without it, pass-by-reference breaks.
 
@@ -121,12 +143,12 @@ All agents MUST have Write tool (or Bash for heredoc writers). Without it, pass-
 
 | Agent | Model | Agent | Model |
 |-------|-------|-------|-------|
-| code-writer-{lang} | opus | plan-writer | sonnet |
-| code-writer-{lang}-{fw} | opus | | |
-| test-writer | opus | researcher | sonnet |
-| project-code-reviewer | opus | consistency-checker | sonnet |
-| debugger | opus | verifier | sonnet |
-| tdd-runner / reflector | opus | quick-check | haiku |
+| proj-code-writer-{lang} | opus | proj-plan-writer | sonnet |
+| proj-code-writer-{lang}-{fw} | opus | | |
+| proj-test-writer | opus | proj-researcher | sonnet |
+| proj-code-reviewer | opus | proj-consistency-checker | sonnet |
+| proj-debugger | opus | proj-verifier | sonnet |
+| proj-tdd-runner / proj-reflector | opus | proj-quick-check | haiku |
 
 ## Foreground-Only Dispatch
 
@@ -141,6 +163,20 @@ All agents MUST have Write tool (or Bash for heredoc writers). Without it, pass-
 | Extended | Standard + `WebSearch, WebFetch` | current docs/APIs |
 | Orchestrator | `Agent(...), Read, Grep, Glob, Bash` | main-thread only |
 
+## Agent Dispatch Policy
+
+All custom project agents use `proj-*` prefix → files at `.claude/agents/proj-*.md`.
+
+Rules:
+1. Dispatch via EXPLICIT `subagent_type="proj-<name>"` in Task/Agent tool call — NOT prose ("dispatch the researcher agent")
+2. NEVER substitute built-in `Explore` / `general-purpose` / plugin agents for missing custom agents
+3. If named custom agent absent from `.claude/agents/` → STOP, inform user; no silent fallback
+4. Built-in `Explore` + `general-purpose` cannot be disabled via config (verified — no Claude Code setting exists) — `proj-*` naming is the only defense against semantic-overlap capture
+
+Why explicit subagent_type: prose dispatch ("dispatch the researcher agent") lets main thread pick semantically-similar built-in `Explore` instead of custom `proj-researcher`. Literal `subagent_type="proj-researcher"` bypasses the routing ambiguity entirely.
+
+Enforcement: Module 08 verification greps skill bodies for prose dispatch patterns and flags.
+
 ## Pass-by-Reference Protocol
 
 Every agent dispatch follows this contract:
@@ -152,25 +188,25 @@ Orchestrator → reads file ONLY IF: needed for next dispatch | error in summary
 ### Write Mechanism by Agent Type
 | Agent | Write method | Reason |
 |---|---|---|
-| code-writer-markdown | Write/Edit tools | Content creation — reliable |
-| code-writer-bash | Write/Edit tools | Same |
-| researcher | Write tool | Writes reference docs |
-| debugger | Bash heredoc | GitHub #9458 workaround |
-| tdd-runner | Bash heredoc | Same |
-| verifier | Bash heredoc | Writes to .claude/reports/ |
-| reflector | Bash heredoc | Writes proposals to .claude/reports/ |
-| consistency-checker | Bash heredoc | Writes report to .claude/reports/ |
-| quick-check | Text return | Fast lookups — file overhead not worth it |
+| proj-code-writer-markdown | Write/Edit tools | Content creation — reliable |
+| proj-code-writer-bash | Write/Edit tools | Same |
+| proj-researcher | Write tool | Writes reference docs |
+| proj-debugger | Bash heredoc | GitHub #9458 workaround |
+| proj-tdd-runner | Bash heredoc | Same |
+| proj-verifier | Bash heredoc | Writes to .claude/reports/ |
+| proj-reflector | Bash heredoc | Writes proposals to .claude/reports/ |
+| proj-consistency-checker | Bash heredoc | Writes report to .claude/reports/ |
+| proj-quick-check | Text return (exception) | Fast lookups — file overhead not worth it |
 
 Report directory: `.claude/reports/` — transient agent output, not git-tracked.
 
 ## Self-Bootstrapping Pattern
 
-Foundation agents (code-writer-markdown, researcher, code-writer-bash) created inline during
+Foundation agents (proj-code-writer-markdown, proj-researcher, proj-code-writer-bash) created inline during
 Module 01 — they ARE the tools that create everything else. Circular dependency prevents using
 agents to create agents.
 
-Rule: Only foundation agents may be created inline. All other agents dispatched to code-writer-markdown.
+Rule: Only foundation agents may be created inline. All other agents dispatched to proj-code-writer-markdown.
 
 ### Agent Loading Constraint
 Agent .md files loaded at session start ONLY (no hot-reload — claude-code#6497, #22050, #29202).
@@ -370,7 +406,7 @@ documentation writers, read-only analysis).
 | 500+ | Split into agent + `references/` |
 
 ```
-.claude/agents/code-writer-dotnet.md          # Core logic (200 lines)
+.claude/agents/proj-code-writer-dotnet.md      # Core logic (200 lines)
 .claude/agents/references/dotnet-patterns.md   # Detailed examples (300 lines)
 ```
 
@@ -457,7 +493,7 @@ agents:
 
 | Field | Purpose |
 |-------|---------|
-| `name` | Matches `.md` filename — `code-writer-typescript` → `.claude/agents/code-writer-typescript.md` |
+| `name` | Matches `.md` filename — `proj-code-writer-typescript` → `.claude/agents/proj-code-writer-typescript.md` |
 | `scope` | Free-text describing coverage; `/code-write` orchestrator matches tasks → agents via this field |
 | `model` | Claude model for the agent |
 | `parent` | Sub-specialist lineage; `/evolve-agents` uses for audit + prevents re-splitting |

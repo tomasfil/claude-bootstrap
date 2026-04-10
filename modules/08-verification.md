@@ -23,12 +23,12 @@ mkdir -p .claude/reports
 
 Verify Modules 01-07 complete — check key outputs:
 ```bash
-[[ -f ".claude/agents/code-writer-markdown.md" ]] || echo "MISSING: foundation agents — run Module 01"
+[[ -f ".claude/agents/proj-code-writer-markdown.md" ]] || echo "MISSING: foundation agents — run Module 01"
 [[ -f "CLAUDE.md" ]] || echo "MISSING: CLAUDE.md — run Module 02"
 [[ -f ".claude/settings.json" ]] || echo "MISSING: settings.json — run Module 03"
 [[ -d ".learnings" ]] || echo "MISSING: learnings — run Module 04"
-[[ -f ".claude/agents/verifier.md" ]] || echo "MISSING: verifier agent — run Module 05"
-[[ -f ".claude/agents/consistency-checker.md" ]] || echo "MISSING: consistency-checker — run Module 05"
+[[ -f ".claude/agents/proj-verifier.md" ]] || echo "MISSING: proj-verifier agent — run Module 05"
+[[ -f ".claude/agents/proj-consistency-checker.md" ]] || echo "MISSING: proj-consistency-checker — run Module 05"
 ls .claude/skills/*/SKILL.md >/dev/null 2>&1 || echo "MISSING: skills — run Module 06"
 ```
 
@@ -36,14 +36,15 @@ If any MISSING → STOP. Complete prerequisite modules first.
 
 ---
 
-### 1. Dispatch: verifier (comprehensive wiring check)
+### 1. Dispatch: proj-verifier (comprehensive wiring check)
 
-Dispatch `verifier` agent (inline BOOTSTRAP_DISPATCH_PROMPT from Module 01):
+Dispatch `proj-verifier` agent (inline BOOTSTRAP_DISPATCH_PROMPT from Module 01):
 
 ```
 Agent(
   description: "Comprehensive wiring verification",
-  prompt: "{BOOTSTRAP_DISPATCH_PROMPT from Module 01, verifier section}
+  subagent_type: "proj-verifier",
+  prompt: "{BOOTSTRAP_DISPATCH_PROMPT from Module 01, proj-verifier section}
 
 Run comprehensive wiring verification. Check ALL of the following:
 
@@ -88,6 +89,29 @@ COMPRESSION COMPLIANCE:
 - Scan all agent/skill files for prose indicators: lines starting with 'You are a', 'Your job is', 'This skill', 'The agent', 'Please note', 'In order to'
 - Report violations
 
+AGENT DISPATCH INTEGRITY:
+- Pass 1: Grep .claude/skills/**/*.md for prose dispatch patterns:
+    grep -nE \"dispatch (the )?\\w+ agent|Dispatch [A-Z]\\w+ agent\" .claude/skills/**/*.md
+  For each match, check if `subagent_type=` appears within ±5 lines of the match
+  (awk/sed context check) — if subagent_type nearby → PASS; else → flag as WARNING
+- Pass 2: Grep .claude/skills/**/*.md for unprefixed old agent names inside backticks or subagent_type:
+    Old names: researcher, quick-check, debugger, verifier, consistency-checker,
+               reflector, tdd-runner, plan-writer, code-writer-markdown, code-writer-bash,
+               project-code-reviewer, test-writer
+    Pattern: grep -nE \"(\\\`|subagent_type=\\\")(researcher|quick-check|debugger|verifier|consistency-checker|reflector|tdd-runner|plan-writer|code-writer-markdown|code-writer-bash|project-code-reviewer|test-writer)(\\\`|\\\")\" .claude/skills/**/*.md
+  Any match → FAIL (should use proj-* form)
+- Pass 3: Every Agent()/Task() dispatch in skill files must have explicit subagent_type=\"proj-*\"
+    Pattern: grep -nE \"subagent_type\\s*[:=]\\s*[\\\"'](?!proj-)\" .claude/skills/**/*.md
+  Any match (non-proj- subagent_type) → FAIL
+
+MCP TOOL COVERAGE:
+- If .mcp.json exists: parse mcpServers keys
+  For each .claude/agents/*.md:
+    Has tools: line → write-type agent → verify mcp__<server>__* entries present for each server
+    No tools: line → read-only type → PASS (inherits parent MCP)
+  Report: agents missing MCP entries per server
+- If .mcp.json absent: skip MCP checks, note 'no MCP servers configured'
+
 Write report to .claude/reports/verification.md via Bash heredoc.
 Format: PASS/FAIL per check category, details for FAILs.
 Return path + 1-line summary.
@@ -99,14 +123,15 @@ Read `.claude/reports/verification.md`. If FAIL items → fix each before contin
 
 ---
 
-### 2. Dispatch: consistency-checker (cross-reference integrity)
+### 2. Dispatch: proj-consistency-checker (cross-reference integrity)
 
-Dispatch `consistency-checker` agent:
+Dispatch `proj-consistency-checker` agent:
 
 ```
 Agent(
   description: "Cross-reference integrity check",
-  prompt: "{BOOTSTRAP_DISPATCH_PROMPT from Module 01, consistency-checker section}
+  subagent_type: "proj-consistency-checker",
+  prompt: "{BOOTSTRAP_DISPATCH_PROMPT from Module 01, proj-consistency-checker section}
 
 Validate cross-reference integrity:
 
@@ -114,12 +139,17 @@ MODULE REFERENCES:
 - Every file path referenced in module files exists on disk
 
 SKILL-AGENT DEPENDENCIES:
-- /review → project-code-reviewer agent exists
-- /code-write → code-writer-{lang} agents exist for each detected language
-- /verify → verifier + consistency-checker agents exist
-- /tdd → tdd-runner agent exists
-- /debug → debugger agent exists
-- /reflect → reflector agent exists
+- /review → proj-code-reviewer agent exists
+- /code-write → proj-code-writer-{lang} agents exist for each detected language
+- /verify → proj-verifier + proj-consistency-checker agents exist
+- /tdd → proj-tdd-runner agent exists
+- /debug → proj-debugger agent exists
+- /reflect → proj-reflector agent exists
+
+AGENT NAMING CONVENTION:
+- All project agents must use proj-* prefix → files at .claude/agents/proj-*.md
+- Glob .claude/agents/*.md — any file whose frontmatter \`name:\` field lacks proj- prefix = FAIL
+- Skill dispatches: verify subagent_type references match actual agent filenames
 
 AGENT INDEX:
 - .claude/agents/agent-index.yaml entries match actual .claude/agents/*.md files
@@ -238,11 +268,12 @@ Scan project for directories w/ distinctly different conventions:
 **When to create:** directory has conventions that DIFFER from root CLAUDE.md + rules/.
 **When NOT to create:** root coverage adequate, directory small (<10 files), same conventions.
 
-If needed — dispatch `code-writer-markdown` per directory:
+If needed — dispatch `proj-code-writer-markdown` per directory:
 
 ```
 Agent(
   description: "Create scoped CLAUDE.md for {directory}",
+  subagent_type: "proj-code-writer-markdown",
   prompt: "Write {directory}/CLAUDE.md (<30 lines). Include ONLY rules specific to this directory — don't repeat root CLAUDE.md.
 
 Template:
@@ -381,13 +412,19 @@ cat > .claude/bootstrap-state.json << 'EOF'
 {
   "version": "6.0",
   "bootstrapped": "{date}",
-  "last_migration": "v6-initial",
-  "applied": ["v6-initial"],
+  "bootstrap_repo": "{bootstrap_repo}",
+  "last_migration": "000",
+  "last_applied": "{date}",
+  "applied": [
+    { "id": "000", "applied_at": "{date}", "description": "v6-initial bootstrap" }
+  ],
   "git_strategy": "{git_strategy}",
   "modules_completed": [1, 2, 3, 4, 5, 6, 7, 8]
 }
 EOF
 ```
+
+Note: fresh bootstrap sets `"last_migration": "000"`. Migration 001 bumps to `"001"` when applied via `/migrate-bootstrap`.
 
 ---
 
@@ -403,5 +440,5 @@ EOF
   Plugin collisions: {N found | none}
   Git strategy: {track / companion / ephemeral}
   Compression: {N} clean, {M} violations
-  Bootstrap state: v6-initial
+  Bootstrap state: last_migration=000
 ```

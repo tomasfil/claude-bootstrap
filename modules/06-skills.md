@@ -1,6 +1,6 @@
 # Module 06 — Skills
 
-> Generate ALL ~23 skills via code-writer-markdown agent dispatches.
+> Generate ALL ~23 skills via proj-code-writer-markdown agent dispatches.
 > Main = dispatch only. Batch by dependency. Absorbs v5 modules 05, 06, 07, 13.
 
 ---
@@ -28,7 +28,7 @@ mkdir -p .claude/skills
 
 Verify foundation agents exist (from Module 01):
 ```bash
-for agent in code-writer-markdown researcher code-writer-bash; do
+for agent in proj-code-writer-markdown proj-researcher proj-code-writer-bash; do
   [[ -f ".claude/agents/${agent}.md" ]] || echo "MISSING: ${agent}.md — run Module 01 first"
 done
 ```
@@ -37,12 +37,13 @@ If any missing → STOP. Module 01 must complete first.
 
 ### Dispatch Pattern
 
-Each skill dispatched to code-writer-markdown using inline BOOTSTRAP_DISPATCH_PROMPT from Module 01.
+Each skill dispatched to proj-code-writer-markdown using inline BOOTSTRAP_DISPATCH_PROMPT from Module 01.
 
 ```
 Agent(
+  subagent_type: "proj-code-writer-markdown",
   description: "Create /skill-name skill",
-  prompt: "{BOOTSTRAP_DISPATCH_PROMPT from Module 01, code-writer-markdown section}
+  prompt: "{BOOTSTRAP_DISPATCH_PROMPT from Module 01, proj-code-writer-markdown section}
 
 Create skill directory and write SKILL.md:
   mkdir -p .claude/skills/{skill-name}
@@ -59,6 +60,20 @@ Read techniques/prompt-engineering.md for RCCF framework.
 After each dispatch: verify SKILL.md exists, check frontmatter has `name` + `description` (starts "Use when...").
 
 Skills dispatched in batches by dependency. Within each batch, dispatch ALL skills simultaneously (multiple Agent calls in one message — parallel, safe since they write to separate directories).
+
+---
+
+### AGENT_DISPATCH_POLICY_BLOCK
+
+Reusable block injected into every skill that dispatches agents. Content:
+
+```
+**Agent Dispatch Policy**: Use `subagent_type="proj-<name>"` explicitly.
+NEVER substitute built-in `Explore` / `general-purpose` / plugin agents.
+If custom agent missing → STOP + inform user. See `techniques/agent-design.md § Agent Dispatch Policy`.
+```
+
+Skill specs below reference this via `{AGENT_DISPATCH_POLICY_BLOCK — see top of module}` — agent generating the skill MUST expand the reference to the literal block above.
 
 ---
 
@@ -265,7 +280,7 @@ Body — ## /coverage-gaps — Gap Identification:
   3. Glob .claude/skills/*/SKILL.md — compare against Module 06 skill list
   4. Read .claude/rules/ — compare against detected languages (code-standards-{lang}.md per language)
   5. Read .learnings/log.md — patterns w/o corresponding rules/instincts
-  6. Check for languages detected in Module 01 w/o code-writer-{lang} agent
+  6. Check for languages detected in Module 01 w/o proj-code-writer-{lang} agent
 
 - Report: gap list w/ severity + recommendation per gap
 - Suggest: which /evolve-agents | /reflect | manual action addresses each gap
@@ -429,7 +444,7 @@ Frontmatter:
   name: debug
   description: >
     Use when encountering a bug, test failure, unexpected behavior, or error.
-    Dispatches quick-check for triage, then debugger for root cause analysis.
+    Dispatches proj-quick-check for triage, then proj-debugger for root cause analysis.
   context: fork
   agent: general-purpose
   allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob
@@ -437,10 +452,13 @@ Frontmatter:
   effort: high
 
 Body — ## /debug — Systematic Investigation:
-- Phase 1: Triage — dispatch quick-check agent w/ error message/symptom
-  Read quick-check's text response → determine severity + likely area
-- Phase 2: Deep investigation — dispatch debugger agent w/:
-  - Symptom description + quick-check findings
+
+{AGENT_DISPATCH_POLICY_BLOCK — see top of module}
+
+- Phase 1: Triage — dispatch agent via `subagent_type="proj-quick-check"` w/ error message/symptom
+  Read proj-quick-check's text response → determine severity + likely area
+- Phase 2: Deep investigation — dispatch agent via `subagent_type="proj-debugger"` w/:
+  - Symptom description + proj-quick-check findings
   - Error output, affected files
   - Write diagnosis to .claude/reports/debug-{timestamp}.md
   - Return path + summary
@@ -481,7 +499,10 @@ Frontmatter:
   effort: high
 
 Body — ## /tdd — Red-Green-Refactor:
-- Dispatch tdd-runner agent w/:
+
+{AGENT_DISPATCH_POLICY_BLOCK — see top of module}
+
+- Dispatch agent via `subagent_type="proj-tdd-runner"` w/:
   - Feature/behavior specification from user
   - Test conventions path: .claude/rules/code-standards-{lang}.md
   - Build command: {build_command}
@@ -514,7 +535,7 @@ Frontmatter:
   name: review
   description: >
     Use when completing a task, before committing, or to verify code quality.
-    Dispatches project-code-reviewer agent for thorough review.
+    Dispatches proj-code-reviewer agent for thorough review.
   context: fork
   agent: general-purpose
   allowed-tools: Agent, Read, Grep, Glob, Bash
@@ -522,10 +543,13 @@ Frontmatter:
   effort: high
 
 Body — ## /review — Request Code Review:
+
+{AGENT_DISPATCH_POLICY_BLOCK — see top of module}
+
 - Steps:
   1. git diff — identify changed files
   2. Read .claude/references/techniques/INDEX.md (if exists) → pick relevant technique files
-  3. Dispatch project-code-reviewer agent w/:
+  3. Dispatch agent via `subagent_type="proj-code-reviewer"` w/:
      - Changed files list + change summary
      - Applicable code standards from .claude/rules/
      - Relevant technique ref paths
@@ -562,13 +586,16 @@ Frontmatter:
   effort: high
 
 Body — ## /ci-triage — CI Failure Investigation:
+
+{AGENT_DISPATCH_POLICY_BLOCK — see top of module}
+
 - Steps:
   1. Get CI output — user provides URL or paste, or fetch via gh:
      gh run view {run-id} --log-failed 2>/dev/null
      gh api repos/{owner}/{repo}/actions/runs/{run-id}/jobs --jq '.jobs[] | select(.conclusion=="failure")'
   2. Parse failure: extract error messages, failing tests, exit codes
   3. Classify: build error | test failure | lint error | deploy error | infra/timeout
-  4. Dispatch debugger agent w/:
+  4. Dispatch agent via `subagent_type="proj-debugger"` w/:
      - CI output (relevant section only, not full log)
      - Classification + hypothesis
      - Local reproduction command
@@ -595,7 +622,7 @@ Frontmatter:
   name: module-write
   description: >
     Use when editing bootstrap modules, techniques, or agents in the bootstrap
-    repo itself. Dispatches code-writer-markdown for content creation.
+    repo itself. Dispatches proj-code-writer-markdown for content creation.
     Bootstrap repo only — not for client projects.
   argument-hint: "[module-or-file-path]"
   context: fork
@@ -605,12 +632,15 @@ Frontmatter:
   effort: high
 
 Body — ## /module-write — Bootstrap Content Editing:
+
+{AGENT_DISPATCH_POLICY_BLOCK — see top of module}
+
 - Input: target file path + change description
 - Steps:
   1. Read target file (if exists)
   2. Read 2-3 similar files for pattern consistency
   3. Read claude-bootstrap.md — verify module numbering, checklist
-  4. Dispatch code-writer-markdown agent w/:
+  4. Dispatch agent via `subagent_type="proj-code-writer-markdown"` w/:
      - Target file path
      - Change description
      - Context: similar files read, conventions detected
@@ -653,13 +683,16 @@ Frontmatter:
   effort: high
 
 Body — ## /brainstorm — Design Before Build:
+
+{AGENT_DISPATCH_POLICY_BLOCK — see top of module}
+
 - Decision tree:
   Requirements clear + well-defined → skip to Step 5 (spec output)
   Requirements unclear | complex | multiple approaches → full exploration
 
 - Full exploration flow:
   1. Clarify request — one question per message, prefer multiple choice
-  2. Dispatch researcher agent w/:
+  2. Dispatch agent via `subagent_type="proj-researcher"` w/:
      - Exploration scope (architecture, patterns, prior art)
      - Write findings to .claude/specs/{branch}/{date}-{topic}-research.md
      - Return path + summary
@@ -707,10 +740,13 @@ Frontmatter:
   effort: high
 
 Body — ## /write-plan — Implementation Planning:
+
+{AGENT_DISPATCH_POLICY_BLOCK — see top of module}
+
 - Steps:
   1. Read spec from .claude/specs/{branch}/ | conversation context
   2. Read .claude/skills/code-write/references/pipeline-traces.md (if exists)
-  3. Dispatch plan-writer agent w/:
+  3. Dispatch agent via `subagent_type="proj-plan-writer"` w/:
      - Spec content (file path reference)
      - Discovery context (languages, frameworks, commands)
      - Pipeline traces (if exist)
@@ -769,6 +805,9 @@ Frontmatter:
   effort: high
 
 Body — ## /execute-plan — Plan Execution:
+
+{AGENT_DISPATCH_POLICY_BLOCK — see top of module}
+
 - Steps:
   1. Read master plan from .claude/specs/{branch}/ | ask user for path
   2. Confirm plan w/ user — still correct?
@@ -816,8 +855,8 @@ Frontmatter:
   name: verify
   description: >
     Use before committing, creating PRs, or claiming work is done. Runs build,
-    tests, cross-references, and consistency checks. Dispatches both verifier
-    and consistency-checker agents.
+    tests, cross-references, and consistency checks. Dispatches both proj-verifier
+    and proj-consistency-checker agents.
   context: fork
   agent: general-purpose
   allowed-tools: Agent, Read, Bash, Grep, Glob
@@ -827,8 +866,10 @@ Frontmatter:
 Body — ## /verify — Pre-Completion Verification:
 Run ALL checks — never claim completion until all pass.
 
+{AGENT_DISPATCH_POLICY_BLOCK — see top of module}
+
 - Phase 1: Build + Test verification
-  Dispatch verifier agent w/:
+  Dispatch agent via `subagent_type="proj-verifier"` w/:
   - Build command: {build_command}
   - Lint command: {lint_command}
   - Test suite command: {test_suite_command}
@@ -836,7 +877,7 @@ Run ALL checks — never claim completion until all pass.
   - Return path + summary
 
 - Phase 2: Cross-reference + consistency (dispatch in PARALLEL w/ Phase 1)
-  Dispatch consistency-checker agent w/:
+  Dispatch agent via `subagent_type="proj-consistency-checker"` w/:
   - Scan: CLAUDE.md references, skill→agent dependencies, rule file integrity
   - Write report to .claude/reports/consistency.md
   - Return path + summary
@@ -883,7 +924,10 @@ Frontmatter:
   effort: high
 
 Body — ## /reflect — Self-Improvement Protocol:
-- Step 1: Dispatch reflector agent w/ paths:
+
+{AGENT_DISPATCH_POLICY_BLOCK — see top of module}
+
+- Step 1: Dispatch agent via `subagent_type="proj-reflector"` w/ paths:
   - .learnings/log.md — pending entries
   - .learnings/instincts/ — instinct files (if exists)
   - .learnings/observations.jsonl — tool usage patterns
@@ -891,7 +935,7 @@ Body — ## /reflect — Self-Improvement Protocol:
   - CLAUDE.md — rules + conventions
   - .claude/rules/ — standards
   - .claude/agents/ — agents + descriptions
-  - For each code-writer-* + test-writer-* agent: check evolution heuristics:
+  - For each proj-code-writer-* + proj-test-writer-* agent: check evolution heuristics:
     1. Line count (wc -l) — >500 = evolution candidate
     2. Classification tree branches — 3+ top-level framework branches = candidate
     3. Framework-specific corrections in .learnings/log.md — 3+ for same framework
@@ -981,13 +1025,15 @@ Frontmatter:
   effort: high
 
 Body — ## /consolidate — Learning Consolidation:
-Dispatch reflector agent for analysis. Main thread applies approved changes.
+Dispatch agent via `subagent_type="proj-reflector"` for analysis. Main thread applies approved changes.
+
+{AGENT_DISPATCH_POLICY_BLOCK — see top of module}
 
 - Phase 1: Orient
   Read: .learnings/log.md, .learnings/instincts/, .learnings/patterns.md, MEMORY.md
 
 - Phase 2: Gather
-  Dispatch reflector w/ all learnings paths:
+  Dispatch agent via `subagent_type="proj-reflector"` w/ all learnings paths:
   - Scan corrections, decisions, recurring themes
   - Cluster by domain (code-style | testing | git | debugging | security | architecture | tooling)
   - Identify instinct candidates (2+ similar corrections)
@@ -1048,8 +1094,8 @@ Frontmatter:
   name: code-write
   description: >
     Use when asked to implement, write, create, or modify code. Routes to the
-    appropriate code-writer-{lang} agent based on file type and scope. Dynamic
-    discovery — globs .claude/agents/code-writer-*.md for available specialists.
+    appropriate proj-code-writer-{lang} agent based on file type and scope. Dynamic
+    discovery — globs .claude/agents/proj-code-writer-*.md for available specialists.
   context: fork
   agent: general-purpose
   allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob
@@ -1057,28 +1103,31 @@ Frontmatter:
   effort: high
 
 Body — ## /code-write — Implementation Dispatcher:
+
+{AGENT_DISPATCH_POLICY_BLOCK — see top of module}
+
 NOTE: This is a PLACEHOLDER during Module 06. Module 07 (Code Specialists)
-fills in the full routing logic + creates the code-writer-{lang} agents +
+fills in the full routing logic + creates the proj-code-writer-{lang} agents +
 generates references/ content (pipeline-traces.md, capability-index.md).
 
 Placeholder behavior until Module 07 completes:
 1. Accept implementation request from user
-2. Glob .claude/agents/code-writer-*.md → list available specialists
+2. Glob .claude/agents/proj-code-writer-*.md → list available specialists
 3. If agent-index.yaml exists → read for scope/routing info
 4. If no specialists found (pre-Module 07) → execute inline w/ general knowledge
 5. If specialists found → read scope: field from matching agent frontmatter →
-   dispatch best match w/ implementation request
+   dispatch via `subagent_type="proj-code-writer-{lang}"` best match w/ implementation request
 
 Post-Module 07 behavior (filled by Module 07):
 1. Read .claude/skills/code-write/references/capability-index.md → routing table
 2. Read .claude/skills/code-write/references/pipeline-traces.md → change patterns
 3. Classify request by: file extension, framework, architecture layer
-4. Route to best-match code-writer-{lang} (or sub-specialist if exists)
+4. Route to best-match via `subagent_type="proj-code-writer-{lang}"` (or sub-specialist if exists)
 5. Multi-file changes spanning languages → dispatch multiple specialists sequentially
 6. Each specialist must leave build passing
 
 Dynamic discovery (always):
-- Glob .claude/agents/code-writer-*.md → find all specialists
+- Glob .claude/agents/proj-code-writer-*.md → find all specialists
 - Read scope: from each → build routing table at dispatch time
 - New specialists auto-discovered w/o skill changes
 
@@ -1113,8 +1162,10 @@ Frontmatter:
 Body — ## /evolve-agents — Agent Audit + New Specialist Creation:
 v6: agents are born right-sized. This skill audits + creates NEW, never splits.
 
+{AGENT_DISPATCH_POLICY_BLOCK — see top of module}
+
 - Phase 1: Audit existing specialists
-  For each .claude/agents/code-writer-*.md + test-writer-*.md:
+  For each .claude/agents/proj-code-writer-*.md + proj-test-writer-*.md:
   1. Version drift: compare project manifest versions (package.json, *.csproj,
      pyproject.toml, go.mod, Cargo.toml) against agent's Role+Stack section
   2. Reference staleness: reference files older than 90 days
@@ -1123,25 +1174,25 @@ v6: agents are born right-sized. This skill audits + creates NEW, never splits.
 
 - Phase 2: Detect new frameworks
   Compare Module 01 discovery (or re-scan project manifests) against existing agents:
-  - New language added since bootstrap → needs code-writer-{lang}
+  - New language added since bootstrap → needs proj-code-writer-{lang}
   - New framework added to existing language → may need sub-specialist
 
 - Phase 3: Create new specialists (if needed)
   Same pipeline as Module 07:
-  1. Dispatch researcher → local deep-dive + web research for new framework
+  1. Dispatch agent via `subagent_type="proj-researcher"` → local deep-dive + web research for new framework
      Write to .claude/skills/code-write/references/{lang}-{framework}-analysis.md
-  2. Dispatch researcher → web research (latest patterns, security, gotchas)
+  2. Dispatch agent via `subagent_type="proj-researcher"` → web research (latest patterns, security, gotchas)
      Write to .claude/skills/code-write/references/{lang}-{framework}-research.md
-  3. Dispatch code-writer-markdown → generate agent from research references
-     Write to .claude/agents/code-writer-{lang}-{framework}.md
+  3. Dispatch agent via `subagent_type="proj-code-writer-markdown"` → generate agent from research references
+     Write to .claude/agents/proj-code-writer-{lang}-{framework}.md
 
 - Phase 4: Update index
   Read all agent frontmatter → regenerate .claude/agents/agent-index.yaml
   Update .claude/skills/code-write/references/capability-index.md
 
 - Phase 5: Refresh stale agents (if flagged in Phase 1)
-  Re-dispatch researcher for updated web research
-  Dispatch code-writer-markdown to update agent w/ new findings
+  Re-dispatch via `subagent_type="proj-researcher"` for updated web research
+  Dispatch via `subagent_type="proj-code-writer-markdown"` to update agent w/ new findings
   Preserve agent's accumulated Known Gotchas section
 
 - Report:
@@ -1260,5 +1311,5 @@ Fix any missing skills by re-dispatching from the spec above.
   Reporting: /coverage, /coverage-gaps
   Utilities: /write-ticket, /ci-triage, /write-prompt, /module-write
   {/sync — if git_strategy == companion}
-  Total: 22-23 skills via code-writer-markdown dispatch
+  Total: 22-23 skills via proj-code-writer-markdown dispatch
 ```

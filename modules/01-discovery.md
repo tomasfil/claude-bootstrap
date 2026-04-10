@@ -195,11 +195,11 @@ Create these 3 files. Skip any that already exist w/ matching `name:` in frontma
 
 ---
 
-#### `.claude/agents/code-writer-markdown.md`
+#### `.claude/agents/proj-code-writer-markdown.md`
 
 ```markdown
 ---
-name: code-writer-markdown
+name: proj-code-writer-markdown
 description: >
   Markdown + LLM instruction writer. Use when writing skills, agents, rules, CLAUDE.md,
   modules, technique docs, or any prompt/instruction content. Knows RCCF, token compression,
@@ -286,7 +286,7 @@ After changes, run build/test if applicable. If failure:
 3. Report if still failing after 3 attempts
 ```
 
-#### BOOTSTRAP_DISPATCH_PROMPT — code-writer-markdown
+#### BOOTSTRAP_DISPATCH_PROMPT — proj-code-writer-markdown
 
 The following is the exact text to use when dispatching this agent inline during bootstrap.
 Modules 02-09 paste this into `Agent(prompt: "...")` calls, prepending task-specific instructions.
@@ -313,16 +313,18 @@ Modules 02-09 paste this into `Agent(prompt: "...")` calls, prepending task-spec
 
 ---
 
-#### `.claude/agents/researcher.md`
+#### `.claude/agents/proj-researcher.md`
 
 ```markdown
 ---
-name: researcher
+name: proj-researcher
 description: >
-  Deep codebase exploration + web research agent. Use when analyzing codebase patterns,
-  investigating frameworks, researching best practices, scanning architecture, or gathering
-  external documentation. Writes findings to reference files.
-tools: Read, Write, Bash, Grep, Glob, LSP, WebSearch
+  Evidence-tracking research agent for deep codebase + web investigation.
+  Use when a task needs multi-source synthesis w/ confidence scoring, WebSearch
+  for external docs/APIs, writing findings to reference files for later dispatch,
+  or project-memory-backed continuity across sessions. Differentiator vs built-in
+  Explore: evidence[] tracking, source URLs, confidence levels, findings files.
+  For simple file lookups use proj-quick-check instead.
 model: sonnet
 effort: high
 maxTurns: 100
@@ -394,7 +396,7 @@ NEVER: Read A → respond → Read B. INSTEAD: Read A + B → respond.
 </use_parallel_tool_calls>
 ```
 
-#### BOOTSTRAP_DISPATCH_PROMPT — researcher
+#### BOOTSTRAP_DISPATCH_PROMPT — proj-researcher
 
 > You are a senior research analyst for codebase + web research.
 >
@@ -414,11 +416,11 @@ NEVER: Read A → respond → Read B. INSTEAD: Read A + B → respond.
 
 ---
 
-#### `.claude/agents/code-writer-bash.md`
+#### `.claude/agents/proj-code-writer-bash.md`
 
 ```markdown
 ---
-name: code-writer-bash
+name: proj-code-writer-bash
 description: >
   Shell script + JSON config writer. Use when writing bash scripts, hook scripts,
   settings.json, .mcp.json, shell utilities, or any JSON/YAML configuration files.
@@ -484,7 +486,7 @@ NEVER: Read A → respond → Read B. INSTEAD: Read A + B → respond.
 </use_parallel_tool_calls>
 ```
 
-#### BOOTSTRAP_DISPATCH_PROMPT — code-writer-bash
+#### BOOTSTRAP_DISPATCH_PROMPT — proj-code-writer-bash
 
 > You are a shell scripting + JSON config specialist for Claude Code environments.
 >
@@ -528,7 +530,7 @@ Commands:
   Lint: {command}
   Format: {command}
 Foundation agents created:
-  ✅ code-writer-markdown.md
-  ✅ researcher.md
-  ✅ code-writer-bash.md
+  ✅ proj-code-writer-markdown.md
+  ✅ proj-researcher.md
+  ✅ proj-code-writer-bash.md
 ```

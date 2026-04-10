@@ -51,7 +51,7 @@ MANDATORY RULES — VIOLATIONS CAUSE SETUP FAILURE:
 15. **Main thread = pure orchestrator.** Dispatch agents, handle user questions. Never generate file content directly (except Module 01 foundation agents and Module 04 learnings init).
 16. **Agent dispatch uses inline prompts during bootstrap.** BOOTSTRAP_DISPATCH_PROMPT from Module 01. Agent .md files created mid-session are NOT loaded — no hot-reload (claude-code#6497).
 17. **Pass-by-reference.** Agents write to files, return path + 1-line summary (<100 chars). Main reads files only when needed for dispatch decisions.
-18. **Code-writing agents run sequentially.** Each must leave project in building state. Parallel dispatch only for researchers/doc agents.
+18. **Code-writing agents run sequentially.** Each must leave project in building state. Parallel dispatch only for research/doc agents (e.g. proj-researcher).
 
 ANTI-SHORTCUT RULES — do not rationalize around these:
 
@@ -87,13 +87,13 @@ No mode detection needed. Run bootstrap any time — brings everything to curren
 
 ## Master Checklist
 
-- [ ] Module 01: Project discovered — OS, languages, frameworks, architecture, pipeline traces; 3 foundation agents created (code-writer-markdown, researcher, code-writer-bash)
+- [ ] Module 01: Project discovered — OS, languages, frameworks, architecture, pipeline traces; 3 foundation agents created (proj-code-writer-markdown, proj-researcher, proj-code-writer-bash)
 - [ ] Module 02: CLAUDE.md + `.claude/rules/` + CLAUDE.local.md + technique refs + .gitignore — all via agent dispatch
-- [ ] Module 03: Hook scripts + `.claude/settings.json` — all via code-writer-bash dispatch
+- [ ] Module 03: Hook scripts + `.claude/settings.json` — all via proj-code-writer-bash dispatch
 - [ ] Module 04: `.learnings/` initialized (log, instincts, patterns, decisions, environment, tracking)
-- [ ] Module 05: 7 core agents created (quick-check, plan-writer, consistency-checker, debugger, verifier, reflector, tdd-runner)
+- [ ] Module 05: 7 core agents created (proj-quick-check, proj-plan-writer, proj-consistency-checker, proj-debugger, proj-verifier, proj-reflector, proj-tdd-runner)
 - [ ] Module 06: ~23 skills generated (dev workflow, quality, git/lifecycle, maintenance, reporting, utilities)
-- [ ] Module 07: Per-language code-writer + test-writer + code-reviewer agents via 7-phase research pipeline; agent index + capability index + pipeline traces
+- [ ] Module 07: Per-language proj-code-writer-* + proj-test-writer-* + proj-code-reviewer agents via 7-phase research pipeline; agent index + capability index + pipeline traces
 - [ ] Module 08: Wiring verification, routing infrastructure (3 tiers), scoped CLAUDE.md, MCP/plugin setup, plugin collision check
 - [ ] Module 09: Companion repo sync (conditional — only if git_strategy == "companion")
 
@@ -107,9 +107,9 @@ Read and execute each module file in order. Each module is self-contained with f
 |---|------|---------|
 | 01 | `modules/01-discovery.md` | Scan project + create 3 foundation agents |
 | 02 | `modules/02-project-config.md` | CLAUDE.md, rules, local config, technique refs, .gitignore |
-| 03 | `modules/03-hooks.md` | Hook scripts + settings.json via code-writer-bash |
+| 03 | `modules/03-hooks.md` | Hook scripts + settings.json via proj-code-writer-bash |
 | 04 | `modules/04-learnings.md` | `.learnings/` directory init (inline — mkdir + touch) |
-| 05 | `modules/05-core-agents.md` | 7 utility/diagnostic agents via code-writer-markdown |
+| 05 | `modules/05-core-agents.md` | 7 utility/diagnostic agents via proj-code-writer-markdown |
 | 06 | `modules/06-skills.md` | ~23 skills — all via agent dispatch, batched by dependency |
 | 07 | `modules/07-code-specialists.md` | Research-driven per-language specialists (7-phase pipeline) |
 | 08 | `modules/08-verification.md` | Wiring verification, routing, scoped configs, MCP, plugins |

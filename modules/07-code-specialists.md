@@ -18,11 +18,11 @@ Agent index: regenerate from current agent frontmatter on every run.
 |--------|------|---------|
 | Per-lang analysis refs | `.claude/skills/code-write/references/{lang}-analysis.md` | Local codebase findings |
 | Per-lang research refs | `.claude/skills/code-write/references/{lang}-research.md` | Web research findings |
-| Code writer agents | `.claude/agents/code-writer-{lang}.md` | Per-language code writers (9 sections) |
-| Code writer sub-specs | `.claude/agents/code-writer-{lang}-{fw}.md` | Framework sub-specialists (if 3+ fw) |
-| Test writer agents | `.claude/agents/test-writer-{lang}.md` | Per-language test writers (8 sections) |
-| Test writer sub-specs | `.claude/agents/test-writer-{lang}-{fw}.md` | Framework sub-specialists (if 3+ fw) |
-| Code reviewer | `.claude/agents/project-code-reviewer.md` | Project-aware deep reviewer |
+| Code writer agents | `.claude/agents/proj-code-writer-{lang}.md` | Per-language code writers (9 sections) |
+| Code writer sub-specs | `.claude/agents/proj-code-writer-{lang}-{fw}.md` | Framework sub-specialists (if 3+ fw) |
+| Test writer agents | `.claude/agents/proj-test-writer-{lang}.md` | Per-language test writers (8 sections) |
+| Test writer sub-specs | `.claude/agents/proj-test-writer-{lang}-{fw}.md` | Framework sub-specialists (if 3+ fw) |
+| Code reviewer | `.claude/agents/proj-code-reviewer.md` | Project-aware deep reviewer |
 | Review checklist | `.claude/agents/references/review-checklist.md` | Per-component review items |
 | Agent index | `.claude/agents/agent-index.yaml` | Dispatch routing index |
 | Capability index | `.claude/skills/code-write/references/capability-index.md` | Agent inventory + gaps |
@@ -40,11 +40,11 @@ Agent index: regenerate from current agent frontmatter on every run.
 | Phase | Actor | Parallelism | Purpose |
 |-------|-------|-------------|---------|
 | 0 | main | — | Capability scan + framework decision |
-| 1 | researcher | ALL langs simultaneously | Local codebase deep-dive |
-| 2 | researcher | ALL langs simultaneously | Web research (15-20 searches/lang) |
-| 3 | code-writer-markdown | SEQUENTIAL per lang | Generate code-writer agents |
-| 4 | code-writer-markdown | SEQUENTIAL per lang | Generate test-writer agents |
-| 5 | code-writer-markdown | single dispatch | Generate project-code-reviewer |
+| 1 | proj-researcher | ALL langs simultaneously | Local codebase deep-dive |
+| 2 | proj-researcher | ALL langs simultaneously | Web research (15-20 searches/lang) |
+| 3 | proj-code-writer-markdown | SEQUENTIAL per lang | Generate proj-code-writer agents |
+| 4 | proj-code-writer-markdown | SEQUENTIAL per lang | Generate proj-test-writer agents |
+| 5 | proj-code-writer-markdown | single dispatch | Generate proj-code-reviewer |
 | 6 | main | — | Agent index + references + skills |
 
 **Parallelism rules:**
@@ -62,7 +62,7 @@ Reads existing code to extract patterns — never imposes conventions.
 
 <task>
 Execute ALL phases below. Every output grounded in discovery + research — no generic filler.
-You are the orchestrator on the main thread. Dispatch `researcher` and `code-writer-markdown`
+You are the orchestrator on the main thread. Dispatch `proj-researcher` and `proj-code-writer-markdown`
 agents via Agent tool. Do NOT perform analysis, research, or generation inline — agents ARE
 the quality layer.
 </task>
@@ -75,7 +75,7 @@ the quality layer.
 5. All generated files: YAML frontmatter w/ required fields
 6. All agents: anti-hallucination sections (read-before-write, verification, negative instructions)
 7. Write all generated content in compressed telegraphic notation — code examples full fidelity
-8. NEVER create generic `code-writer.md` or `test-writer.md` — always `code-writer-{lang}.md`
+8. NEVER create generic `code-writer.md` or `test-writer.md` — always `proj-code-writer-{lang}.md` / `proj-test-writer-{lang}.md`
 9. Every language w/ 3+ owned source files MUST get both code-writer + test-writer
 10. 3+ frameworks → sub-specialists IMMEDIATELY (born right-sized, not deferred)
 11. When web research fails after 2 attempts on topic → move on, document gap
@@ -105,16 +105,16 @@ Per detected language, record:
 
 ```bash
 # Existing specialists
-ls .claude/agents/code-writer-*.md .claude/agents/test-writer-*.md 2>/dev/null
+ls .claude/agents/proj-code-writer-*.md .claude/agents/proj-test-writer-*.md 2>/dev/null
 # Existing skills
 ls .claude/skills/code-write/SKILL.md .claude/skills/coverage/SKILL.md 2>/dev/null
 # Capability index
 [[ -f .claude/skills/code-write/references/capability-index.md ]] && echo "exists"
-# Generic agents (must delete)
-ls .claude/agents/code-writer.md .claude/agents/test-writer.md 2>/dev/null && echo "GENERIC FOUND — will delete"
+# Generic + legacy unprefixed agents (must delete)
+ls .claude/agents/code-writer.md .claude/agents/test-writer.md .claude/agents/code-writer-*.md .claude/agents/test-writer-*.md 2>/dev/null && echo "LEGACY FOUND — will delete"
 ```
 
-If generic `code-writer.md` or `test-writer.md` found → DELETE immediately.
+If generic `code-writer.md`, `test-writer.md`, or legacy unprefixed `code-writer-*.md` / `test-writer-*.md` found → DELETE immediately.
 
 #### 0.3 Framework Decision Matrix
 
@@ -122,8 +122,8 @@ Per language, apply:
 
 | Frameworks | Action |
 |------------|--------|
-| 1-2 | Single `code-writer-{lang}.md` + `test-writer-{lang}.md` |
-| 3+ | Parent `code-writer-{lang}.md` + sub-specialists `code-writer-{lang}-{fw}.md` per major framework |
+| 1-2 | Single `proj-code-writer-{lang}.md` + `proj-test-writer-{lang}.md` |
+| 3+ | Parent `proj-code-writer-{lang}.md` + sub-specialists `proj-code-writer-{lang}-{fw}.md` per major framework |
 
 Record decision per language. Document in capability-index.md.
 
@@ -162,14 +162,14 @@ Write `.claude/skills/code-write/references/capability-index.md`:
 
 ---
 
-### Phase 1 (dispatch researcher) — Local Analysis — ALL Languages Simultaneously
+### Phase 1 (dispatch proj-researcher) — Local Analysis — ALL Languages Simultaneously
 
-Dispatch ONE researcher agent per detected language, ALL in a single message (parallel Agent calls).
+Dispatch ONE proj-researcher agent per detected language via `subagent_type="proj-researcher"`, ALL in a single message (parallel Agent calls).
 
-Per language dispatch prompt (using BOOTSTRAP_DISPATCH_PROMPT from Module 01, researcher section):
+Per language dispatch prompt (using BOOTSTRAP_DISPATCH_PROMPT from Module 01, proj-researcher section):
 
 ```
-{BOOTSTRAP_DISPATCH_PROMPT — researcher}
+{BOOTSTRAP_DISPATCH_PROMPT — proj-researcher}
 
 Deep-read the {lang} source files in this project. Analyze:
 - Component types found (read 3-5 examples of each)
@@ -183,7 +183,7 @@ Deep-read the {lang} source files in this project. Analyze:
 - Test data patterns + custom utilities/helpers/base classes
 - Error handling approach (exceptions? result types? HTTP status codes?)
 
-Read existing code-writer-{lang}.md and test-writer-{lang}.md if they exist —
+Read existing proj-code-writer-{lang}.md and proj-test-writer-{lang}.md if they exist —
 extract project-specific knowledge to carry forward.
 
 Write findings to .claude/skills/code-write/references/{lang}-analysis.md
@@ -211,14 +211,14 @@ done
 
 ---
 
-### Phase 2 (dispatch researcher) — Web Research — ALL Languages Simultaneously
+### Phase 2 (dispatch proj-researcher) — Web Research — ALL Languages Simultaneously
 
-Dispatch ONE researcher agent per detected language, ALL in a single message (parallel Agent calls).
+Dispatch ONE proj-researcher agent per detected language via `subagent_type="proj-researcher"`, ALL in a single message (parallel Agent calls).
 
 Per language dispatch prompt:
 
 ```
-{BOOTSTRAP_DISPATCH_PROMPT — researcher}
+{BOOTSTRAP_DISPATCH_PROMPT — proj-researcher}
 
 Read .claude/skills/code-write/references/{lang}-analysis.md for framework+version info.
 
@@ -268,31 +268,31 @@ Wait for ALL Phase 2 dispatches. Verify: all `{lang}-research.md` non-empty.
 
 ---
 
-### Phase 3 (dispatch code-writer-markdown) — Generate Code Writers — SEQUENTIAL Per Language
+### Phase 3 (dispatch proj-code-writer-markdown) — Generate Code Writers — SEQUENTIAL Per Language
 
-For each detected language, dispatch ONE code-writer-markdown agent. SEQUENTIAL — each must complete before next starts. Build verification between dispatches.
+For each detected language, dispatch ONE proj-code-writer-markdown agent. SEQUENTIAL — each must complete before next starts. Build verification between dispatches.
 
 Per language dispatch prompt:
 
 ```
-{BOOTSTRAP_DISPATCH_PROMPT — code-writer-markdown}
+{BOOTSTRAP_DISPATCH_PROMPT — proj-code-writer-markdown}
 
 Read:
 - .claude/skills/code-write/references/{lang}-analysis.md
 - .claude/skills/code-write/references/{lang}-research.md
-- techniques/agent-design.md (pass-by-reference contract, maxTurns table, agent index schema)
+- techniques/agent-design.md (pass-by-reference contract, maxTurns table, agent index schema, MCP tool propagation)
 
-Generate .claude/agents/code-writer-{lang}.md with ALL 9 required sections below.
+Generate .claude/agents/proj-code-writer-{lang}.md with ALL 9 required sections below.
 Use compressed telegraphic notation. Code examples at full fidelity.
 
 YAML frontmatter:
 ---
-name: code-writer-{lang}
+name: proj-code-writer-{lang}
 description: >
   {Language} code writer specialist for {project}. Use when writing {language}
   code for {list component types}. Knows project conventions, DI patterns,
   error handling, and framework-specific gotchas.
-tools: Read, Write, Edit, Bash, Grep, Glob, LSP, WebSearch
+tools: Read, Write, Edit, Bash, Grep, Glob, LSP, WebSearch{MCP_TOOLS}
 model: opus
 effort: high
 maxTurns: 100
@@ -300,6 +300,18 @@ color: blue
 scope: "{comma-separated framework/concern areas}"
 parent: ""
 ---
+
+MCP tool injection (at creation time):
+IF project .mcp.json exists:
+  Parse `mcpServers` keys — for each server_name, add `mcp__<server_name>__*` to tools list
+  Example (.mcp.json contains "context7" + "github"):
+    tools: Read, Write, Edit, Bash, Grep, Glob, LSP, WebSearch, mcp__context7__*, mcp__github__*
+IF .mcp.json absent:
+  Omit mcp__ entries. Migration-001 will inject later if .mcp.json is added.
+
+Rationale: explicit `tools:` whitelist blocks MCP by default (see techniques/agent-design.md
+§MCP Tool Propagation). Write agents keep `tools:` for security lockdown; MCP entries must be
+injected per-project. Read-only agents omit `tools:` entirely and inherit — see modules/05.
 
 REQUIRED 9 SECTIONS (populate every section w/ project-specific content):
 
@@ -356,23 +368,25 @@ Main reads file only if: needed for next dispatch | error | verification require
 This language has {N} frameworks detected (3+ threshold met).
 ALSO generate sub-specialist agents:
 
-Per major framework, create .claude/agents/code-writer-{lang}-{fw}.md:
+Per major framework, create .claude/agents/proj-code-writer-{lang}-{fw}.md:
 - Target: 100-200 lines embedded, deep patterns in reference files
 - YAML frontmatter:
   ---
-  name: code-writer-{lang}-{fw}
+  name: proj-code-writer-{lang}-{fw}
   description: >
     {Framework} specialist for {project}. Use when writing {framework}-specific
     code: {scope items}. Knows {framework} patterns, gotchas, component lifecycle.
-    Falls back to code-writer-{lang} for cross-cutting concerns.
-  tools: Read, Write, Edit, Bash, Grep, Glob, LSP, WebSearch
+    Falls back to proj-code-writer-{lang} for cross-cutting concerns.
+  tools: Read, Write, Edit, Bash, Grep, Glob, LSP, WebSearch{MCP_TOOLS}
   model: opus
   effort: high
   maxTurns: 100
   color: blue
   scope: "{framework} components, {pattern1}, {pattern2}"
-  parent: code-writer-{lang}
+  parent: proj-code-writer-{lang}
   ---
+
+  Sub-specialists inherit same MCP tool injection rules as parent (see block above).
 
 Sub-specialist sections (all must be populated):
 - Role + Stack (framework-scoped)
@@ -389,37 +403,37 @@ Write all agent file(s). Return paths + summaries.
 After each language dispatch completes:
 1. Verify agent file(s) exist
 2. Check frontmatter has required fields (`name`, `description`, `tools`, `model`, `effort`, `maxTurns`, `scope`)
-3. If sub-specialists created: verify each has `parent:` field pointing to `code-writer-{lang}`
+3. If sub-specialists created: verify each has `parent:` field pointing to `proj-code-writer-{lang}`
 
-**Checkpoint:** `Phase 3 complete — {list of code-writer agents created}`
+**Checkpoint:** `Phase 3 complete — {list of proj-code-writer agents created}`
 
 ---
 
-### Phase 4 (dispatch code-writer-markdown) — Generate Test Writers — SEQUENTIAL Per Language
+### Phase 4 (dispatch proj-code-writer-markdown) — Generate Test Writers — SEQUENTIAL Per Language
 
 Same sequential pattern as Phase 3. Each language one at a time.
 
 Per language dispatch prompt:
 
 ```
-{BOOTSTRAP_DISPATCH_PROMPT — code-writer-markdown}
+{BOOTSTRAP_DISPATCH_PROMPT — proj-code-writer-markdown}
 
 Read:
 - .claude/skills/code-write/references/{lang}-analysis.md
 - .claude/skills/code-write/references/{lang}-research.md
-- techniques/agent-design.md
+- techniques/agent-design.md (pass-by-reference contract, MCP tool propagation)
 
-Generate .claude/agents/test-writer-{lang}.md with ALL 8 required sections below.
+Generate .claude/agents/proj-test-writer-{lang}.md with ALL 8 required sections below.
 Use compressed telegraphic notation. Code examples at full fidelity.
 
 YAML frontmatter:
 ---
-name: test-writer-{lang}
+name: proj-test-writer-{lang}
 description: >
   {Language} test writer specialist for {project}. Use when writing tests,
   improving coverage, or adding test cases for {language} code. Knows
   project test patterns, mocking strategies, and framework-specific gotchas.
-tools: Read, Write, Edit, Bash, Grep, Glob, LSP
+tools: Read, Write, Edit, Bash, Grep, Glob, LSP{MCP_TOOLS}
 model: opus
 effort: high
 maxTurns: 100
@@ -427,6 +441,18 @@ color: green
 scope: "{comma-separated test concern areas}"
 parent: ""
 ---
+
+MCP tool injection (at creation time):
+IF project .mcp.json exists:
+  Parse `mcpServers` keys — for each server_name, add `mcp__<server_name>__*` to tools list
+  Example (.mcp.json contains "context7" + "github"):
+    tools: Read, Write, Edit, Bash, Grep, Glob, LSP, mcp__context7__*, mcp__github__*
+IF .mcp.json absent:
+  Omit mcp__ entries. Migration-001 will inject later if .mcp.json is added.
+
+Rationale: explicit `tools:` whitelist blocks MCP by default (see techniques/agent-design.md
+§MCP Tool Propagation). Write agents keep `tools:` for security lockdown; MCP entries must be
+injected per-project. Read-only agents omit `tools:` entirely and inherit — see modules/05.
 
 REQUIRED 8 SECTIONS (populate every section w/ project-specific content):
 
@@ -492,10 +518,11 @@ Write output to target path. Return ONLY: path + 1-line summary <100 chars.
 
 {IF_SUB_SPECIALISTS}
 This language has {N} frameworks (3+ threshold). ALSO generate sub-specialists:
-Per major framework, create .claude/agents/test-writer-{lang}-{fw}.md:
-- 100-200 lines, scope: and parent: frontmatter
+Per major framework, create .claude/agents/proj-test-writer-{lang}-{fw}.md:
+- 100-200 lines, scope: and parent: (= proj-test-writer-{lang}) frontmatter
 - Framework-specific test strategy, mocking patterns, gotchas
 - Same section structure as parent, scoped to framework
+- Same MCP tool injection rules as parent (see block above)
 {/IF_SUB_SPECIALISTS}
 
 Write all agent file(s). Return paths + summaries.
@@ -503,16 +530,16 @@ Write all agent file(s). Return paths + summaries.
 
 After each language: verify files exist, check frontmatter, verify parent linkage for sub-specialists.
 
-**Checkpoint:** `Phase 4 complete — {list of test-writer agents created}`
+**Checkpoint:** `Phase 4 complete — {list of proj-test-writer agents created}`
 
 ---
 
-### Phase 5 (dispatch code-writer-markdown) — Generate Project Code Reviewer
+### Phase 5 (dispatch proj-code-writer-markdown) — Generate Project Code Reviewer
 
 Single dispatch — reviewer reads ALL language references for cross-project awareness.
 
 ```
-{BOOTSTRAP_DISPATCH_PROMPT — code-writer-markdown}
+{BOOTSTRAP_DISPATCH_PROMPT — proj-code-writer-markdown}
 
 Read ALL of these:
 - All .claude/skills/code-write/references/{lang}-analysis.md files
@@ -521,12 +548,12 @@ Read ALL of these:
 - .learnings/log.md (if exists)
 - CLAUDE.md (gotchas section)
 
-Generate .claude/agents/project-code-reviewer.md w/ ALL 8 required sections.
+Generate .claude/agents/proj-code-reviewer.md w/ ALL 8 required sections.
 Use compressed telegraphic notation.
 
 YAML frontmatter:
 ---
-name: project-code-reviewer
+name: proj-code-reviewer
 description: >
   Deep code review w/ project-specific knowledge. Use after writing code,
   before committing, or when asked to review. Knows architecture layers,
@@ -611,7 +638,7 @@ ALSO generate:
 Write files. Return paths + summaries.
 ```
 
-**Checkpoint:** `Phase 5 complete — project-code-reviewer.md + review-checklist.md generated`
+**Checkpoint:** `Phase 5 complete — proj-code-reviewer.md + review-checklist.md generated`
 
 ---
 
@@ -630,9 +657,9 @@ done
 ```
 
 Determine agent type from filename:
-- `code-writer-*` → type: code-writer
-- `test-writer-*` → type: test-writer
-- `project-code-reviewer` → type: review
+- `proj-code-writer-*` → type: code-writer
+- `proj-test-writer-*` → type: test-writer
+- `proj-code-reviewer` → type: review
 - All others → type: utility
 
 Write `.claude/agents/agent-index.yaml`:
@@ -641,25 +668,25 @@ Write `.claude/agents/agent-index.yaml`:
 # Agent Index — generated by Module 07, updated by /evolve-agents
 # Read by orchestrators for dispatch decisions
 agents:
-  - name: code-writer-{lang}
+  - name: proj-code-writer-{lang}
     scope: "{lang} general — all components"
     model: opus
     parent: null
     type: code-writer
     last-updated: {today}
-  - name: code-writer-{lang}-{fw}
+  - name: proj-code-writer-{lang}-{fw}
     scope: "{framework}-specific: {areas}"
     model: opus
-    parent: code-writer-{lang}
+    parent: proj-code-writer-{lang}
     type: code-writer
     last-updated: {today}
-  - name: test-writer-{lang}
+  - name: proj-test-writer-{lang}
     scope: "{lang} tests — all component types"
     model: opus
     parent: null
     type: test-writer
     last-updated: {today}
-  - name: project-code-reviewer
+  - name: proj-code-reviewer
     scope: "all languages — architecture, security, pipeline completeness"
     model: opus
     parent: null
@@ -737,10 +764,10 @@ Skill body sections:
    3. Read `references/capability-index.md` for gap awareness
 3. **Pipeline Trace Lookup** — read `references/pipeline-traces.md` for feature type
 4. **File Change Map** — list every file to change, in order
-5. **Specialist Dispatch** — "MUST dispatch code-writer-{lang} agent — do not perform inline"
-   Exception: if no code-writer-* agents exist, fallback to main-thread execution
-6. **Test Dispatch** — after code: dispatch test-writer-{lang} for affected code
-7. **Review Dispatch** — after all specialists: dispatch project-code-reviewer
+5. **Specialist Dispatch** — `subagent_type="proj-code-writer-{lang}"` — do not perform inline
+   Exception: if no proj-code-writer-* agents exist, fallback to main-thread execution
+6. **Test Dispatch** — after code: `subagent_type="proj-test-writer-{lang}"` for affected code
+7. **Review Dispatch** — after all specialists: dispatch proj-code-reviewer
 8. **Cross-Layer Verification** — build all, run tests
 9. **Anti-Hallucination** — verify all file paths exist before dispatching
 
@@ -771,7 +798,7 @@ Content: parse coverage format, display uncovered lines grouped by class/module,
 #### 6.6 Wire /review Skill
 
 Update `.claude/skills/review/SKILL.md` (if exists from Module 06):
-Set dispatch target to `project-code-reviewer` agent.
+Set dispatch target to `proj-code-reviewer` agent.
 
 **Checkpoint:** `Phase 6 complete — agent-index.yaml ({N} entries), pipeline-traces ({M} patterns), coverage skills, orchestrator skill generated`
 
@@ -780,20 +807,20 @@ Set dispatch target to `project-code-reviewer` agent.
 ## Verification Checklist
 
 **Code Writer Agents:**
-- [ ] Each `code-writer-{lang}.md` has all 9 required sections w/ project-specific content
+- [ ] Each `proj-code-writer-{lang}.md` has all 9 required sections w/ project-specific content
 - [ ] No generic placeholder text — all code examples from actual project
 - [ ] Classification trees cover all detected component types
 - [ ] Anti-hallucination sections present in every specialist
 - [ ] Sub-specialists (if any) have `scope:` + `parent:` in frontmatter
 
 **Test Writer Agents:**
-- [ ] Each `test-writer-{lang}.md` has all 8 required sections
+- [ ] Each `proj-test-writer-{lang}.md` has all 8 required sections
 - [ ] Introduction line has exact version numbers
 - [ ] Mocking gotchas section populated w/ real findings
 - [ ] Critical thinking phase included
 
 **Code Reviewer:**
-- [ ] `project-code-reviewer.md` has all 8 sections
+- [ ] `proj-code-reviewer.md` has all 8 sections
 - [ ] Per-component checklist generated from actual component types
 - [ ] Known gotchas from `.learnings/log.md` included
 - [ ] Review-checklist reference file generated
@@ -816,7 +843,7 @@ Set dispatch target to `project-code-reviewer` agent.
 **Skills:**
 - [ ] Orchestrator `/code-write` has Agent Discovery protocol
 - [ ] Coverage skills use project-specific commands
-- [ ] `/review` wired to `project-code-reviewer`
+- [ ] `/review` wired to `proj-code-reviewer`
 
 **Build:**
 - [ ] Build command works (verify by running)
@@ -826,10 +853,10 @@ Set dispatch target to `project-code-reviewer` agent.
 ## Integration
 
 **Consumes from earlier modules:**
-- Module 01 (`modules/01-discovery.md`) — languages, frameworks, architecture, foundation agents
+- Module 01 (`modules/01-discovery.md`) — languages, frameworks, architecture, foundation agents (proj-researcher, proj-code-writer-markdown, proj-code-writer-bash)
 - Module 02 (`modules/02-project-config.md`) — CLAUDE.md, rules
 - Module 04 (`modules/04-learnings.md`) — `.learnings/` structure
-- Module 05 (`modules/05-core-agents.md`) — researcher + code-writer-markdown agents
+- Module 05 (`modules/05-core-agents.md`) — 7 core utility/diagnostic agents (proj-quick-check, proj-verifier, etc.)
 - Module 06 (`modules/06-skills.md`) — `/code-write`, `/review`, `/coverage`, `/coverage-gaps` skill stubs
 
 **Produces for later modules:**
@@ -845,7 +872,7 @@ Set dispatch target to `project-code-reviewer` agent.
   Languages: {list}
   Code writers: {list} ({N} sub-specialists)
   Test writers: {list} ({N} sub-specialists)
-  Code reviewer: project-code-reviewer.md
+  Code reviewer: proj-code-reviewer.md
   Agent index: agent-index.yaml ({N} entries)
   Coverage skills: updated
   Pipeline traces: {N} patterns
