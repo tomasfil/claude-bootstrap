@@ -292,7 +292,7 @@ description: >
   {Language} code writer specialist for {project}. Use when writing {language}
   code for {list component types}. Knows project conventions, DI patterns,
   error handling, and framework-specific gotchas.
-tools: Read, Write, Edit, Bash, Grep, Glob, LSP, WebSearch{MCP_TOOLS}
+tools: {TOOLS_LINE}
 model: opus
 effort: high
 maxTurns: 100
@@ -300,6 +300,10 @@ color: blue
 scope: "{comma-separated framework/concern areas}"
 parent: ""
 ---
+
+{TOOLS_LINE} resolution (per migration 007 role table — techniques/agent-design.md § Skill Dispatch Reliability):
+- lang == markdown → `Read, Write, Edit, Grep, Glob, LSP, WebSearch{MCP_TOOLS}` (shell stripped — markdown writer never needs it)
+- all other langs (typescript, csharp, python, etc.) → `Read, Write, Edit, {SHELL}, Grep, Glob, LSP, WebSearch{MCP_TOOLS}`
 
 MCP tool injection (at creation time):
 IF project .mcp.json exists:
@@ -558,7 +562,7 @@ description: >
   Deep code review w/ project-specific knowledge. Use after writing code,
   before committing, or when asked to review. Knows architecture layers,
   pipeline traces, security patterns, and common project bugs.
-tools: Read, Grep, Glob, LSP, Edit
+# NOTE — tool whitelist OMITTED per migration 007: reviewer is read-only per role table (techniques/agent-design.md § Skill Dispatch Reliability). Omit the whitelist line entirely → inherits parent + MCP. Edit intentionally dropped: reviewers propose changes via reports, never apply them directly.
 model: opus
 effort: high
 maxTurns: 100
@@ -747,25 +751,32 @@ description: >
   components, or creating new files. Orchestrates language-specific code writers
   for cross-layer features. Analyzes request, maps pipeline trace, dispatches
   specialist agents in dependency order.
-context: fork
-agent: general-purpose
-allowed-tools: Agent Read Write Edit Bash Grep Glob Skill
+allowed-tools: Agent Read
 model: opus
 effort: high
 paths: "src/**"
 ---
 ```
 
+Frontmatter contract (per migration 007 + techniques/agent-design.md § Skill Dispatch Reliability): main-thread orchestrator → omit the `context` and `agent` fields entirely. `allowed-tools: Agent Read` only — orchestrator dispatches specialists and reads pipeline traces/agent-index; it does NOT write files itself (agents do).
+
 Skill body sections:
+
+0. **{PRE_FLIGHT_GATE_BLOCK — see top of modules/06-skills.md}** — FIRST executable step. Verify every agent in Dispatch Map exists under `.claude/agents/`; STOP w/ install instructions if missing. No inline fallback.
+
+**Dispatch Map** (agents dispatched by this skill):
+- Step 5 (code write): `proj-code-writer-{lang}` (+ sub-specialists `proj-code-writer-{lang}-{fw}` where scope matches)
+- Step 6 (tests): `proj-test-writer-{lang}`
+- Step 7 (review): `proj-code-reviewer`
+
 1. **Feature Analysis** — what kind of feature? What layers affected?
 2. **Agent Discovery** — BEFORE every dispatch:
    1. Read `.claude/agents/agent-index.yaml` for inventory
-   2. Match request against `scope` field: exact match → sub-specialist; language-only → parent; no match → main thread fallback
+   2. Match request against `scope` field: exact match → sub-specialist; language-only → parent; no match → STOP per pre-flight gate
    3. Read `references/capability-index.md` for gap awareness
 3. **Pipeline Trace Lookup** — read `references/pipeline-traces.md` for feature type
 4. **File Change Map** — list every file to change, in order
-5. **Specialist Dispatch** — `subagent_type="proj-code-writer-{lang}"` — do not perform inline
-   Exception: if no proj-code-writer-* agents exist, fallback to main-thread execution
+5. **Specialist Dispatch** — `subagent_type="proj-code-writer-{lang}"` — do not perform inline. If no `proj-code-writer-{lang}` matches → STOP per pre-flight gate, instruct user to run `/evolve-agents` or `/migrate-bootstrap`. NEVER fall back to inline execution.
 6. **Test Dispatch** — after code: `subagent_type="proj-test-writer-{lang}"` for affected code
 7. **Review Dispatch** — after all specialists: dispatch proj-code-reviewer
 8. **Cross-Layer Verification** — build all, run tests

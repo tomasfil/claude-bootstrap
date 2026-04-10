@@ -15,7 +15,9 @@ Create if missing. Delete if superseded (v5 `/spec` → removed, absorbed by `/b
 All skills MUST include:
 - `description:` starts w/ "Use when..." — native Skill tool routing trigger
 - Keep body under 500 lines; split to `references/` subdirectory if longer
-- `context: fork` + `agent: general-purpose` on orchestrator skills — NOTE: `context:fork` broken (claude-code#16803), skills run inline regardless; keep for forward compat
+- **Skill Class**: every skill MUST declare class — `main-thread` (interactive, multi-dispatch, needs AskUserQuestion or user clarification) OR `forkable` (single bounded autonomous task, no user interaction). See `techniques/agent-design.md` § Skill Dispatch Reliability for the canonical classification table.
+- **Main-thread orchestrators** (default): NO `context:` field, NO `agent:` field, `allowed-tools: Agent Read Write` (Write only for output files). Body MUST start with the pre-flight gate (see PRE_FLIGHT_GATE_BLOCK below).
+- **Forkable analytical skills**: `context: fork` + `agent: proj-<specialist>` per the mapping in § Skill Dispatch Reliability. Single bounded task; no user interaction.
 - Agent dispatch: use `Agent()` call w/ explicit prompt, NOT implicit `subagent_type` (inline during bootstrap, `subagent_type` post-bootstrap)
 - **`allowed-tools` is SPACE-separated** per Claude Code skill spec (`allowed-tools: Read Write Grep`), never comma-separated. NOTE: skill `allowed-tools:` is space-separated; agent `tools:` is comma-separated (`tools: Read, Grep, Glob`). They are different fields with different separators per Claude Code spec — do not unify.
 
@@ -80,6 +82,23 @@ If custom agent missing → STOP + inform user. See `techniques/agent-design.md 
 ```
 
 Skill specs below reference this via `{AGENT_DISPATCH_POLICY_BLOCK — see top of module}` — agent generating the skill MUST expand the reference to the literal block above.
+
+---
+
+### PRE_FLIGHT_GATE_BLOCK
+
+Reusable block injected as the FIRST executable section of every main-thread orchestrator skill body. Content:
+
+```
+## Pre-flight (REQUIRED — before any other step)
+
+For each agent name this skill dispatches (see Dispatch Map below):
+  If `.claude/agents/<agent-name>.md` does NOT exist → STOP.
+  Tell user: "Required agent <name> missing. Run /migrate-bootstrap or /module-write."
+  Do NOT proceed. Do NOT fall back to inline work. Do NOT substitute another agent.
+```
+
+Skill specs below reference this via `{PRE_FLIGHT_GATE_BLOCK — see top of module}` — agent generating the skill MUST expand the reference to the literal block above.
 
 ---
 
@@ -169,6 +188,12 @@ Frontmatter:
     Use when asked to review, audit, or check a specific file for quality,
     conventions, or issues. Reports violations with line numbers, severity, fixes.
   argument-hint: "[filename]"
+  context: fork
+  agent: proj-code-reviewer
+  allowed-tools: Read Grep Glob
+  model: sonnet
+  effort: medium
+  # Skill Class: forkable — single bounded autonomous audit, no user interaction
 
 Body — ## /audit-file — Source File Audit:
 - Input: file path to audit. If none given, ask.
@@ -248,6 +273,12 @@ Frontmatter:
   description: >
     Use when asked about test coverage, structural validation, or to verify
     bootstrap completeness. Reports coverage of files, agents, skills, hooks.
+  context: fork
+  agent: proj-consistency-checker
+  allowed-tools: Read Grep Glob
+  model: sonnet
+  effort: medium
+  # Skill Class: forkable — single bounded autonomous scan
 
 Body — ## /coverage — Structural Validation Report:
 - Scan .claude/ directory structure:
@@ -278,6 +309,12 @@ Frontmatter:
   description: >
     Use when asked what's missing from the development environment, what gaps
     exist in skills/agents/rules, or to identify improvement opportunities.
+  context: fork
+  agent: proj-consistency-checker
+  allowed-tools: Read Grep Glob
+  model: sonnet
+  effort: medium
+  # Skill Class: forkable — single bounded autonomous gap analysis
 
 Body — ## /coverage-gaps — Gap Identification:
 - Compare actual state vs expected:
@@ -436,6 +473,72 @@ Include these sections (from techniques/prompt-engineering.md + techniques/anti-
 
 ---
 
+#### Dispatch 09a: /test-fork (Bash probe — proves tool restriction)
+
+**Spec for dispatch prompt:**
+
+```
+Skill: test-fork
+Directory: .claude/skills/test-fork/SKILL.md
+
+Frontmatter:
+  name: test-fork
+  description: >
+    Probe whether `context: fork` + `agent:` dispatches to a named custom agent.
+    Manually invoke via /test-fork only — never auto-invoke. Diagnostic skill.
+  context: fork
+  agent: proj-quick-check
+  allowed-tools: Bash
+  model: haiku
+  effort: low
+  disable-model-invocation: true
+  # Skill Class: forkable — diagnostic probe
+
+Body — ## /test-fork — Fork Dispatch Probe:
+Single section; one Bash command:
+  `echo "FORK_PROBE pid=$$ ppid=$PPID time=$(date +%s)"`
+Return output verbatim. Do NOTHING else.
+
+Expected behavior:
+  Forks to proj-quick-check. Quick-check has tools: OMIT (read-only inheritance — no Bash).
+  Skill body requests Bash → fork dispatches → quick-check refuses ("Bash tool not available").
+  Refusal IS the success signal: proves fork happened to restricted agent context.
+```
+
+---
+
+#### Dispatch 09b: /test-fork-success (Read probe — proves positive fork execution)
+
+**Spec for dispatch prompt:**
+
+```
+Skill: test-fork-success
+Directory: .claude/skills/test-fork-success/SKILL.md
+
+Frontmatter:
+  name: test-fork-success
+  description: >
+    Probe positive fork execution — agent successfully runs in fork.
+    Manually invoke via /test-fork-success only.
+  context: fork
+  agent: proj-quick-check
+  allowed-tools: Read
+  model: haiku
+  effort: low
+  disable-model-invocation: true
+  # Skill Class: forkable — diagnostic probe
+
+Body — ## /test-fork-success — Fork Execution Probe:
+Use Read tool to read first line of `.claude/bootstrap-state.json` (or other tiny known file).
+Return: "FORK_SUCCESS — agent ran, read line: <first-line>"
+
+Expected behavior:
+  Forks to proj-quick-check. Read is in quick-check's inherited tool set.
+  Returns positive marker proving fork execution succeeded.
+```
+
+---
+
 ### Batch 2 — Skills That Reference Agents (dispatch ALL simultaneously)
 
 5 skills that dispatch specific agents from Module 05. Dispatch after Batch 1.
@@ -455,13 +558,18 @@ Frontmatter:
   description: >
     Use when encountering a bug, test failure, unexpected behavior, or error.
     Dispatches proj-quick-check for triage, then proj-debugger for root cause analysis.
-  context: fork
-  agent: general-purpose
-  allowed-tools: Agent Read Write Edit Bash Grep Glob
+  allowed-tools: Agent Read Write
   model: opus
   effort: high
+  # Skill Class: main-thread — multi-dispatch orchestrator, interactive synthesis
 
 Body — ## /debug — Systematic Investigation:
+
+{PRE_FLIGHT_GATE_BLOCK — see top of module}
+
+## Dispatch Map
+- Phase 1 triage: `proj-quick-check`
+- Phase 2 root-cause: `proj-debugger`
 
 {AGENT_DISPATCH_POLICY_BLOCK — see top of module}
 
@@ -502,13 +610,17 @@ Frontmatter:
   description: >
     Use when implementing a feature or bugfix where writing tests first improves
     confidence. Red-green-refactor cycle with test-driven development.
-  context: fork
-  agent: general-purpose
-  allowed-tools: Agent Read Write Edit Bash Grep Glob
+  allowed-tools: Agent Read Write
   model: opus
   effort: high
+  # Skill Class: main-thread — dispatches proj-tdd-runner, synthesizes results
 
 Body — ## /tdd — Red-Green-Refactor:
+
+{PRE_FLIGHT_GATE_BLOCK — see top of module}
+
+## Dispatch Map
+- Red-Green-Refactor cycle: `proj-tdd-runner`
 
 {AGENT_DISPATCH_POLICY_BLOCK — see top of module}
 
@@ -546,13 +658,17 @@ Frontmatter:
   description: >
     Use when completing a task, before committing, or to verify code quality.
     Dispatches proj-code-reviewer agent for thorough review.
-  context: fork
-  agent: general-purpose
-  allowed-tools: Agent Read Grep Glob Bash
+  allowed-tools: Agent Read Write
   model: opus
   effort: high
+  # Skill Class: main-thread — dispatches proj-code-reviewer, interactive fix loop
 
 Body — ## /review — Request Code Review:
+
+{PRE_FLIGHT_GATE_BLOCK — see top of module}
+
+## Dispatch Map
+- Code review: `proj-code-reviewer`
 
 {AGENT_DISPATCH_POLICY_BLOCK — see top of module}
 
@@ -589,13 +705,17 @@ Frontmatter:
   description: >
     Use when CI/CD pipeline fails, build breaks in CI, or asked to investigate
     automated test/build failures. Reads CI output, identifies root cause.
-  context: fork
-  agent: general-purpose
-  allowed-tools: Agent Read Bash Grep Glob
+  allowed-tools: Agent Read Write Bash
   model: opus
   effort: high
+  # Skill Class: main-thread — needs Bash for `gh run view`, dispatches proj-debugger
 
 Body — ## /ci-triage — CI Failure Investigation:
+
+{PRE_FLIGHT_GATE_BLOCK — see top of module}
+
+## Dispatch Map
+- Root-cause analysis: `proj-debugger`
 
 {AGENT_DISPATCH_POLICY_BLOCK — see top of module}
 
@@ -635,13 +755,17 @@ Frontmatter:
     repo itself. Dispatches proj-code-writer-markdown for content creation.
     Bootstrap repo only — not for client projects.
   argument-hint: "[module-or-file-path]"
-  context: fork
-  agent: general-purpose
-  allowed-tools: Agent Read Write Edit Bash Grep Glob
+  allowed-tools: Agent Read Write
   model: opus
   effort: high
+  # Skill Class: main-thread — dispatches proj-code-writer-markdown, verifies cross-refs
 
 Body — ## /module-write — Bootstrap Content Editing:
+
+{PRE_FLIGHT_GATE_BLOCK — see top of module}
+
+## Dispatch Map
+- Content generation: `proj-code-writer-markdown`
 
 {AGENT_DISPATCH_POLICY_BLOCK — see top of module}
 
@@ -686,13 +810,17 @@ Frontmatter:
     feature, component, or change. Always brainstorm before implementing
     non-trivial changes. Absorbs /spec — when requirements clear, skips
     exploration and produces spec directly.
-  context: fork
-  agent: general-purpose
-  allowed-tools: Agent Read Write Grep Glob
+  allowed-tools: Agent Read Write
   model: opus
   effort: high
+  # Skill Class: main-thread — interactive clarification + research dispatch + spec write
 
 Body — ## /brainstorm — Design Before Build:
+
+{PRE_FLIGHT_GATE_BLOCK — see top of module}
+
+## Dispatch Map
+- Research: `proj-researcher`
 
 {AGENT_DISPATCH_POLICY_BLOCK — see top of module}
 
@@ -743,13 +871,17 @@ Frontmatter:
     concrete implementation steps. Creates plan with dispatch batching.
     Use after /brainstorm or when starting from a clear spec.
   argument-hint: "[spec-file-path]"
-  context: fork
-  agent: general-purpose
-  allowed-tools: Agent Read Write Grep Glob
+  allowed-tools: Agent Read Write
   model: opus
   effort: high
+  # Skill Class: main-thread — dispatches proj-plan-writer, writes plan files
 
 Body — ## /write-plan — Implementation Planning:
+
+{PRE_FLIGHT_GATE_BLOCK — see top of module}
+
+## Dispatch Map
+- Plan generation: `proj-plan-writer`
 
 {AGENT_DISPATCH_POLICY_BLOCK — see top of module}
 
@@ -808,13 +940,19 @@ Frontmatter:
     Use when you have a written plan and are ready to implement. Executes plan
     batch-by-batch with verification checkpoints. Mandatory /review at end.
   argument-hint: "[plan-file-path]"
-  context: fork
-  agent: general-purpose
-  allowed-tools: Agent Read Write Edit Bash Grep Glob Skill
+  allowed-tools: Agent Read Write
   model: opus
   effort: high
+  # Skill Class: main-thread — batch dispatch orchestrator, interactive checkpoints
 
 Body — ## /execute-plan — Plan Execution:
+
+{PRE_FLIGHT_GATE_BLOCK — see top of module}
+
+## Dispatch Map
+- Per-task execution: agents named in each task file (dynamic — read `Agent:` field)
+- Verification: `proj-verifier`
+- Post-execution review: invoked via `/review` skill (which dispatches `proj-code-reviewer`)
 
 {AGENT_DISPATCH_POLICY_BLOCK — see top of module}
 
@@ -867,18 +1005,16 @@ Frontmatter:
   name: verify
   description: >
     Use before committing, creating PRs, or claiming work is done. Runs build,
-    tests, cross-references, and consistency checks. Dispatches both proj-verifier
-    and proj-consistency-checker agents.
+    tests, cross-references, and consistency checks via proj-verifier.
   context: fork
-  agent: general-purpose
-  allowed-tools: Agent Read Bash Grep Glob
-  model: opus
-  effort: high
+  agent: proj-verifier
+  allowed-tools: Read Bash Grep Glob
+  model: sonnet
+  effort: medium
+  # Skill Class: forkable — bounded verification run, no user interaction
 
 Body — ## /verify — Pre-Completion Verification:
 Run ALL checks — never claim completion until all pass.
-
-{AGENT_DISPATCH_POLICY_BLOCK — see top of module}
 
 - Phase 1: Build + Test verification
   Dispatch agent via `subagent_type="proj-verifier"` w/:
@@ -929,13 +1065,17 @@ Frontmatter:
     Use when asked to review learnings, improve the development environment,
     audit configuration, evolve agents, or optimize .claude/ setup.
     Run when SessionStart reports REFLECT_DUE=true.
-  context: fork
-  agent: general-purpose
-  allowed-tools: Agent Read Write Edit Grep Glob Bash
+  allowed-tools: Agent Read Write
   model: opus
   effort: high
+  # Skill Class: main-thread — dispatches proj-reflector, interactive proposal approval
 
 Body — ## /reflect — Self-Improvement Protocol:
+
+{PRE_FLIGHT_GATE_BLOCK — see top of module}
+
+## Dispatch Map
+- Learning analysis + proposals: `proj-reflector`
 
 {AGENT_DISPATCH_POLICY_BLOCK — see top of module}
 
@@ -1030,14 +1170,18 @@ Frontmatter:
     Use when session start reports CONSOLIDATE_DUE=true, or when manually
     invoked. Reviews raw learnings, merges duplicates, resolves contradictions,
     promotes/prunes instincts.
-  context: fork
-  agent: general-purpose
-  allowed-tools: Agent Read Write Edit Grep Glob
+  allowed-tools: Agent Read Write
   model: opus
   effort: high
+  # Skill Class: main-thread — dispatches proj-reflector, interactive consolidation approval
 
 Body — ## /consolidate — Learning Consolidation:
 Dispatch agent via `subagent_type="proj-reflector"` for analysis. Main thread applies approved changes.
+
+{PRE_FLIGHT_GATE_BLOCK — see top of module}
+
+## Dispatch Map
+- Learning cluster analysis: `proj-reflector`
 
 {AGENT_DISPATCH_POLICY_BLOCK — see top of module}
 
@@ -1108,13 +1252,20 @@ Frontmatter:
     Use when asked to implement, write, create, or modify code. Routes to the
     appropriate proj-code-writer-{lang} agent based on file type and scope. Dynamic
     discovery — globs .claude/agents/proj-code-writer-*.md for available specialists.
-  context: fork
-  agent: general-purpose
-  allowed-tools: Agent Read Write Edit Bash Grep Glob
+  allowed-tools: Agent Read
   model: opus
   effort: high
+  # Skill Class: main-thread — dispatches proj-code-writer-{lang}, no inline code work
 
 Body — ## /code-write — Implementation Dispatcher:
+
+{PRE_FLIGHT_GATE_BLOCK — see top of module}
+
+## Dispatch Map
+- Code generation: `proj-code-writer-{lang}` (dynamic — discovered via glob of `.claude/agents/proj-code-writer-*.md`)
+
+NOTE: Module 07 (Code Specialists) overrides this spec with the full routing version.
+This placeholder applies contract + pre-flight + dispatch-map; Module 07 fills routing logic.
 
 {AGENT_DISPATCH_POLICY_BLOCK — see top of module}
 
@@ -1126,7 +1277,7 @@ Placeholder behavior until Module 07 completes:
 1. Accept implementation request from user
 2. Glob .claude/agents/proj-code-writer-*.md → list available specialists
 3. If agent-index.yaml exists → read for scope/routing info
-4. If no specialists found (pre-Module 07) → execute inline w/ general knowledge
+4. If no specialists found → STOP per pre-flight gate. Tell user: "Run Module 07 (Code Specialists) to generate proj-code-writer-{lang} agents." NEVER fall back to inline.
 5. If specialists found → read scope: field from matching agent frontmatter →
    dispatch via `subagent_type="proj-code-writer-{lang}"` best match w/ implementation request
 
@@ -1146,7 +1297,7 @@ Dynamic discovery (always):
 Anti-hallucination:
 - NEVER dispatch to agent that doesn't exist — glob first
 - NEVER assume language from file content alone — check extension + project manifests
-- If no matching specialist → execute inline, note gap for /evolve-agents
+- If no matching specialist → STOP per pre-flight gate. Tell user to run /evolve-agents to create the missing specialist. NEVER fall back to inline execution.
 ```
 
 ---
@@ -1165,14 +1316,20 @@ Frontmatter:
     Use when auditing agents for staleness, adding specialists for new frameworks,
     refreshing agent knowledge after dependency upgrades, or when /reflect
     recommends evolution. Post-bootstrap only — audit + create-new, NOT split.
-  context: fork
-  agent: general-purpose
-  allowed-tools: Agent Read Write Edit Bash Grep Glob
+  allowed-tools: Agent Read Write
   model: opus
   effort: high
+  # Skill Class: main-thread — multi-dispatch research + creation pipeline
 
 Body — ## /evolve-agents — Agent Audit + New Specialist Creation:
 v6: agents are born right-sized. This skill audits + creates NEW, never splits.
+
+{PRE_FLIGHT_GATE_BLOCK — see top of module}
+
+## Dispatch Map
+- Phase 3 research: `proj-researcher` (local deep-dive + web research)
+- Phase 3 agent generation: `proj-code-writer-markdown`
+- Phase 5 refresh: `proj-researcher` + `proj-code-writer-markdown`
 
 {AGENT_DISPATCH_POLICY_BLOCK — see top of module}
 
@@ -1241,6 +1398,7 @@ Frontmatter:
   allowed-tools: Read Write Edit Bash Grep Glob WebFetch
   model: sonnet
   effort: high
+  # Skill Class: main-thread — inline migration executor, no custom agent dispatch (exempt from pre-flight gate)
 
 Body — ## /migrate-bootstrap — Apply Pending Migrations:
 NOTE: v6 bootstrap repo ships with zero migrations. This skill exists for

@@ -36,6 +36,12 @@
       "file": "006-flatten-companion-nested-repo.md",
       "description": "Flatten companion nested-repo bug — detect and remove $COMPANION_ROOT/$PROJECT_NAME/.git, re-stage as files in the umbrella, and rewrite .claude/hooks/sync-companion.sh to use path-scoped git -C instead of cd into the subdir.",
       "breaking": false
+    },
+    {
+      "id": "007",
+      "file": "007-orchestrator-skill-dispatch-fix.md",
+      "description": "Fix orchestrator skill dispatch — reclassify main-thread vs forkable, enforce frontmatter contract (no context:fork on orchestrators), inject pre-flight gate, audit agent tool whitelists per role table, promote /test-fork as permanent diagnostic.",
+      "breaking": false
     }
   ]
 }

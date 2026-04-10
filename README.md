@@ -76,7 +76,7 @@ The main thread stays lightweight. Skills dispatch to specialist agents for heav
 |-------|-------|---------|
 | code-writer-{lang} | opus | Per-language code generation with framework research |
 | test-writer-{lang} | opus | Per-language test writing matching project conventions |
-| project-code-reviewer | opus | Deep review with pipeline trace verification |
+| code-reviewer | opus | Deep review with pipeline trace verification |
 | debugger | opus | Bug tracing and root cause analysis |
 | tdd-runner | opus | Red-green-refactor cycles |
 | reflector | opus | Learning analysis and rule promotion |
@@ -135,7 +135,7 @@ Generates project-specific replacements for common methodology plugins:
 | superpowers | /brainstorm, /write-plan, /execute-plan, /tdd, /debug, /verify, /review |
 | claude-md-management | /reflect + /audit-memory |
 | feature-dev | /code-write orchestrator + researcher agent |
-| code-review | project-code-reviewer with pipeline trace checks |
+| code-review | code-reviewer with pipeline trace checks |
 | commit-commands | /commit + /pr |
 | pr-review-toolkit | /review |
 
@@ -183,7 +183,7 @@ claude-bootstrap.md          <- Entry point / orchestrator
 | 14 | Verification | Full wiring validation + skill routing hook generation |
 | 15 | Companion Repo | Private config sync for work projects (conditional) |
 | 16 | Code Writer + Test Writer | Per-language `code-writer-{lang}` + `test-writer-{lang}` agents, `/coverage` and `/coverage-gaps` skills (web research) |
-| 17 | Code Reviewer | `project-code-reviewer` with pipeline trace verification and per-language knowledge (web research) |
+| 17 | Code Reviewer | `code-reviewer` with pipeline trace verification and per-language knowledge (web research) |
 
 ## How Self-Improvement Works
 

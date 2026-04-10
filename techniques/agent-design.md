@@ -57,7 +57,7 @@ vs https://code.claude.com/docs/en/sub-agents. Don't try to unify — document a
 
 ## Orchestrator-as-Skill Pattern
 
-Skills run in main conversation where Agent tool IS available → orchestrate specialists w/o nested-subagent constraint.
+Orchestrator skills run on main thread (NOT forked) → dispatch custom `proj-*` agents via Task tool w/ explicit `subagent_type="proj-<name>"`. Main-thread execution preserves AskUserQuestion + multi-dispatch + interactive checkpoints.
 
 ```
 .claude/skills/code-write/
@@ -75,14 +75,14 @@ description: >
   building components, or creating new files. Orchestrates language-specific
   code writers for cross-layer features. MUST be invoked for any code
   generation task.
-context: fork
-agent: general-purpose
-allowed-tools: Agent Read Write Edit Bash Grep Glob Skill
+allowed-tools: Agent Read Write
 model: opus
 effort: high
 paths: "src/**"
 ---
 ```
+
+Note: NO `context: fork`, NO `agent:` field — main-thread orchestrators do not fork. `Write` included only because this skill emits a report; pure dispatch skills drop it. Edit/Bash/Grep/Glob belong to dispatched agents, not the orchestrator.
 
 ```markdown
 ## Orchestrator Protocol
@@ -92,9 +92,79 @@ paths: "src/**"
 3. **Map file changes** — which files need to be created/modified?
 4. **Determine specialists** — which language agents needed?
 5. **Check file ownership** — no two agents should edit the same file
-6. **Dispatch specialists** — in dependency order (data layer first, UI last)
-7. **Verify integration** — build all, run tests, check cross-layer wiring
+6. **Dispatch specialists** — in dependency order (data layer first, UI last) via `subagent_type="proj-code-writer-<lang>"`
+7. **Verify integration** — dispatch proj-verifier; never inline build/test
 ```
+
+## Skill Dispatch Reliability
+
+> Verified Claude Code 2.1+: `context: fork` mechanism works (issue #17283 closed).
+> But forked subagents have hard constraints — see Subagent Constraints (lines 20-30) above.
+> Specifically: NO AskUserQuestion (issue #18721), NO nested Agent tool, one-way fork (no resume).
+> → Interactive orchestrator skills MUST run on main thread. Subagent forks only for bounded autonomous analysis.
+
+### Skill Classification
+
+| Class | Skills | Frontmatter |
+|---|---|---|
+| **main-thread** (interactive + multi-dispatch) | brainstorm, spec, write-plan, execute-plan, code-write, module-write, tdd, debug, commit, pr, review, reflect, ci-triage, evolve-agents, write-prompt, write-ticket, migrate-bootstrap, sync, consolidate, audit-memory | NO `context:fork`. NO `agent:`. `allowed-tools: Agent Read Write` (Write only if skill saves a spec/plan/report). |
+| **forkable** (single bounded autonomous task) | audit-file, coverage, coverage-gaps, check-consistency, verify, count-chars, simplify | `context: fork` + `agent: proj-<specialist>`. `allowed-tools` matches what the agent body needs. |
+
+Decision rule: needs `AskUserQuestion` | multi-turn user clarification | multi-step agent dispatch with synthesis | interactive checkpoints → **main-thread**. Otherwise → **forkable**.
+
+### Frontmatter Contract — main-thread orchestrators
+
+```yaml
+allowed-tools: Agent Read Write    # Write only if skill outputs a file
+model: opus
+effort: high
+# NO context: fork
+# NO agent: field
+# NO Edit / Bash / Grep / Glob / mcp__* — those belong to dispatched agents
+```
+
+### Body Contract — main-thread orchestrators
+
+1. **Pre-flight gate** (REQUIRED first executable section, before any other step):
+   ```
+   For each agent name this skill dispatches (see Dispatch Map below):
+     If `.claude/agents/<agent-name>.md` does NOT exist → STOP.
+     Tell user: "Required agent <name> missing. Run /migrate-bootstrap or /module-write."
+     Do NOT proceed. Do NOT fall back to inline. Do NOT substitute another agent.
+   ```
+
+2. **Dispatch Map** declared at top of body — lists every proj-* agent dispatched at which step.
+
+3. **Literal canonical dispatch form** at every dispatch site:
+   ```
+   Dispatch agent via `subagent_type="proj-<name>"` w/ prompt: { ... }
+   ```
+   Never prose ("ask the researcher to ..."). Never weak markdown (`**Dispatch X**`). Literal `subagent_type=` is the trigger that prevents misroute to built-in `Explore`/`general-purpose`.
+
+4. **No inline escape hatches.** Delete all "if agent missing → do it inline" branches. Pre-flight already enforces stop.
+
+5. **Read-before-write moves into the dispatched agent**, not the orchestrator. Orchestrators do NOT Grep/Read source code for exploration.
+
+### Agent Tool Whitelist Audit
+
+| Agent role | tools: line | Notes |
+|---|---|---|
+| Read-only research/review | OMIT (inherit + MCP) | proj-researcher, proj-quick-check, proj-verifier, proj-consistency-checker, proj-reflector, proj-code-reviewer |
+| Write — markdown | `Read, Write, Edit, Grep, Glob` + `mcp__<server>__*` | proj-code-writer-markdown — NO `Bash` (markdown writer never needs shell) |
+| Write — bash/JSON | `Read, Write, Edit, Bash, Grep, Glob` + `mcp__<server>__*` | proj-code-writer-bash |
+| Write — code/test (per language) | `Read, Write, Edit, Bash, Grep, Glob` + `mcp__<server>__*` | proj-code-writer-{lang}, proj-test-writer-{lang} |
+| Diagnose/trace (heredoc-write via Bash) | `Read, Grep, Glob, Bash` | proj-debugger, proj-tdd-runner — uses Bash heredoc per § Pass-by-Reference |
+| Plan-write (write-only) | `Read, Write, Grep, Glob` | proj-plan-writer — NO `Edit`, NO `Bash` (per migration 004 plan-writer discipline) |
+
+Forbidden tools per role are enforced by migration 007 audit step. Read-only roles omit `tools:` entirely so they inherit MCP propagation (per migration 001).
+
+### References
+- Issue #17283 — Skill tool honors `context: fork` and `agent` (closed/completed)
+- Issue #18721 — AskUserQuestion limitation in Subagents
+- Migration 001 — proj-* rename + MCP propagation
+- Migration 003 — skill dispatch hardening (literal `subagent_type=` enforcement)
+- Migration 004 — plan-writer discipline (no implementation code)
+- Migration 007 — orchestrator skill dispatch fix (this section's enforcement migration)
 
 ## Agent YAML Frontmatter
 
@@ -166,7 +236,7 @@ All agents MUST have Write tool (or Bash for heredoc writers). Without it, pass-
 | Minimal | `Read, Grep, Glob` | reviewers, researchers |
 | Standard | `Read, Write, Edit, Bash, Grep, Glob, LSP` | implementation |
 | Extended | Standard + `WebSearch, WebFetch` | current docs/APIs |
-| Orchestrator | `Agent(...), Read, Grep, Glob, Bash` | main-thread only |
+| Orchestrator | `Agent, Read, Write` | main-thread only — never fork |
 
 ## Agent Dispatch Policy
 
