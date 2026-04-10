@@ -12,6 +12,12 @@
       "file": "002-index-json-and-repo-fix.md",
       "description": "Switch /migrate-bootstrap skill to use migrations/index.json for discovery; fix bootstrap_repo placeholder in .claude/bootstrap-state.json.",
       "breaking": false
+    },
+    {
+      "id": "003",
+      "file": "003-skill-dispatch-hardening.md",
+      "description": "Complete the agent rename from migration 001 by catching prose-form references missed by its narrow sed, inject AGENT_DISPATCH_POLICY_BLOCK into every dispatching skill, and normalize **Dispatch X** bold prose to the canonical subagent_type=\"proj-X\" form.",
+      "breaking": false
     }
   ]
 }

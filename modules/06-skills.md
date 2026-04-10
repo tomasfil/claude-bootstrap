@@ -18,6 +18,11 @@ All skills MUST include:
 - `context: fork` + `agent: general-purpose` on orchestrator skills — NOTE: `context:fork` broken (claude-code#16803), skills run inline regardless; keep for forward compat
 - Agent dispatch: use `Agent()` call w/ explicit prompt, NOT implicit `subagent_type` (inline during bootstrap, `subagent_type` post-bootstrap)
 
+**Canonical dispatch form** (enforced by migration 003 verify):
+- Procedure text MUST use literal `Dispatch agent via \`subagent_type="proj-<name>"\` w/ …` — NEVER weak prose like `**Dispatch proj-X**`, `Dispatch **proj-X** agent`, or bare `**Dispatch X**` without the `subagent_type=` annotation. Weak prose gives the main agent permission to misroute to built-in `Explore` / `general-purpose` or to inline the work.
+- Skill description frontmatter MUST use `proj-*` prefix for every agent name (e.g. `Dispatches proj-quick-check`, never bare `quick-check`).
+- Every dispatching skill MUST contain the `AGENT_DISPATCH_POLICY_BLOCK` at the top of the body (after the `# /skill-name` title). Block is a literal directive forbidding built-in `Explore`/`general-purpose` substitution.
+
 ## Actions
 
 ### Pre-Flight
