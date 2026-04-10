@@ -45,8 +45,15 @@ USAGE: bash .claude/scripts/sync-config.sh [init|export|import|status|push|pull]
 VARIABLES:
 - ACTION=${1:-status}
 - PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-- PROJECT_NAME=${2:-$(basename $PROJECT_ROOT)}
-- COMPANION_DIR=$HOME/.claude-configs/$PROJECT_NAME
+- PROJECT_NAME=${2:-$(basename "$PROJECT_ROOT")}
+- COMPANION_ROOT="$HOME/.claude-configs"
+- COMPANION_DIR="$COMPANION_ROOT/$PROJECT_NAME"
+
+LAYER INVARIANT (critical — do not violate):
+- The umbrella repo lives ONLY at "$COMPANION_ROOT/.git"
+- NEVER run `git init` inside "$COMPANION_DIR" — creates nested repo bug (migration 006)
+- NEVER `cd "$COMPANION_DIR"` to run `git add/commit/push` — use `git -C "$COMPANION_ROOT" … -- "$PROJECT_NAME"` to scope commits to the project subdir
+- All git operations use path-scoped form so the umbrella stays the single source of truth
 
 SYNC TARGETS (project-specific, machine-independent):
 - Directories: .claude/{rules,skills,agents,hooks,scripts,specs,references}
@@ -62,38 +69,45 @@ DO NOT SYNC (machine-specific):
 COMMANDS:
 
 init:
-  - mkdir -p $HOME/.claude-configs
-  - cd $HOME/.claude-configs; git init if .git missing
+  - If [[ -d "$COMPANION_DIR/.git" ]] → error:
+      "nested .git detected at $COMPANION_DIR/.git — run /migrate-bootstrap (migration 006) to flatten"
+      exit 1
+  - mkdir -p "$COMPANION_ROOT"
+  - cd "$COMPANION_ROOT"; git init if .git missing (umbrella ONLY — never inside "$COMPANION_DIR")
   - Create README.md ('# Claude Code Configs'), .gitignore ('*.log', 'agent-usage.log')
-  - git add -A && commit 'Initialize companion config repo'
-  - mkdir -p $COMPANION_DIR
+  - git -C "$COMPANION_ROOT" add -A && git -C "$COMPANION_ROOT" commit -q -m 'Initialize companion config repo' || true
+  - mkdir -p "$COMPANION_DIR"
   - Print remote setup instructions
 
 export:
-  - mkdir -p $COMPANION_DIR/.claude $COMPANION_DIR/.learnings
-  - For each sync dir: if exists in project, mkdir -p + cp -r to companion
-  - For each sync file: if exists, cp to companion
-  - For .learnings/log.md: if exists, cp to companion
+  - If [[ -d "$COMPANION_DIR/.git" ]] → error: "nested .git at $COMPANION_DIR — run /migrate-bootstrap (migration 006)"; exit 1
+  - mkdir -p "$COMPANION_DIR/.claude" "$COMPANION_DIR/.learnings"
+  - For each sync dir: if exists in project, mkdir -p + cp -r to "$COMPANION_DIR"
+  - For each sync file: if exists, cp to "$COMPANION_DIR"
+  - For .learnings/log.md: if exists, cp to "$COMPANION_DIR/.learnings/"
 
 import:
-  - If $COMPANION_DIR missing → error + exit 1
-  - Reverse of export: cp -r companion → project
+  - If [[ ! -d "$COMPANION_DIR" ]] → error + exit 1
+  - If [[ -d "$COMPANION_DIR/.git" ]] → error: "nested .git at $COMPANION_DIR — run /migrate-bootstrap (migration 006)"; exit 1
+  - Reverse of export: cp -r "$COMPANION_DIR"/… → project
   - mkdir -p as needed for each target
 
 status:
-  - If $COMPANION_DIR missing → report + exit 0
-  - For each sync dir: diff -rq project vs companion, count changed files
+  - If [[ ! -d "$COMPANION_DIR" ]] → report + exit 0
+  - If [[ -d "$COMPANION_DIR/.git" ]] → warn: "nested .git detected — run /migrate-bootstrap (migration 006)"
+  - For each sync dir: diff -rq project vs "$COMPANION_DIR", count changed files
   - Report per-dir sync status + total diffs
 
 push:
-  - cd $HOME/.claude-configs
-  - git add -A; git diff --cached --quiet → 'Nothing to push' + exit 0
-  - git commit -m 'Sync {PROJECT_NAME} configs {date}'
-  - git push || warn no remote configured
+  - If [[ ! -d "$COMPANION_ROOT/.git" ]] → error: "umbrella repo missing — run /sync init"; exit 1
+  - git -C "$COMPANION_ROOT" add -- "$PROJECT_NAME"
+  - git -C "$COMPANION_ROOT" diff --cached --quiet -- "$PROJECT_NAME" && { echo 'Nothing to push'; exit 0; }
+  - git -C "$COMPANION_ROOT" commit -q -m "Sync $PROJECT_NAME configs $(date -Iseconds)" -- "$PROJECT_NAME"
+  - git -C "$COMPANION_ROOT" push || warn no remote configured
 
 pull:
-  - cd $HOME/.claude-configs
-  - git pull || warn pull failed
+  - If [[ ! -d "$COMPANION_ROOT/.git" ]] → error: "umbrella repo missing — run /sync init"; exit 1
+  - git -C "$COMPANION_ROOT" pull || warn pull failed
 
 *:
   - Print usage + exit 1

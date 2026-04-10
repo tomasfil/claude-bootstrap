@@ -397,6 +397,27 @@ elif [[ "{git_strategy}" == "companion" ]] || [[ "{git_strategy}" == "ephemeral"
   grep -q "\.claude" .gitignore && echo "PASS: .claude ignored" || echo "FAIL: .claude not ignored"
   grep -q "\.learnings" .gitignore && echo "PASS: .learnings ignored" || echo "FAIL: .learnings not ignored"
 fi
+
+# Companion-only: detect nested .git bug (migration 006 target)
+if [[ "{git_strategy}" == "companion" ]]; then
+  PROJECT_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
+  COMPANION_ROOT="$HOME/.claude-configs"
+  COMPANION="$COMPANION_ROOT/$PROJECT_NAME"
+  if [[ -d "$COMPANION/.git" ]]; then
+    echo "FAIL: nested .git at $COMPANION/.git — run /migrate-bootstrap (migration 006)"
+  elif [[ ! -d "$COMPANION_ROOT/.git" ]]; then
+    echo "WARN: umbrella repo missing at $COMPANION_ROOT/.git — run /sync init"
+  else
+    first=$(git -C "$COMPANION_ROOT" ls-files "$PROJECT_NAME" 2>/dev/null | head -1)
+    if [[ -z "$first" ]]; then
+      echo "WARN: companion has no tracked files yet — run /sync push"
+    elif [[ "$first" == "$PROJECT_NAME" ]]; then
+      echo "FAIL: $PROJECT_NAME tracked as gitlink — nested repo bug"
+    else
+      echo "PASS: companion tracked as files"
+    fi
+  fi
+fi
 ```
 
 Fix any FAIL items by editing `.gitignore`.

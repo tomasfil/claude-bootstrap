@@ -30,6 +30,12 @@
       "file": "005-skill-allowed-tools-space-separated.md",
       "description": "Convert skill allowed-tools frontmatter from non-standard comma-separated form to spec-compliant space-separated form. Comma form breaks with Bash(git add *) patterns. Agent tools field is unchanged (correctly comma-separated per spec).",
       "breaking": false
+    },
+    {
+      "id": "006",
+      "file": "006-flatten-companion-nested-repo.md",
+      "description": "Flatten companion nested-repo bug — detect and remove $COMPANION_ROOT/$PROJECT_NAME/.git, re-stage as files in the umbrella, and rewrite .claude/hooks/sync-companion.sh to use path-scoped git -C instead of cd into the subdir.",
+      "breaking": false
     }
   ]
 }

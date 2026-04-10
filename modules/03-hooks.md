@@ -116,12 +116,25 @@ Scripts to create:
 
 5. .claude/hooks/sync-companion.sh (Stop — conditional)
    {if git_strategy == companion}:
-   Purpose: sync .claude/ to companion repo on session end. Zero tokens.
+   Purpose: sync .claude/ to umbrella companion repo on session end. Zero tokens.
    Content:
-   - Skip if ~/.claude-configs/.git doesn't exist
-   - rsync (preferred) or cp fallback: .claude/ → companion/.claude/, .learnings/ → companion/
-   - Copy CLAUDE.md + CLAUDE.local.md
-   - git add + commit + push in companion repo (silent, -q)
+   - COMPANION_ROOT="$HOME/.claude-configs"
+   - PROJECT_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
+   - COMPANION="$COMPANION_ROOT/$PROJECT_NAME"
+   - Skip if [[ ! -d "$COMPANION_ROOT/.git" ]] — exit 0
+   - Abort if [[ -d "$COMPANION/.git" ]] — echo "sync-companion: nested .git at $COMPANION, run /migrate-bootstrap (migration 006)" >&2; exit 1
+   - NEVER run `git init` inside "$COMPANION" — umbrella is the only repo
+   - mkdir -p "$COMPANION/.claude" "$COMPANION/.learnings"
+   - rsync (preferred) or cp -r fallback:
+       .claude/       → "$COMPANION/.claude/"
+       .learnings/    → "$COMPANION/.learnings/"
+   - Copy (if exist): CLAUDE.md, CLAUDE.local.md → "$COMPANION/"
+   - Stage + commit via umbrella ONLY, path-scoped to this project:
+       git -C "$COMPANION_ROOT" add -- "$PROJECT_NAME"
+       git -C "$COMPANION_ROOT" diff --cached --quiet -- "$PROJECT_NAME" && exit 0
+       git -C "$COMPANION_ROOT" commit -q -m "sync $PROJECT_NAME: $(date -Iseconds)" -- "$PROJECT_NAME"
+       git -C "$COMPANION_ROOT" push -q 2>/dev/null || true
+   - NEVER `cd "$COMPANION"` and run `git add -A` — creates nested repo
    {if git_strategy != companion}:
    Create stub: #!/usr/bin/env bash + exit 0
 
