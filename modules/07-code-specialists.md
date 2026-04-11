@@ -307,12 +307,15 @@ Before the 9 sections below, inject the following block immediately after the fr
 ```markdown
 ## STEP 0 — Load critical rules (MANDATORY first action)
 
+Output completeness > token efficiency. Full scope every time. No elision. Calibrated effort only.
+
 Before any task-specific work, Read these rule files (in parallel where possible):
 - `.claude/rules/general.md`
 - `.claude/rules/skill-routing.md`
 - `.claude/rules/token-efficiency.md`
 - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
 - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+- `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
 - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
 Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
@@ -456,12 +459,15 @@ Before the 8 sections below, inject the following block immediately after the fr
 ```markdown
 ## STEP 0 — Load critical rules (MANDATORY first action)
 
+Output completeness > token efficiency. Full scope every time. No elision. Calibrated effort only.
+
 Before any task-specific work, Read these rule files (in parallel where possible):
 - `.claude/rules/general.md`
 - `.claude/rules/skill-routing.md`
 - `.claude/rules/token-efficiency.md`
 - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
 - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+- `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
 - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
 Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
@@ -565,7 +571,7 @@ Read ALL of these:
 - .learnings/log.md (if exists)
 - CLAUDE.md (gotchas section)
 
-Generate .claude/agents/proj-code-reviewer.md w/ ALL 8 required sections.
+Generate .claude/agents/proj-code-reviewer.md w/ ALL 9 required sections.
 Use compressed telegraphic notation.
 
 YAML frontmatter:
@@ -582,7 +588,25 @@ maxTurns: 100
 color: yellow
 ---
 
-REQUIRED 8 SECTIONS:
+## STEP 0 — Load critical rules (MANDATORY first action)
+
+Output completeness > token efficiency. Full scope every time. No elision. Calibrated effort only.
+
+Before any review work, Read these rule files (in parallel where possible):
+- `.claude/rules/general.md`
+- `.claude/rules/code-standards-markdown.md`
+- `.claude/rules/token-efficiency.md`
+- `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+- `.claude/rules/max-quality.md` (doctrine — the rule THIS agent enforces via § 9 Completeness Check)
+- Any language-specific `.claude/rules/code-standards-{lang}.md` files relevant to the files under review
+
+Rationale: the Layer 6 enforcement agent must force-read the rule it enforces. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface in subagent context. Explicit Read lands content as conversation context and guarantees the doctrine is in scope when § 9 Completeness Check runs. If a referenced rule doesn't exist, note it in the review report and continue.
+
+If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+
+---
+
+REQUIRED 9 SECTIONS:
 
 ## 1. Role + Project Context
 Senior code reviewer for {project}. Knows architecture, conventions,
@@ -647,6 +671,41 @@ Domain: {code-style | security | architecture | testing | tooling}
 - Never invent security issues not actually present
 - Use LSP to verify type issues before reporting
 - If unsure about standard → check rules before citing
+
+## 9. Completeness Check (Max Quality Doctrine enforcement)
+Reviewer is the enforcement layer for `.claude/rules/max-quality.md`. Hook-based regex
+checks lack LLM context judgment — TODO-link validation and weeks/days effort-context
+detection live HERE, not in any Layer 2 hook.
+
+Binary checklist (evaluate Y/N per file reviewed):
+- All listed parts addressed? (every checklist item, every Files entry, every contract
+  bullet — any omission = FAIL) → Y/N
+- Pseudocode substitutions present? (any `// TODO: implement`, stub return, placeholder
+  body masquerading as implementation) → Y/N
+- `TODO:` markers without linked issue present? (reviewer evaluates w/ LLM judgment:
+  `TODO: #123` or `TODO: link-to-issue` = PASS, bare `TODO:` or `TODO: will do later`
+  = FAIL) → Y/N
+- "for brevity" / elision phrases present? (`...`, `rest unchanged`, `for brevity`,
+  `omitted for clarity`, `you get the idea` in delivered code/content) → Y/N
+- Effort-pad language in effort-estimate context? (reviewer evaluates w/ LLM context
+  judgment: `7 days` in cron config = PASS, `this will take 2 weeks` in a task
+  description = FAIL) → Y/N
+  Banned phrases in effort context: `days`, `weeks`, `months`, `significant time`,
+  `complex effort`, `substantial effort`, `large undertaking`, `major investment`,
+  `considerable work`, `non-trivial amount of time`.
+  Carve-out: literal data values inside code/config (cron windows, retention periods,
+  sleep durations) are NOT effort estimates and do not fail this check.
+
+Reviewer LLM context advantage: hook regex cannot distinguish `TODO: #123` from bare
+`TODO:`, cannot distinguish `7 days retention` config from `this will take 2 weeks`
+effort narrative. Reviewer can. This is why TODO + effort-context detection MUST live
+at the reviewer layer, NOT in a Layer 2 hook. Layer 2 hook remains regex-only
+(trivially detectable patterns like `for brevity`, `...` ellipsis, `rest unchanged`).
+
+Output line (append to Report Format §7 in the final reviewer output):
+`COMPLETENESS: PASS|FAIL` — PASS only if all 5 checks are N (no violations found).
+Any Y answer on the checklist → COMPLETENESS: FAIL + itemize the violations in the
+MUST-FIX section alongside other blocking issues.
 
 ALSO generate:
 .claude/agents/references/review-checklist.md — full per-component-type checklist
@@ -844,7 +903,7 @@ Set dispatch target to `proj-code-reviewer` agent.
 - [ ] Critical thinking phase included
 
 **Code Reviewer:**
-- [ ] `proj-code-reviewer.md` has all 8 sections
+- [ ] `proj-code-reviewer.md` has all 9 sections (incl. Completeness Check)
 - [ ] Per-component checklist generated from actual component types
 - [ ] Known gotchas from `.learnings/log.md` included
 - [ ] Review-checklist reference file generated

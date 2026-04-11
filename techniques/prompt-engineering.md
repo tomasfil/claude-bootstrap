@@ -499,6 +499,72 @@ Per-target harness — a prompt safe at 40% on Claude may fail on Llama 3.1 7B.
 
 ---
 
+## Max Quality Doctrine
+
+Doctrine enforcing output completeness over output-token minimization in subagent contexts. Canonical rationale + directive patterns for completeness floors, calibrated effort framing, and the research basis.
+
+### Root Cause — Subagent Incentive Tension
+
+Subagent system prompts (Claude Agent SDK + Claude Code) instruct subagents to `minimize output tokens` while `completing the task fully` — two objectives that collide under load. Cross-reference: `techniques/agent-design.md:84` (fresh-context gap + silent-wrong-output failure mode). A fresh-context subagent receives only the dispatch string; it cannot see prior conversation establishing scope. When the subagent hits uncertainty about scope, `minimize output tokens` wins the tiebreak → silent elision (`# ... similar pattern follows`, `for brevity`), effort padding (`this is substantial effort`), or truncated implementations that look complete. Main thread never notices because subagent return is plausible. Doctrine purpose: make completeness the dominant objective, make elision observable at verification time.
+
+### Seven-Point Doctrine (canonical)
+
+Mirrors `.claude/rules/max-quality.md` with rationale. All seven are enforced together; partial application defeats the doctrine.
+
+1. **Output completeness > token efficiency.** Instruction compression (agent bodies, rule files, specs) is orthogonal to output compression (generated code, spec bodies, review findings). Compress instructions; never compress output. See `techniques/token-efficiency.md` § Output Carve-Out.
+2. **No elision in implementation output.** Banned literals: `for brevity`, `... (omitted)`, `pseudocode`, `abbreviated for`, `truncated for`, `similar pattern follows`, `etc. (more ...)`. Full content every time. If output is genuinely too long, split into multiple dispatches — never elide.
+3. **Calibrated effort framing.** Frame effort in observable units: N files, N steps, N minutes in session. Never `days`, `weeks`, `months` — these are temporal units for human-driven work; LLM-executable work completes in the current session. The research basis: arXiv 2604.00010 (temporal miscalibration) shows LLMs trained on human-authored project estimates import human time units into task framing, inflating perceived difficulty and triggering premature stopping.
+4. **Completeness floor over abbreviation floor.** Directive: "Provide complete implementation. If omitting any section, explain why in the output — never silently truncate." Forces violations into visible reasoning instead of invisible elision.
+5. **Binary verification checklists.** Adopt CheckEval-style (EMNLP 2025) binary pass/fail checklists for every completion criterion. Each criterion = yes/no, no middle state. Prevents self-grading drift where a model rates itself "mostly complete" and stops.
+6. **No premature stopping.** Banned phrases: "good stopping point", "natural checkpoint", "should I continue?", "want me to keep going?". If solvable, solve it. Stopping is failure unless the blocker is external (missing API key, user decision required).
+7. **No ownership-dodging.** Banned patterns: "pre-existing issue", "not my changes", "known limitation", "out of scope" used as an excuse to leave adjacent bugs unfixed when fixing them is trivial. Own the outcome; fix what you touch.
+
+### Directive Prompting Patterns (completeness floors)
+
+Positive framing dominates negative at high context depth (see § Positive vs Negative Rules). Max-quality directives:
+
+```markdown
+## Output Completeness Floor
+Output completeness > token efficiency. Full scope every time.
+Provide complete implementation. If omitting any section, explain why in the output — never silently truncate.
+If the output is too long for a single response, split into multiple responses and continue — do NOT elide.
+```
+
+```markdown
+## Effort Calibration
+Frame effort in observable units: N files, N steps, N minutes in session.
+Never use "days", "weeks", "months" for LLM-executable work — these are human temporal units and do not apply.
+If a task genuinely cannot complete in one session, state the exact blocker and the exact next step.
+```
+
+```markdown
+## Verification Checklist (CheckEval binary)
+Before returning, answer each as yes/no:
+- [ ] Every file listed in scope is created or modified?
+- [ ] Every function/section specified is fully implemented (no elision)?
+- [ ] Build/test command run and passing?
+- [ ] No `TODO` without linked issue?
+- [ ] No banned elision literals in output?
+Return verification table with results. "Partial yes" is not an allowed answer.
+```
+
+### Research Sources
+
+- **GPT-4 "shortcut" incident, Nov 2023** — dbreunig 2026 analysis: GPT-4 introduced elision literals (`# ... (rest of implementation)`) after a model update optimized output tokens. Regressed on code-gen benchmarks. Anthropic + OpenAI subsequently added explicit anti-elision training, but incentive tension remains under subagent load.
+- **arXiv 2604.00010** — temporal miscalibration in LLM task estimation. Models trained on human project plans inherit human time units; framing LLM-executable work in `weeks`/`days` triggers inflated difficulty estimates and premature stopping. Fix: constrain effort framing to session-observable units.
+- **EMNLP 2025 CheckEval** — binary checklist evaluation outperforms Likert-scale self-grading by 18-34% on completeness detection. Binary forces a decision; scaled grades enable drift.
+- **Claude Agent SDK subagent docs** — explicit `minimize output tokens` + `complete the task fully` dual directive. Doctrine exists to resolve the tension in favor of completeness.
+
+### Cross-References
+
+- `techniques/agent-design.md` § Subagent Constraints — fresh-context gap, silent-wrong-output failure mode, why dispatch string is the only bridge
+- `techniques/token-efficiency.md` § Output Carve-Out — compression applies to instructions, never to output
+- `.claude/rules/max-quality.md` — rule-file enforcement (telegraphic, always-loaded)
+- `.claude/hooks/check-quality.sh` — Layer 3 literal-scan enforcement at SubagentStop
+- `.claude/agents/proj-code-reviewer.md` — Layer 6 context-sensitive completeness checks (catches what hook regex cannot)
+
+---
+
 ## See Also
 - `techniques/anti-hallucination.md` — verification patterns
 - `techniques/agent-design.md` — agent YAML templates + dispatch patterns + inter-agent handoff formats

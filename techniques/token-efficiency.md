@@ -15,6 +15,19 @@ NOT: conversation output, commit messages, PR descriptions, user-facing docs, co
 
 ---
 
+## Output Carve-Out
+
+Compression applies to INSTRUCTIONS only — never to the output an agent generates. Max Quality Doctrine Point 1: output completeness > token efficiency. This carve-out prevents the compression rules above from being misread as a license to truncate implementation output.
+
+- **Applies to (compress)**: agent bodies, rule files, skill bodies, specs, plans, memory entries, learnings, CLAUDE.md — the INSTRUCTIONS an agent receives
+- **Does NOT apply to (never compress)**: implementation output — code content, spec body content, plan step content, review findings, search results, generated files, task return payloads
+- **Output completeness > token efficiency** — never truncate output to save tokens. Banned literals in output: `for brevity`, `... (omitted)`, `pseudocode`, `abbreviated for`, `truncated for`, `similar pattern follows`, `etc. (more ...)`. Enforced by `.claude/hooks/check-quality.sh` at SubagentStop.
+- **Genuine length constraint** → report it explicitly (`OUTPUT_TOO_LONG: {section} — {N} lines estimated, {blocker}`) and request continuation or split dispatch. Never silently elide.
+
+See `techniques/prompt-engineering.md` § Max Quality Doctrine for the full doctrine + research basis.
+
+---
+
 ## Compression Rules
 
 - Drop articles (a, an, the), filler words, redundant context

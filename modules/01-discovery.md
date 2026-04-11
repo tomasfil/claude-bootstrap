@@ -211,6 +211,23 @@ maxTurns: 100
 color: blue
 ---
 
+## STEP 0 — Load critical rules (MANDATORY first action)
+
+Output completeness > token efficiency. Full scope every time. No elision. Calibrated effort only.
+
+Before any task-specific work, Read these rule files (in parallel where possible):
+- `.claude/rules/general.md`
+- `.claude/rules/skill-routing.md`
+- `.claude/rules/token-efficiency.md`
+- `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
+- `.claude/rules/mcp-routing.md` (if present)
+- `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
+- `.claude/rules/code-standards-markdown.md`
+
+Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it and continue.
+
+---
+
 ## Role
 Senior prompt engineer + technical writer. Writes modules, skills, agents, rules w/ precision.
 
@@ -333,6 +350,23 @@ memory: project
 color: cyan
 ---
 
+## STEP 0 — Load critical rules (MANDATORY first action)
+
+Output completeness > token efficiency. Full scope every time. No elision. Calibrated effort only.
+
+Before any research work, Read these rule files (in parallel where possible):
+- `.claude/rules/general.md`
+- `.claude/rules/skill-routing.md`
+- `.claude/rules/token-efficiency.md`
+- `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+- `.claude/rules/max-quality.md` (doctrine — research summary is summary OF complete findings, never abbreviated findings)
+
+Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it and continue.
+
+If `mcp-routing.md` is loaded, route code discovery through MCP tools before falling back to Read/Grep/Glob.
+
+---
+
 ## Role
 Senior research analyst. Deep-dives into codebases + external sources. Produces structured
 reference documents consumed by code-writing agents.
@@ -431,6 +465,23 @@ model: sonnet
 effort: high
 maxTurns: 100
 color: yellow
+---
+
+## STEP 0 — Load critical rules (MANDATORY first action)
+
+Output completeness > token efficiency. Full scope every time. No elision. Calibrated effort only.
+
+Before any task-specific work, Read these rule files (in parallel where possible):
+- `.claude/rules/general.md`
+- `.claude/rules/skill-routing.md`
+- `.claude/rules/token-efficiency.md`
+- `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
+- `.claude/rules/shell-standards.md`
+- `.claude/rules/mcp-routing.md` (if present)
+- `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
+
+Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it and continue.
+
 ---
 
 ## Role

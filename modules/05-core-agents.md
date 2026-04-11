@@ -2,6 +2,8 @@
 
 > Create remaining 7 utility/diagnostic agents via proj-code-writer-markdown dispatch.
 > Foundation 3 (proj-code-writer-markdown, proj-researcher, proj-code-writer-bash) already exist from Module 01.
+> Doctrine: every agent created here force-reads `.claude/rules/max-quality.md` in STEP 0.
+> Output completeness > token efficiency. Full scope every time. Calibrated effort only.
 
 ---
 
@@ -78,12 +80,15 @@ Body sections:
 
   ## STEP 0 — Load critical rules (MANDATORY first action)
 
+  Output completeness > token efficiency. Full scope every time. No elision. Calibrated effort only.
+
   Before any task-specific work, Read these rule files (in parallel where possible):
   - `.claude/rules/general.md`
   - `.claude/rules/skill-routing.md`
   - `.claude/rules/token-efficiency.md`
   - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
   Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
@@ -131,12 +136,15 @@ Body sections:
 
   ## STEP 0 — Load critical rules (MANDATORY first action)
 
+  Output completeness > token efficiency. Full scope every time. No elision. Calibrated effort only.
+
   Before any task-specific work, Read these rule files (in parallel where possible):
   - `.claude/rules/general.md`
   - `.claude/rules/skill-routing.md`
   - `.claude/rules/token-efficiency.md`
   - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
   Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
@@ -205,6 +213,32 @@ Body sections:
   counts to tier a task. Plan-writer sees intent only, not generated code. Use
   intent-level signals ONLY (dep topology, step count, verb, file count, layer). Output
   size is not a planning-time signal.
+
+- Doctrine source: `.claude/rules/max-quality.md` §4 (Calibrated Effort) is the
+  governing rule for effort-estimate language in plan-writer output. The rules below
+  are the plan-writer-specific enforcement of that doctrine.
+
+- FORBIDDEN in effort estimates (plan-writer output): time-based effort language.
+  Plan-writer is dispatching LLM-executable work that runs at machine speed within a
+  single session. Human project-management units are inappropriate and produce
+  effort-padding that misleads downstream agents.
+  Banned phrases in effort-estimate context: `days`, `weeks`, `months`, `significant
+  time`, `complex effort`, `substantial effort`, `large undertaking`, `major
+  investment`, `considerable work`, `non-trivial amount of time`.
+  Carve-out: literal data values (`7 days` retention, `30 days` cron window) inside
+  code/config are NOT effort estimates and are allowed. The ban applies to narrative
+  effort framing in task descriptions, tier rationales, batch summaries, and plan
+  overviews.
+
+- REQUIRED in effort estimates (plan-writer output): calibrated estimates in observable
+  units only. Valid effort framings:
+  * file count (`touches 3 files`)
+  * dispatch count (`1 dispatch unit`, `3 parallel batches`)
+  * step count (`7 steps in task body`)
+  * batch count (`2 batches, serialized`)
+  * task count (`5 tasks, all micro`)
+  LLM-executable work framed as "minutes-to-hours within session". Narrative effort
+  context (if any) must use these units exclusively.
 
 - Dispatch Unit Packing (First Fit Decreasing over dep-isolated, layer-grouped bins):
   1. Solo-dispatch all complex tasks. One dispatch unit per complex task.
@@ -283,7 +317,7 @@ Body sections:
   #### Dep set: {files+symbols this specific task touches}
 
   ### Task {NN}.2: {title}
-  [...]
+  #### (same sub-section structure as Task {NN}.1 — repeat per task in the batch)
   ---
   ### Batch verification
   Run `{command}` once after all tasks complete. On fail: report which task (NN.M)
@@ -363,12 +397,15 @@ Body sections:
 
   ## STEP 0 — Load critical rules (MANDATORY first action)
 
+  Output completeness > token efficiency. Full scope every time. No elision. Calibrated effort only.
+
   Before any task-specific work, Read these rule files (in parallel where possible):
   - `.claude/rules/general.md`
   - `.claude/rules/skill-routing.md`
   - `.claude/rules/token-efficiency.md`
   - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
   Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
@@ -422,12 +459,15 @@ Body sections:
 
   ## STEP 0 — Load critical rules (MANDATORY first action)
 
+  Output completeness > token efficiency. Full scope every time. No elision. Calibrated effort only.
+
   Before any task-specific work, Read these rule files (in parallel where possible):
   - `.claude/rules/general.md`
   - `.claude/rules/skill-routing.md`
   - `.claude/rules/token-efficiency.md`
   - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
   Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
@@ -484,12 +524,15 @@ Body sections:
 
   ## STEP 0 — Load critical rules (MANDATORY first action)
 
+  Output completeness > token efficiency. Full scope every time. No elision. Calibrated effort only.
+
   Before any task-specific work, Read these rule files (in parallel where possible):
   - `.claude/rules/general.md`
   - `.claude/rules/skill-routing.md`
   - `.claude/rules/token-efficiency.md`
   - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
   Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
@@ -544,12 +587,15 @@ Body sections:
 
   ## STEP 0 — Load critical rules (MANDATORY first action)
 
+  Output completeness > token efficiency. Full scope every time. No elision. Calibrated effort only.
+
   Before any task-specific work, Read these rule files (in parallel where possible):
   - `.claude/rules/general.md`
   - `.claude/rules/skill-routing.md`
   - `.claude/rules/token-efficiency.md`
   - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
   Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
@@ -606,12 +652,15 @@ Body sections:
 
   ## STEP 0 — Load critical rules (MANDATORY first action)
 
+  Output completeness > token efficiency. Full scope every time. No elision. Calibrated effort only.
+
   Before any task-specific work, Read these rule files (in parallel where possible):
   - `.claude/rules/general.md`
   - `.claude/rules/skill-routing.md`
   - `.claude/rules/token-efficiency.md`
   - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
   Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.

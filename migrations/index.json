@@ -84,6 +84,12 @@
       "file": "014-plan-writer-mcp-access.md",
       "description": "Complete MCP access rollout — drop tools: from proj-plan-writer so it inherits MCP like every other agent. Supersedes migration 013's defensive skip (the 'MCP-free by design' rationale was post-hoc; scope-lock restricts plan CONTENT, not tool access). Rewrites CLAUDE.md + .claude/rules/mcp-routing.md + modules/02 + modules/05 to state the absolute rule: ALL agents (read-only, write, planning) OMIT tools: to inherit parent MCP access. The theoretical hard-restriction escape hatch is kept as a footnote but marked 'currently unused by any agent in this project'.",
       "breaking": false
+    },
+    {
+      "id": "015",
+      "file": "015-max-quality-doctrine.md",
+      "description": "Max Quality Doctrine — 10-layer defense against output truncation and effort inflation. Creates .claude/rules/max-quality.md rule, .claude/hooks/check-quality.sh SubagentStop hook (high-precision literal elision + effort-pad scan, self-block prevention, TODO/weeks-days delegated to Layer 6 reviewer), .claude/hooks/prompt-nudge.sh UserPromptSubmit script (SKILL CHECK + conditional MAX QUALITY on write/impl verbs), extends .claude/hooks/stop-verify.sh nudge text (no scan — Stop schema lacks last_assistant_message), updates .claude/settings.json hook wiring, syncs techniques/prompt-engineering.md + techniques/token-efficiency.md + techniques/agent-design.md to .claude/references/techniques/ (agent-design gains Hook Input Schema Gotcha + Use/Mention Discipline + Template Placeholder Conventions sections), adds @import .claude/rules/max-quality.md to CLAUDE.md, retrofits STEP 0 reinforcement + max-quality force-read across all proj-*.md agents, adds Completeness Check section to proj-code-reviewer*.md, adds calibrated-effort FORBIDDEN/REQUIRED rules to proj-plan-writer*.md. Dogfooded — plan itself complies with the doctrine it implements.",
+      "breaking": false
     }
   ]
 }

@@ -94,8 +94,11 @@ Cross-reference: `.claude/rules/mcp-routing.md` — single-source routing rule (
 - `general.md` — repo-wide process rules
 - `skill-routing.md` — skill tool usage
 - `token-efficiency.md` — compression mandate
+- `agent-scope-lock.md` — file-level scope restriction for write agents
 - `mcp-routing.md` — IF present (MCP projects only)
+- `max-quality.md` — Max Quality Doctrine (output completeness > token efficiency; full scope; calibrated effort). Force-read mandatory for ALL proj-* agents (enforcement reaches the reviewer, which in turn force-reads the rule it enforces)
 - `code-standards-{role-lang}.md` — IF present (matches the agent's primary language)
+- `shell-standards.md` — IF agent writes shell scripts
 
 Other rules stay `@import`-only in `CLAUDE.md` — they're loaded via system prompt chain for main-thread context, not forced into sub-agent bodies.
 
@@ -108,12 +111,90 @@ Other rules stay `@import`-only in `CLAUDE.md` — they're loaded via system pro
 
 **Enforcement**:
 - Migration-011 retrofits existing agents (injects STEP 0 block after frontmatter if marker absent)
-- Module-05 + Module-07 templates include STEP 0 block for new bootstraps
+- Migration-015 adds `max-quality.md` to the force-read list + inserts the doctrine reinforcement line at the top of every STEP 0 block
+- Module-01 + Module-05 + Module-07 templates include STEP 0 block for new bootstraps (module-01 foundation agents — proj-code-writer-markdown, proj-researcher, proj-code-writer-bash — added in the Max Quality Doctrine fix pass 2026-04-11; prior gap closed so fresh bootstraps are structurally consistent with the doctrine from module 01)
+- proj-code-reviewer template (module-07) includes its own STEP 0 block — the Layer 6 enforcement agent MUST force-read the rule it enforces (added 2026-04-11)
 - `/audit-agents` skill validates presence across all `.claude/agents/proj-*.md`
+
+**Web-validated core rationale** (`code.claude.com/docs/en/sub-agents`, 2026-04-11):
+> "Each subagent runs in its own context window with a custom system prompt"
+> "A subagent's context window starts empty except for four things"
+> "the parent must include it in the Agent tool prompt. There is no other way to pass context"
+
+Context isolation is the defining property of subagents — rules reached through `CLAUDE.md` `@import` chains do not reliably surface. Force-read lands content as conversation context, not system-prompt inheritance. This is why the pattern is mandatory, not best-practice.
 
 **References**:
 - Issue #5914 — sub-agent system prompt isolation (`@import` chains may not reach sub-agents reliably)
+- `code.claude.com/docs/en/sub-agents` — context isolation property
 - Spec: `.claude/specs/main/2026-04-11-mcp-routing-audit-spec.md` v2 § STEP 0 block + Q1 resolution
+- Spec: `.claude/specs/main/2026-04-11-max-quality-doctrine-spec.md` — Max Quality Doctrine (Layer 9 STEP 0 update across all modules + Layer 1 doctrine rule force-read)
+
+## Hook Input Schema Gotcha (SubagentStop vs Stop)
+
+**What**: Claude Code hook events receive different JSON input shapes on stdin. Two events that look symmetric are NOT:
+
+| Event | `last_assistant_message` field? | Can scan assistant output directly? |
+|-------|---------------------------------|-------------------------------------|
+| **SubagentStop** | YES — string, text of the subagent's final response | YES — `jq -r '.last_assistant_message'` + regex scan + `decision: block` via stdout JSON |
+| **Stop** | NO — only `session_id`, `transcript_path`, `cwd`, `permission_mode`, `hook_event_name` | NO — no direct field access; scanning requires tailing the transcript JSONL, high cost + blast radius |
+
+**Why it matters**: designing a completeness/elision/banned-phrase scanner for end-of-turn enforcement looks like the same problem on both hooks. It's not. A hook on SubagentStop can mechanically scan and block subagent output; a hook on Stop cannot scan main-thread output via field access. Layer your defenses accordingly:
+- Subagent output → SubagentStop hook (scan + `decision: block` on pattern match)
+- Main-thread output → rule `@import` + reviewer-agent completeness checks; Stop hook degraded to nudge-only (advisory echo text, no scan, no block)
+
+**Verification protocol before designing a field-based scanner hook**:
+1. Read the hook event's documented input shape at `code.claude.com/docs/en/hooks` (or equivalent upstream doc).
+2. Probe empirically: write a no-op hook that `cat`s stdin to a debug file, fire the hook, inspect the JSON keys.
+3. Never assume symmetry between related events (Stop vs SubagentStop, PreToolUse vs PostToolUse, etc.).
+
+**Verified 2026-04-11** (`code.claude.com/docs/en/hooks`): SubagentStop has `last_assistant_message` field. Stop does not.
+
+**References**:
+- `code.claude.com/docs/en/hooks` — hook input schemas per event
+- Migration-015 Step 6 (check-quality.sh SubagentStop hook — field-based scan)
+- Migration-015 Step 7 (stop-verify.sh Stop hook — nudge-only, no scan)
+- `.learnings/log.md` 2026-04-11 entry — review-correction pattern
+
+## Use/Mention Discipline for Banned-Phrase Rules
+
+**What**: When authoring rules that ban specific phrases (e.g., "for brevity", "significant time", "weeks"), the rule file itself must MENTION the banned phrases without USING them. Mention context = quoted literal, inside a FORBIDDEN list, inside a regex pattern literal, inside a doctrine-quote explaining what's banned. Use context = the phrase appears as natural instruction prose.
+
+**Why it matters**:
+1. Self-reference paradox — a rule file that USES its own banned phrases fails its own discipline and gets flagged by its own enforcement layer (hook regex or reviewer checklist).
+2. Hook self-block — field-based scanners that match the rule file's own phrases will block any agent quoting the rule. Fix: self-block prevention via path/heading markers (see migration-015 check-quality.sh). But the underlying authoring discipline is still mention-only.
+3. Reviewer false-positive — a binary completeness check that counts phrase occurrences without use/mention classification will flag the rule file itself. Fix: reviewer prompt must include explicit use/mention distinction.
+
+**Authoring checklist**:
+- Banned phrase in prose instruction? → USE → rewrite without the phrase
+- Banned phrase in `\`code fence\`` quoting a pattern? → MENTION → OK
+- Banned phrase in a FORBIDDEN: bullet list? → MENTION → OK
+- Banned phrase in regex pattern literal (e.g., `ELISION_RE='for brevity|...'`)? → MENTION → OK
+- Banned phrase in a quoted example of a violation? → MENTION → OK (prefer telegraphic: "e.g. `significant time`")
+
+**Enforcement**:
+- Self-block prevention in scanner hooks (match on rule-file path or heading marker → skip scan)
+- Reviewer prompts must distinguish USE from MENTION when applying completeness checks
+- Authoring discipline: write banned phrases in code fences or FORBIDDEN lists, never inline as prose
+
+**Precedent**: migration-015-max-quality-doctrine.md — 1192 lines, zero USE-context violations across all 7 banned phrases. Dogfood discipline verified by proj-code-reviewer pass 2026-04-11.
+
+## Template Placeholder Conventions
+
+**What**: When writing instruction templates (agent specs, skill specs, batch-file formats), square-bracket shorthand like `[...]` is ambiguous — it reads as either "repeat this pattern" (template convention per prompt-engineering prior art) OR "elided content" (doctrine violation under Max Quality rules). Prefer explicit comments over ambiguous shorthand.
+
+**Prior art** (web-surveyed 2026-04-11):
+- Square brackets `[ ]` = optional elements or alternatives in template conventions
+- Curly braces `{ }` = variable substitution
+- `[...]` is standard "repeat pattern" in some template dialects but is also ambiguous with content elision
+
+**Authoring guidance**:
+- Repeat pattern needed? → use explicit comment: `### Task {NN}.N: {title}  # repeat per task` or `#### (same sub-section structure as Task {NN}.1 — repeat per task in the batch)`
+- Optional element? → use `{optional_field}` + document optionality in prose
+- Literal elision? → never. Inline the full content. This is the Max Quality Doctrine §1.
+
+**Enforcement**: hook regex does NOT flag `[...]` (too ambiguous to be high-precision literal); reviewer completeness check flags `[...]` only when context makes elision-intent clear. Authoring discipline prevents the ambiguity upstream.
+
+**Precedent**: modules/05-core-agents.md batch-file format template — `[...]` replaced with explicit comment 2026-04-11 during Max Quality Doctrine fix pass.
 
 ## Orchestrator-as-Skill Pattern
 
