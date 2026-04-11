@@ -97,56 +97,168 @@ Agent: proj-plan-writer
 Model: sonnet | maxTurns: 100 | effort: high | color: blue
 Tools: Read, Write, Grep, Glob
 Tools-note: KEEP (migration-001 injects mcp__<server>__* per project .mcp.json)
-Purpose: create implementation plans from specs, split into per-task files
+Purpose: create implementation plans from specs, pack tasks into dispatch-unit batch files
 
 Pass-by-reference: writes master plan to .claude/specs/{branch}/{date}-{topic}-plan.md
-AND splits tasks into separate files under .claude/specs/{branch}/{date}-{topic}-plan/
-directory (task-NN-{name}.md per task/batch). Return master plan path + summary.
+AND emits one batch-NN-{summary}.md per dispatch unit under
+.claude/specs/{branch}/{date}-{topic}-plan/ (each batch holds 1-N ordered tasks).
+Legacy task-NN-*.md layout still accepted for executor back-compat but batch-NN-*.md
+is the preferred output. Return master plan path + summary.
 
 Description: Use when breaking a design or spec into concrete, ordered, verifiable
 implementation tasks. Takes spec + codebase context, produces dependency-ordered
-task list split into separate task files for focused agent dispatch.
+task list packed into dispatch-unit batch files for focused agent dispatch.
 
 Body sections:
-- Role: senior architect — analyze specs + codebases → dependency-ordered task lists
+- Role: senior architect — analyze specs + codebases → tier-classified, dep-ordered
+  dispatch units (one agent invocation per unit executes N ordered tasks back-to-back)
+- Reframe: dispatch unit = execution primitive (one Agent call); task = planning
+  primitive. A batch file carries 1-N ordered tasks the same agent runs sequentially,
+  verifying once at the end. Ordering is preserved INSIDE a batch (dep-ordered
+  top-down); batching is governed by tier + dep_set intersection, NOT agent type alone.
 - Process:
   1. Read spec file completely
   2. Scan codebase for affected files + patterns
   3. Break into tasks — each independently completable + verifiable
   4. Order by dependency (data → API → UI)
-  5. Assign verification command per task
-  6. Compute dispatch batches — group by Agent + dependency
-  7. Write master plan (index + execution order + dependency graph)
-  8. Write individual task files (one per task/batch) — self-contained w/ all context
-     the executing agent needs (file paths, patterns, verification commands)
+  5. Classify every task → Tier Classification (see below)
+  6. Pack tasks into dispatch units → Dispatch Unit Packing (see below)
+  7. Assign ONE verification command per dispatch unit (runs at end of batch)
+  8. Write master plan (index + execution order + dependency graph + Dispatch Plan)
+  9. Write batch files (one per dispatch unit) — self-contained w/ all context the
+     executing agent needs (rule files to read once, file paths, per-task sections,
+     batch verification command)
+
+- Tier Classification (5 signals ranked; tie-break: promote up a tier):
+  1. Dependency topology [HIGHEST PRIORITY] — does this task share files/symbols w/
+     any other task?
+     * independent: no shared files/symbols → aggressively batchable
+     * local: same module, different files → batch only within same dispatch unit
+     * global: shares a file or symbol w/ another task → serialize, never co-batched
+  2. Step count as tool-call fan-out proxy (count of entries in task's Steps section)
+     * 1-3 steps → micro
+     * 4-10 steps → moderate
+     * 11+ steps → complex
+  3. Operation verb category (from task title + Steps language)
+     * create/add (new file, new method, new test, new enum value) → isolated, batchable
+     * modify/update/refactor (existing symbol) → dependency check required
+     * migrate/delete/rename/restructure → high blast radius, bias toward solo dispatch
+  4. File count (distinct paths in task's Files section)
+     * 1 file → micro candidate
+     * 2-5 files → moderate candidate, batch only w/ same-layer tasks
+     * 6+ files → complex, solo dispatch
+     * 10+ files → subagent overhead definitely warranted
+  5. Layer identity (assigned from file paths + intent):
+     schema | data | api | domain | ui | test | config | docs | infra
+     * Same-layer tasks share rule context → co-batch safely
+     * Cross-layer co-batching permitted only for leftover lonely micro tasks w/ no
+       shared deps
+
+- FORBIDDEN in tier classification: MUST NOT estimate LOC, token counts, or tool-call
+  counts to tier a task. Plan-writer sees intent only, not generated code. Use
+  intent-level signals ONLY (dep topology, step count, verb, file count, layer). Output
+  size is not a planning-time signal.
+
+- Dispatch Unit Packing (First Fit Decreasing over dep-isolated, layer-grouped bins):
+  1. Solo-dispatch all complex tasks. One dispatch unit per complex task.
+  2. Pack moderate tasks. Group by (agent, layer). Sort by dep order. For each task:
+     find first existing moderate-unit where (a) no dep_set intersection w/ any task
+     already in unit, (b) unit has <3 tasks, (c) estimated context budget <60K. Found
+     → add. Else → open new unit.
+  3. Pack micro tasks. Group by (agent, layer). Sort by dep order. For each task:
+     find first existing micro-unit where (a) no dep_set intersection, (b) unit has
+     <5 tasks, (c) estimated context budget <60K. Found → add. Else → open new unit.
+  4. Leftover cross-layer merging (micro only). If ≤2 micro units have 1 task each,
+     different layers, same agent, no shared deps → merge into one cross-layer micro
+     unit. Avoids lonely-solo-dispatch waste.
+  5. Global caps (override all):
+     * ≤5 tasks per dispatch unit regardless of tier mix
+     * ≤60K estimated context per unit
+     * ≤10 distinct files touched across unit
+  6. Emit dispatch units in dep-order layered batches for the Dispatch Plan section.
+
+- Context budget estimator (heuristic, conservative):
+  Formula: `25K + 2K·R + 0.5K·T + 2K·F` where
+    R = distinct rule files needed (code-standards-*, data-access, etc.)
+    T = tasks in unit
+    F = distinct files touched across unit
+  Budget cap: 60K. Baseline 25K covers system + CLAUDE.md + agent frontmatter + MCP
+  schemas. Never measured; deliberately conservative.
+
+- Parallel-batch rule: independent batches (no shared deps) may dispatch in parallel,
+  up to 3 concurrent per agent type (consistent w/ Anthropic MAS 3-5 operating range).
+
+- Retry policy: on batch verification fail → agent reports which sub-task (NN.M) broke
+  it + returns partial-success map. Main thread re-dispatches each failed task SOLO
+  (no re-batching on retry). Prevents retry amplification.
+
 - Output format for master plan:
   ## Plan: {feature}
   ### Dispatch Plan
-  - Batch 1 (agent: {name}) — Tasks: {list}. Depends on: {batches|none}. Parallel w/: {batches|none}.
-  ### Task Index
-  - task-00-{name}.md — {summary}
-  - task-01-{name}.md — {summary}
-- Output format for task files:
-  ## Task {NN}: {name}
-  ### Context (1-3 sentences — what executing agent needs to know + WHY this task)
-  ### Contract (interface shapes, method signatures, data types — intent, NOT bodies)
-  ### Steps (concrete ordered actions — imperative prose, NOT code)
-  ### Files (paths + what changes — "add method X", "modify class Y", NOT literal snippets)
-  ### Verification: `{command}`
-  ### Agent: {specialist name}
-  ### Batch: {batch-id}
-- Build integrity rule: code-writing tasks SEQUENTIAL, research/doc tasks parallelizable
-- Task file discipline (HARD RULES — violated = plan rejected):
-  * Task files describe INTENT not IMPLEMENTATION. Specialist agents have domain knowledge; plan-writer does not.
-  * FORBIDDEN in task files: method bodies, using/import statements, full class definitions, error-handling code, ready-to-paste code blocks, translated pseudo-code
-  * ALLOWED: signatures (`public async Task<X> Foo(Y y, CancellationToken ct)`), interface additions (`add byte[] GenerateCsvTemplate();` to IFoo), file paths, data shapes (`record Bar(int Id, string Name)`), step prose
-  * Rationale: specialist reads `.claude/rules/code-standards-{lang}.md` + framework rules. Plan-writer cannot. Pre-written bodies bypass specialist guardrails.
-  * Size cap: task files ≤60 lines. Hard warn at >80. If task needs more → split into sub-tasks or let the specialist decide.
-  * NEVER copy rule file content into task files. Reference path: "specialist MUST read `.claude/rules/code-standards-csharp.md` before writing".
-  * Good: "Add `ReadAsync(byte[], Action<T>?, CT)` that sniffs PK magic bytes → dispatches to ReadExcelAsync or ReadCsvAsync". Bad: 30-line fenced C# block showing the byte check + if/else + delegation.
-- Anti-hallucination: verify all file paths exist before referencing, never plan changes
-  to unread files, every task needs concrete verification command, unclear dependency →
-  note it don't guess, only batch tasks w/ verified same Agent + no inter-task deps; if a task file exceeds 80 lines or contains complete method bodies → STOP and restructure (intent over implementation)
+  - Batch 1 (proj-code-writer-csharp, tier: micro, layer: domain, 5 tasks)
+      Verification: `dotnet build Foo`. Deps: none. Parallel w/: Batch 2.
+  - Batch 2 (proj-code-writer-markdown, tier: moderate, layer: docs, 2 tasks)
+      Verification: `markdownlint modules/`. Deps: none. Parallel w/: Batch 1.
+  - Batch 3 (proj-code-writer-csharp, tier: complex, layer: data, 1 task)
+      Verification: `dotnet test`. Deps: Batch 1.
+  ### Batch Index
+  - batch-01-{summary}.md — {agent, tier, task count}
+  - batch-02-{summary}.md — {agent, tier, task count}
+
+- Output format — Batch Files (new; preferred):
+  Location: .claude/specs/{branch}/{date}-{topic}-plan/batch-NN-{summary}.md
+  Body cap: ≤200 lines per batch file (bounds intra-batch context rot).
+
+  ## Batch {NN}: {summary}
+  ### Agent: proj-{name}
+  ### Tier: {micro|moderate|complex}
+  ### Layer: {schema|data|api|domain|ui|test|config|docs|infra}
+  ### Verification: `{single command run ONCE at end of batch}`
+  ### Rule files to read (once at batch start): {list}
+  ### Dependency set: {files+symbols touched by this batch}
+  ---
+  ### Task {NN}.1: {title}
+  #### Tier: {micro|moderate|complex}
+  #### Operation: {create|modify|migrate}
+  #### Context (1-3 sentences — what executing agent needs + WHY)
+  #### Contract (interface shapes, method signatures, data types — intent, NOT bodies)
+  #### Steps (imperative prose, 1-11+ depending on tier)
+  #### Files (paths + what changes — "add method X", NOT literal snippets)
+  #### Dep set: {files+symbols this specific task touches}
+
+  ### Task {NN}.2: {title}
+  [...]
+  ---
+  ### Batch verification
+  Run `{command}` once after all tasks complete. On fail: report which task (NN.M)
+  broke it; stop; return partial-success map.
+
+- Task file discipline (HARD RULES — violated = plan rejected; applies to each task
+  sub-section inside a batch file):
+  * Task sections describe INTENT not IMPLEMENTATION. Specialist agents have domain
+    knowledge; plan-writer does not.
+  * FORBIDDEN in task sections: method bodies, using/import statements, full class
+    definitions, error-handling code, ready-to-paste code blocks, translated pseudo-code
+  * ALLOWED: signatures (`public async Task<X> Foo(Y y, CancellationToken ct)`),
+    interface additions (`add byte[] GenerateCsvTemplate();` to IFoo), file paths,
+    data shapes (`record Bar(int Id, string Name)`), step prose
+  * Rationale: specialist reads `.claude/rules/code-standards-{lang}.md` + framework
+    rules. Plan-writer cannot. Pre-written bodies bypass specialist guardrails.
+  * Size cap: each individual Task sub-section ≤60 lines (hard warn at >80). Batch
+    file as a whole ≤200 lines. If task needs more → split into sub-tasks or let the
+    specialist decide.
+  * NEVER copy rule file content into task sections. Reference path: "specialist MUST
+    read `.claude/rules/code-standards-csharp.md` before writing".
+  * Good: "Add `ReadAsync(byte[], Action<T>?, CT)` that sniffs PK magic bytes →
+    dispatches to ReadExcelAsync or ReadCsvAsync". Bad: 30-line fenced C# block
+    showing the byte check + if/else + delegation.
+
+- Anti-hallucination: verify all file paths exist before referencing, never plan
+  changes to unread files, every dispatch unit needs ONE concrete verification
+  command, unclear dependency → note it don't guess, only co-batch tasks w/ verified
+  same agent + no dep_set intersection; if a task sub-section exceeds 80 lines or
+  contains complete method bodies or a batch file exceeds 200 lines → STOP and
+  restructure (intent over implementation)
 - Parallel tool calls block
 - Scope lock
 ```

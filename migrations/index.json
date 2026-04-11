@@ -54,6 +54,12 @@
       "file": "009-forbid-builtin-explore.md",
       "description": "Forbid built-in Explore/general-purpose/plugin agent fallback — patch CLAUDE.md + .claude/rules/skill-routing.md + .claude/rules/general.md to add always-loaded rule; strengthen AGENT_DISPATCH_POLICY_BLOCK in all dispatching skills.",
       "breaking": false
+    },
+    {
+      "id": "010",
+      "file": "010-plan-writer-dispatch-units.md",
+      "description": "Regenerate proj-plan-writer agent + write-plan + execute-plan skills with dispatch-unit batching — tier classification (5 signals), FFD packing algorithm over dep-isolated layer bins, batch file format.",
+      "breaking": false
     }
   ]
 }

@@ -896,35 +896,71 @@ Body — ## /write-plan — Implementation Planning:
      - Discovery context (languages, frameworks, commands)
      - Pipeline traces (if exist)
      - Write master plan to .claude/specs/{branch}/{date}-{topic}-plan.md
-     - Write individual task files to .claude/specs/{branch}/{date}-{topic}-plan/
-       One file per task/batch: task-NN-{title}.md
+     - Write batch files to .claude/specs/{branch}/{date}-{topic}-plan/
+       One file per dispatch unit: batch-NN-{summary}.md (1-N ordered tasks per file)
      - Return master plan path + summary
 
 - Plan-writer produces:
-  Master plan = index + execution order + dependency graph + dispatch plan
-  Task files = self-contained, agent gets ONLY their task file as context
+  Master plan = index + execution order + dependency graph + Dispatch Plan + Batch Index
+  Batch files = self-contained dispatch units, agent gets ONLY its batch file as context.
+    One batch file per dispatch unit; holds 1-N ordered tasks the same agent runs
+    sequentially, verifying once at end. Batch files are the preferred output.
+  Legacy task files (task-NN-*.md, one task per dispatch) still accepted by
+  /execute-plan for backward compat but no longer emitted by default.
 
-- Task file format:
-  ## Task {N}: {title}
-  Files: {create/modify list}
-  Depends on: {task numbers}
-  Verification: {build/test command}
-  Agent: {specialist name}
-  Batch: {batch-id}
-  ### Steps
-  1. {step}
+- Batch file format:
+  ## Batch {NN}: {summary}
+  ### Agent: proj-{name}
+  ### Tier: {micro|moderate|complex}
+  ### Layer: {schema|data|api|domain|ui|test|config|docs|infra}
+  ### Verification: `{single command run ONCE at end of batch}`
+  ### Rule files to read (once at batch start): {list}
+  ### Dependency set: {files+symbols touched by this batch}
+  ---
+  ### Task {NN}.1: {title}
+  #### Tier: {micro|moderate|complex}
+  #### Operation: {create|modify|migrate}
+  #### Context — 1-3 sentences (what + WHY)
+  #### Contract — signatures, data shapes, interface additions (INTENT, not bodies)
+  #### Steps — imperative prose, 1-11+ entries depending on tier
+  #### Files — paths + what changes ("add method X", NOT literal snippets)
+  #### Dep set — files+symbols this specific task touches
+  ### Task {NN}.2: {title}
+  [...]
+  ---
+  ### Batch verification — run `{command}` ONCE after all tasks complete.
+  On fail: agent reports which sub-task (NN.M) broke it, stops, returns partial-
+  success map.
+  Size caps: batch file body ≤200 lines total; individual task sub-section ≤60
+  lines (hard warn at >80). Over cap → split or let specialist decide.
+
+- Legacy task file format (still accepted, no longer emitted):
+  task-NN-{title}.md w/ single Task section (Files/Depends on/Verification/Agent/
+  Batch/Steps). /execute-plan auto-detects and falls back to one-task-per-dispatch.
 
 - Dispatch plan section:
   ### Dispatch Plan
-  - Batch 1 (agent: {name}) — Tasks: 1,2. Deps: none. Parallel w/: Batch 2.
-  - Batch 2 (agent: {name}) — Tasks: 3. Deps: none. Parallel w/: Batch 1.
-  - Batch 3 (agent: {name}) — Tasks: 4. Deps: Batch 1,2.
+  - Batch 1 (proj-code-writer-csharp, tier: micro, layer: domain, 5 tasks)
+      Verification: `dotnet build Foo`. Deps: none. Parallel w/: Batch 2.
+  - Batch 2 (proj-code-writer-markdown, tier: moderate, layer: docs, 2 tasks)
+      Verification: `markdownlint modules/`. Deps: none. Parallel w/: Batch 1.
+  - Batch 3 (proj-code-writer-csharp, tier: complex, layer: data, 1 task)
+      Verification: `dotnet test`. Deps: Batch 1.
+  ### Batch Index
+  - batch-01-{summary}.md — {agent, tier, task count}
+  - batch-02-{summary}.md — {agent, tier, task count}
 
-- Batching rules: same agent → batch candidate; inter-task deps block batching;
-  related scope preferred within batch; parallel batches (no deps) → ONE message
+- Batching rules: plan-writer classifies each task by 5 signals (dep topology,
+  step count, verb, file count, layer; tie-break → promote up a tier) then packs
+  via First Fit Decreasing over dep-isolated, layer-grouped bins. Caps: 5 tasks/
+  unit micro, 3/unit moderate, solo for complex, ≤60K context budget, ≤10 files/
+  unit. Authoritative algorithm + signal definitions: see `proj-plan-writer` spec
+  in module 05 (`.claude/agents/proj-plan-writer.md`) — do NOT duplicate here.
+  Parallel batches (no shared deps) may dispatch up to 3 concurrent per agent type.
 
-- Anti-hallucination: verify referenced files exist; every task needs verification
-  command; never plan changes to unread files
+- Anti-hallucination: verify referenced files exist; every dispatch unit needs
+  ONE concrete verification command; never plan changes to unread files; task
+  sub-sections describe INTENT not method bodies (specialist owns implementation).
 ```
 
 ---
@@ -953,8 +989,10 @@ Body — ## /execute-plan — Plan Execution:
 {PRE_FLIGHT_GATE_BLOCK — see top of module}
 
 ## Dispatch Map
-- Per-task execution: agents named in each task file (dynamic — read `Agent:` field)
-- Verification: `proj-verifier`
+- Per-batch execution: agents named in each batch file header (dynamic — read
+  `Agent:` field from batch file)
+- Verification: `proj-verifier` (final full-suite run only; per-batch verification
+  uses the single command in the batch header)
 - Post-execution review: invoked via `/review` skill (which dispatches `proj-code-reviewer`)
 
 {AGENT_DISPATCH_POLICY_BLOCK — see top of module}
@@ -962,26 +1000,69 @@ Body — ## /execute-plan — Plan Execution:
 - Steps:
   1. Read master plan from .claude/specs/{branch}/ | ask user for path
   2. Confirm plan w/ user — still correct?
-  3. Execute batch by batch in dependency order (see protocol below)
-  4. Verify each task — run verification command after completion
-  5. Checkpoint after each batch — print status, ask to continue
-  6. Final verification — full build + test suite
-  7. Invoke /review on all changed files — MANDATORY, not optional
+  3. Detect plan format (see Format Auto-Detection below)
+  4. Execute dispatch unit by dispatch unit in dep order (see Batch Dispatch Protocol)
+  5. Verify each batch — run the ONE verification command from batch header after
+     agent returns; on fail → Batch Failure Handling
+  6. Checkpoint after each batch — print status, ask to continue
+  7. Final verification — full build + test suite
+  8. Invoke /review on all changed files — MANDATORY, not optional
 
-- Batch dispatch protocol:
-  - Read batch's task files from Dispatch Plan
-  - Code-writing agents: dispatch SEQUENTIALLY (each must leave build passing)
-  - Research/doc agents: dispatch in PARALLEL (multiple Agent calls, one message)
-  - Agent receives ONLY its task file path reference (focused context)
-  - Agent reports per-task status → verify each before marking batch complete
+- Format auto-detection (backward compat):
+  - Glob `.claude/specs/{branch}/{plan-dir}/batch-NN-*.md` first
+  - Files present → NEW protocol: each file = one dispatch unit of 1-N tasks
+  - None found → glob `task-NN-*.md` → LEGACY protocol: each file = single task,
+    one-task-per-dispatch, old per-task semantics
+  - Mixed (both present) → prefer batch files, warn user
 
-- Per-task protocol (within batch):
-  - Read-before-write: read all files in task's file list first
-  - MUST dispatch agent specified in Agent: field — never execute inline if agent specified
-  - Specialist dispatch prompt MUST include: "Read `.claude/rules/code-standards-{lang}.md` + `.claude/rules/data-access.md` (if applicable) BEFORE writing any code. These rules override any code shown in the task file."
-  - If task file contains code snippets → treat as CONTRACT/HINT (signatures + intent), not MANDATE. Specialist applies domain rules + framework guardrails that plan-writer lacked.
-  - Execute steps → run verification → fix + retry once on fail → ask user
-  - Mark complete → next task
+- Batch Dispatch Protocol (NEW format):
+  - "Batch" here = dispatch unit (one Agent invocation executing 1-N ordered tasks),
+    NOT a grouping of separate dispatches. One batch file → one Agent call.
+  - Read batch's Agent: + Tier: + Verification: fields from file header
+  - Dispatch agent named in batch header via subagent_type="proj-{name}"
+  - Pass batch file PATH (not task file paths, not inlined content) to the agent
+  - Agent runs all task sub-sections sequentially top-down in dep order within
+    that single dispatch
+  - Agent runs the batch Verification command ONCE at end of batch (not per task)
+  - Independent batches (no shared deps): dispatch up to 3 concurrent per agent
+    type in ONE message (parallel Agent calls). Code-writing batches sharing deps:
+    SEQUENTIAL (each must leave build passing).
+  - Research/doc agent batches: parallel-safe by default
+
+- Per-Batch Protocol (within one dispatch):
+  - Read-before-write: agent reads all rule files listed in batch header ONCE at
+    batch start (deduped) + all files listed in the batch `Dependency set` header
+    ONCE at batch start
+  - MUST dispatch the agent named in the batch `Agent:` header field — never
+    execute inline, never substitute a different agent
+  - Specialist dispatch prompt MUST include: "Read `.claude/rules/code-standards-
+    {lang}.md` + `.claude/rules/data-access.md` (if applicable) BEFORE writing any
+    code. These rules override any code shown in task sub-sections."
+  - If task sub-section contains code snippets → treat as CONTRACT/HINT
+    (signatures + intent), not MANDATE. Specialist applies domain rules + framework
+    guardrails that plan-writer lacked.
+  - Agent executes task sub-sections top-down in dep order, then runs the batch
+    verification command ONCE
+  - On success → agent returns PASS, checkpoint, next batch
+  - On verification fail → agent returns partial-success map
+    (e.g. `NN.1 PASS, NN.2 FAIL, NN.3 NOT_RUN`) indicating which sub-task broke
+    the batch — NOT just a single fail. Main thread handles via Batch Failure
+    Handling below.
+
+- Batch Failure Handling (NEW):
+  - Agent partial-success map identifies failed + not-run sub-tasks
+  - Main thread re-dispatches each FAILED task SOLO (one Agent call per failed
+    task, no re-batching on retry). Prevents retry amplification; gives each
+    retry clean context per research recommendation.
+  - NOT_RUN tasks: re-dispatch SOLO in dep order after failed-task retries succeed
+  - Solo retry also fails → STOP, report to user, ask how to proceed (do NOT
+    silently skip or continue past failing tasks)
+  - NEVER collapse multiple failed tasks back into one retry batch
+
+- Legacy Per-Task Protocol (only when format detection → task-NN-*.md):
+  - One agent dispatch per task file, verification runs per-task
+  - Otherwise same rules: read-before-write, MUST dispatch agent from Agent: field,
+    specialist code-standards reminder mandatory, fix+retry once on fail → ask user
 
 - Plan changes mid-execution:
   STOP → explain change + why → update plan file → get approval before continuing
@@ -990,6 +1071,10 @@ Body — ## /execute-plan — Plan Execution:
   1. Run /review on all changed files — DO NOT skip
   2. Review finds issues → fix before proceeding
   3. Only after review passes → tell user ready to /commit
+
+- Anti-hallucination: never claim batch PASS without reading the agent's returned
+  partial-success map; never skip failed sub-tasks; never assume NOT_RUN tasks
+  passed; verify every file claimed changed actually changed before /review.
 
 NEVER say "ready to commit" without /review first.
 ```
