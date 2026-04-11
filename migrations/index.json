@@ -72,6 +72,12 @@
       "file": "012-plan-writer-packing-enforcement.md",
       "description": "Enforce plan-writer packing via 3 layers: (A) agent Self-Audit process step + Tier Classification Table output + worked example; (B) /write-plan Post-Dispatch Audit gate w/ loopback cap 2 + hard-fail; (C) remove legacy task-NN-*.md format, add /execute-plan Pre-Flight Audit w/ hard-reject. Fixes 2026-04-11 regression where 5 packable micro tasks emitted as 5 separate batch files.",
       "breaking": false
+    },
+    {
+      "id": "013",
+      "file": "013-mcp-glob-fix.md",
+      "description": "Fix MCP glob propagation bug — Claude Code silently ignores mcp__<server>__* glob patterns in agent tools: frontmatter. Strip tools: line from all write agents (proj-debugger, proj-tdd-runner, proj-code-writer-*, proj-test-writer-*) so they inherit MCP access from parent. proj-plan-writer explicitly skipped (intentionally MCP-free per scope lock). Updates .claude/rules/mcp-routing.md Agent layer guidance and fixes modules/06 + modules/08 audit checks that previously required mcp__*__* globs.",
+      "breaking": false
     }
   ]
 }

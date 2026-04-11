@@ -158,8 +158,7 @@ Create ALWAYS:
    dispatched agents. Adding `mcp__*` to a skill's `allowed-tools:` is always wrong.
 
    ## Agent layer (write agents only)
-   Write agents that need MCP access: keep `tools:` list + add `mcp__<server>__*` per
-   `.mcp.json` `mcpServers` keys. One glob entry per server key.
+   Write agents: OMIT `tools:` entirely → inherit parent tools incl. MCP. `agent-scope-lock.md` enforces file-level scope restriction. Only add explicit `tools:` if the agent must be HARD-RESTRICTED from certain tools AND you are willing to maintain a literal (non-glob) MCP tool list.
    Read-only agents: OMIT `tools:` entirely → inherit parent tools incl. MCP.
 
    ## When .mcp.json changes
@@ -169,10 +168,11 @@ Create ALWAYS:
    ## Routing table
    If MCPs present, the routing table below is the single source for tool→action mappings.
    Populate per project during bootstrap or when new MCP servers are added.
+   Note: Claude Code silently ignores glob entries in agent `tools:` — list literal tool names only, or OMIT `tools:` entirely for inheritance.
 
-   | MCP Server | Glob | Use for |
-   |------------|------|---------|
-   | {server}   | mcp__<server>__* | {description — fill from .mcp.json} |
+   | MCP Server | Example tool | Use for |
+   |------------|--------------|---------|
+   | {server}   | mcp__{server}__{tool_name} | {description — fill from .mcp.json} |
 
 6. .claude/rules/agent-scope-lock.md (embed verbatim — DO NOT paraphrase)
    Content:

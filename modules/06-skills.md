@@ -828,8 +828,14 @@ Body — ## /audit-agents — Agent Rules + MCP Propagation Audit:
     inside STEP 0 blocks. Verify each referenced file exists in `.claude/rules/`.
     Report dangling refs w/ source agent + rule path.
   - **A3 — MCP tool propagation**: if `.mcp.json` exists — parse `mcpServers` keys.
-    For every agent w/ an explicit `tools:` line, verify one `mcp__<server>__*` entry
-    exists per server key. Report missing entries w/ agent + missing server name.
+    Three-state rule per `.claude/agents/*.md`:
+      1. No `tools:` line → PASS (agent inherits parent tools incl. MCP).
+      2. Has `tools:` line w/ literal `mcp__<server>__<name>` entries (no wildcards) → PASS.
+      3. Has `tools:` line containing any glob pattern like `mcp__<server>__<glob>` → FAIL.
+         Globs are silently ignored by Claude Code at runtime — known limitation.
+    Do NOT flag "has `tools:` but missing MCP entry" as a violation — the correct fix
+    for write agents is to drop `tools:` entirely (see `mcp-routing.md` Agent layer).
+    Report FAIL offenders w/ agent path + offending tools entry.
     No `.mcp.json` → skip A3 w/ INFO.
   - **A4 — Skill anti-pattern**: scan every `.claude/skills/*/SKILL.md` frontmatter
     `allowed-tools:` value. FAIL if any value contains `mcp__*` (skills must not

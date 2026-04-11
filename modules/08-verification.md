@@ -106,10 +106,14 @@ AGENT DISPATCH INTEGRITY:
 
 MCP TOOL COVERAGE:
 - If .mcp.json exists: parse mcpServers keys
-  For each .claude/agents/*.md:
-    Has tools: line → write-type agent → verify mcp__<server>__* entries present for each server
-    No tools: line → read-only type → PASS (inherits parent MCP)
-  Report: agents missing MCP entries per server
+  Three-state rule per .claude/agents/*.md:
+    1. No tools: line → PASS (inherits parent tools incl. MCP)
+    2. Has tools: line w/ literal mcp__<server>__<name> entries (no wildcards) → PASS
+    3. Has tools: line containing any glob pattern like mcp__<server>__<glob> → FAIL
+       (globs silently ignored by Claude Code at runtime — known limitation)
+  Do NOT flag 'has tools: but missing MCP entry' — correct fix for write agents is to
+  drop tools: entirely (see .claude/rules/mcp-routing.md Agent layer).
+  Report FAIL offenders w/ agent path + offending tools entry.
 - If .mcp.json absent: skip MCP checks, note 'no MCP servers configured'
 
 Write report to .claude/reports/verification.md via Bash heredoc.

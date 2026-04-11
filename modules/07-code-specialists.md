@@ -292,7 +292,6 @@ description: >
   {Language} code writer specialist for {project}. Use when writing {language}
   code for {list component types}. Knows project conventions, DI patterns,
   error handling, and framework-specific gotchas.
-tools: {TOOLS_LINE}
 model: opus
 effort: high
 maxTurns: 100
@@ -301,21 +300,7 @@ scope: "{comma-separated framework/concern areas}"
 parent: ""
 ---
 
-{TOOLS_LINE} resolution (per migration 007 role table — techniques/agent-design.md § Skill Dispatch Reliability):
-- lang == markdown → `Read, Write, Edit, Grep, Glob, LSP, WebSearch{MCP_TOOLS}` (shell stripped — markdown writer never needs it)
-- all other langs (typescript, csharp, python, etc.) → `Read, Write, Edit, {SHELL}, Grep, Glob, LSP, WebSearch{MCP_TOOLS}`
-
-MCP tool injection (at creation time):
-IF project .mcp.json exists:
-  Parse `mcpServers` keys — for each server_name, add `mcp__<server_name>__*` to tools list
-  Example (.mcp.json contains "context7" + "github"):
-    tools: Read, Write, Edit, Bash, Grep, Glob, LSP, WebSearch, mcp__context7__*, mcp__github__*
-IF .mcp.json absent:
-  Omit mcp__ entries. Migration-001 will inject later if .mcp.json is added.
-
-Rationale: explicit `tools:` whitelist blocks MCP by default (see techniques/agent-design.md
-§MCP Tool Propagation). Write agents keep `tools:` for security lockdown; MCP entries must be
-injected per-project. Read-only agents omit `tools:` entirely and inherit — see modules/05.
+Tools: OMIT (inherit parent tools incl. MCP — write agent; `agent-scope-lock.md` enforces file-level scope restriction). Do NOT emit a `tools:` line in the frontmatter. Glob-style MCP entries (e.g. `mcp__<server>__<glob>`) are silently ignored by Claude Code at runtime — any explicit `tools:` whitelist would strip MCP access entirely. Inheritance is the only reliable way to grant write agents MCP tools.
 
 Before the 9 sections below, inject the following block immediately after the frontmatter closing `---` (as the FIRST body content, pre-section — do NOT renumber the 9 sections). Replace `{your primary lang}` literally with this agent's language (e.g. `csharp`, `typescript`, `python`, `bash`, `markdown`) so the Read line resolves to the correct `code-standards-{lang}.md` file:
 
@@ -401,7 +386,6 @@ Per major framework, create .claude/agents/proj-code-writer-{lang}-{fw}.md:
     {Framework} specialist for {project}. Use when writing {framework}-specific
     code: {scope items}. Knows {framework} patterns, gotchas, component lifecycle.
     Falls back to proj-code-writer-{lang} for cross-cutting concerns.
-  tools: Read, Write, Edit, Bash, Grep, Glob, LSP, WebSearch{MCP_TOOLS}
   model: opus
   effort: high
   maxTurns: 100
@@ -410,7 +394,7 @@ Per major framework, create .claude/agents/proj-code-writer-{lang}-{fw}.md:
   parent: proj-code-writer-{lang}
   ---
 
-  Sub-specialists inherit same MCP tool injection rules as parent (see block above).
+  Tools: OMIT (same rationale as parent — inherit parent tools incl. MCP; `agent-scope-lock.md` enforces file-level scope restriction). Do NOT emit a `tools:` line.
 
 Sub-specialist sections (all must be populated):
 - Role + Stack (framework-scoped)
@@ -457,7 +441,6 @@ description: >
   {Language} test writer specialist for {project}. Use when writing tests,
   improving coverage, or adding test cases for {language} code. Knows
   project test patterns, mocking strategies, and framework-specific gotchas.
-tools: Read, Write, Edit, Bash, Grep, Glob, LSP{MCP_TOOLS}
 model: opus
 effort: high
 maxTurns: 100
@@ -466,17 +449,7 @@ scope: "{comma-separated test concern areas}"
 parent: ""
 ---
 
-MCP tool injection (at creation time):
-IF project .mcp.json exists:
-  Parse `mcpServers` keys — for each server_name, add `mcp__<server_name>__*` to tools list
-  Example (.mcp.json contains "context7" + "github"):
-    tools: Read, Write, Edit, Bash, Grep, Glob, LSP, mcp__context7__*, mcp__github__*
-IF .mcp.json absent:
-  Omit mcp__ entries. Migration-001 will inject later if .mcp.json is added.
-
-Rationale: explicit `tools:` whitelist blocks MCP by default (see techniques/agent-design.md
-§MCP Tool Propagation). Write agents keep `tools:` for security lockdown; MCP entries must be
-injected per-project. Read-only agents omit `tools:` entirely and inherit — see modules/05.
+Tools: OMIT (inherit parent tools incl. MCP — write agent; `agent-scope-lock.md` enforces file-level scope restriction). Do NOT emit a `tools:` line in the frontmatter. Glob-style MCP entries (e.g. `mcp__<server>__<glob>`) are silently ignored by Claude Code at runtime — any explicit `tools:` whitelist would strip MCP access entirely. Inheritance is the only reliable way to grant write agents MCP tools.
 
 Before the 8 sections below, inject the following block immediately after the frontmatter closing `---` (as the FIRST body content, pre-section — do NOT renumber the 8 sections). Replace `{your primary lang}` literally with this agent's language (e.g. `csharp`, `typescript`, `python`, `bash`, `markdown`) so the Read line resolves to the correct `code-standards-{lang}.md` file:
 
@@ -566,7 +539,7 @@ Per major framework, create .claude/agents/proj-test-writer-{lang}-{fw}.md:
 - 100-200 lines, scope: and parent: (= proj-test-writer-{lang}) frontmatter
 - Framework-specific test strategy, mocking patterns, gotchas
 - Same section structure as parent, scoped to framework
-- Same MCP tool injection rules as parent (see block above)
+- Tools: OMIT (same rationale as parent — inherit parent tools incl. MCP; `agent-scope-lock.md` enforces file-level scope restriction)
 {/IF_SUB_SPECIALISTS}
 
 Write all agent file(s). Return paths + summaries.
