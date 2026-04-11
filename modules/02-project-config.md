@@ -174,17 +174,58 @@ Create ALWAYS:
    |------------|------|---------|
    | {server}   | mcp__<server>__* | {description — fill from .mcp.json} |
 
+6. .claude/rules/agent-scope-lock.md (embed verbatim — DO NOT paraphrase)
+   Content:
+   # Agent Scope Lock
+
+   ## Rule
+   Executing agent touches ONLY files listed in its batch/task file `#### Files` sections. Nothing outside the listed scope — even trivial, even adjacent, even "helpful".
+
+   ## Scope (applies to)
+   All `proj-*` executing/writer agents dispatched via `/execute-plan`, `/tdd`, `/code-write`, or direct skill-invocation. NOT `proj-plan-writer` (has its own separate scope lock in agent spec).
+
+   ## Forbidden
+   - Files not listed in any Task `#### Files` → off-limits regardless of edit size
+   - Steps labeled `main-thread` in master plan Dispatch Plan → main thread only
+   - Silent absorption of adjacent work: 1-line JSON append, 1-char typo fix, trivial `.learnings/` update
+   - Adjacent refactoring, dead-code cleanup, stale-comment fix unless explicitly listed
+   - Being "helpful" outside task list — correctness does not justify scope expansion
+
+   ## Required
+   - Need something off-scope → STOP, return message to main thread: `SCOPE EXPANSION NEEDED: {file|step} — reason: {short}`
+   - Batch verification commands cover only listed files; silent absorption creates coverage gap
+   - If a plan's Dispatch Plan lists `main-thread` steps, those belong to the main thread ONLY
+
+   ## Example — CORRECT
+   Batch: `Task 1.1: edit A.md; Task 1.2: create B.md`. Master plan Dispatch Plan: `main-thread step: append one line to index.json`.
+   → Agent edits A.md, creates B.md, returns. Agent does NOT touch index.json.
+
+   ## Example — FORBIDDEN
+   Same batch. Agent thinks "index.json is 1 line, I'll just do it for convenience".
+   → WRONG. Scope lock violated. Return without touching index.json. Main thread handles it.
+
+   ## Rationale
+   - Silent absorption breaks batch-verification coverage (verification command lists only in-scope files)
+   - Dispatch Plan is the contract between plan-writer and execute-plan; absorption voids the contract
+   - Main-thread steps exist for deliberate reasons (trivial mechanical ops outside specialist domain, operations needing orchestrator context)
+   - Scope creep destroys plan→execution traceability, makes blast radius unpredictable
+   - Observed 2026-04-11: `proj-code-writer-markdown` absorbed main-thread index.json append during migration 012 batch. Correct outcome, wrong discipline. This rule exists to prevent recurrence.
+
+   ## Enforcement
+   - Force-read: this rule is in the STEP 0 force-read list of every `proj-*` executing agent (via modules/05 + modules/07 templates; retrofit via migration 011 + 012)
+   - No skill-level mechanical check exists — scope lock is an agent-side discipline rule. Review-time catch: `/review` flags any file change outside the planned scope.
+
 Create CONDITIONALLY:
-6. .claude/rules/shell-standards.md — only if .sh files exist
+7. .claude/rules/shell-standards.md — only if .sh files exist
    - Shebang, set -euo pipefail, quote vars, [[ ]], command -v, local, printf
    - Hook scripts: JSON on stdin via cat, exit codes, settings format
 
-7. .claude/rules/data-access.md — only if ORM detected
+8. .claude/rules/data-access.md — only if ORM detected
    - ORM patterns (never raw context, AsNoTracking, projections, parameterized queries)
    - Migration conventions
    - Repository patterns (from codebase analysis)
 
-8. .claude/rules/lsp-guidance.md — only if LSP detected
+9. .claude/rules/lsp-guidance.md — only if LSP detected
    - When LSP vs Grep (semantics vs text)
    - Per-language: workspace requirements, effective operations, known limitations, tips
 

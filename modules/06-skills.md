@@ -980,12 +980,13 @@ Body — ## /write-plan — Implementation Planning:
      - Return master plan path + summary
 
 - Plan-writer produces:
-  Master plan = index + execution order + dependency graph + Dispatch Plan + Batch Index
+  Master plan = index + execution order + dependency graph + Tier Classification
+    Table + Dispatch Plan + Batch Index. Tier Classification Table appears BEFORE
+    Dispatch Plan (visible think-step).
   Batch files = self-contained dispatch units, agent gets ONLY its batch file as context.
     One batch file per dispatch unit; holds 1-N ordered tasks the same agent runs
-    sequentially, verifying once at end. Batch files are the preferred output.
-  Legacy task files (task-NN-*.md, one task per dispatch) still accepted by
-  /execute-plan for backward compat but no longer emitted by default.
+    sequentially, verifying once at end. Batch files are the ONLY accepted output
+    format — legacy task-NN-*.md removed (Layer C of packing enforcement spec).
 
 - Batch file format:
   ## Batch {NN}: {summary}
@@ -1013,9 +1014,27 @@ Body — ## /write-plan — Implementation Planning:
   Size caps: batch file body ≤200 lines total; individual task sub-section ≤60
   lines (hard warn at >80). Over cap → split or let specialist decide.
 
-- Legacy task file format (still accepted, no longer emitted):
-  task-NN-{title}.md w/ single Task section (Files/Depends on/Verification/Agent/
-  Batch/Steps). /execute-plan auto-detects and falls back to one-task-per-dispatch.
+- Post-Dispatch Audit (MANDATORY — runs after proj-plan-writer returns):
+  1. Glob `batch-*.md` under the emitted plan directory
+  2. Parse each batch header: `Agent:`, `Layer:`, task count, `Dependency set:`
+  3. For every pair (Bi, Bj) check merge criteria:
+     `same agent AND same layer AND disjoint dep_sets AND combined_tasks ≤5 AND
+      combined_context <60K AND combined_files ≤10`
+     (merge criteria live in `proj-plan-writer` spec — single source of truth)
+  4. No violations → pass plan to user, done
+  5. Violation found → re-dispatch `proj-plan-writer` w/ corrective prompt
+     containing: (a) the specific violation list (which batches could merge +
+     why); (b) pointer to the agent's Self-Audit process step (NOT raw merge
+     list, NOT heavy-hand merge instructions — trust the agent to apply its own
+     audit given the violation context). Loopback cap: 2 attempts.
+  6. After 2 failed loopbacks → HARD-FAIL w/ user-visible error listing every
+     unmerged batch pair + merge criteria that matched + instruction to re-run
+     `/write-plan` or inspect plan manually. Do NOT pass broken plan to user.
+  Rationale: defense-in-depth. Agent Self-Audit (Layer A, `proj-plan-writer`
+  spec) trains cognition; this gate mechanically verifies. Both exist
+  deliberately — see `.claude/specs/main/2026-04-11-plan-writer-packing-enforcement-spec.md`.
+  Regression context: 2026-04-11 mcp-routing-audit plan emitted 5 batch files
+  for packable micro tasks; this gate blocks that failure mode structurally.
 
 - Dispatch plan section:
   ### Dispatch Plan
@@ -1079,7 +1098,7 @@ Body — ## /execute-plan — Plan Execution:
 - Steps:
   1. Read master plan from .claude/specs/{branch}/ | ask user for path
   2. Confirm plan w/ user — still correct?
-  3. Detect plan format (see Format Auto-Detection below)
+  3. Pre-Flight Audit (see below) — HARD REJECT on violation, do NOT proceed
   4. Execute dispatch unit by dispatch unit in dep order (see Batch Dispatch Protocol)
   5. Verify each batch — run the ONE verification command from batch header after
      agent returns; on fail → Batch Failure Handling
@@ -1087,14 +1106,25 @@ Body — ## /execute-plan — Plan Execution:
   7. Final verification — full build + test suite
   8. Invoke /review on all changed files — MANDATORY, not optional
 
-- Format auto-detection (backward compat):
-  - Glob `.claude/specs/{branch}/{plan-dir}/batch-NN-*.md` first
-  - Files present → NEW protocol: each file = one dispatch unit of 1-N tasks
-  - None found → glob `task-NN-*.md` → LEGACY protocol: each file = single task,
-    one-task-per-dispatch, old per-task semantics
-  - Mixed (both present) → prefer batch files, warn user
+- Pre-Flight Audit (MANDATORY — runs BEFORE any batch dispatch):
+  1. Glob `batch-*.md` under the plan directory. No batch files found → HARD
+     REJECT: "Plan has no batch-*.md files. Legacy task-NN-*.md format removed
+     (2026-04-11 packing enforcement). Re-run /write-plan to regenerate."
+  2. Parse each batch header: `Agent:`, `Layer:`, task count, `Dependency set:`
+  3. For every pair (Bi, Bj) apply the same merge criteria as /write-plan
+     Post-Dispatch Audit (see Dispatch 16): same agent + same layer + disjoint
+     dep_sets + combined_tasks ≤5 + combined_context <60K + combined_files ≤10.
+     Criteria definition lives in `proj-plan-writer` spec — single source of truth.
+  4. No violations → proceed to Batch Dispatch Protocol
+  5. Violations found → HARD REJECT (do NOT proceed, do NOT warn-and-continue).
+     Print: "Plan violates packing enforcement. Unmerged batches: {list w/ pair +
+     reason}. Re-run /write-plan to regenerate — packing must be resolved at
+     plan-writer level, not execute-plan." Instruct user to re-run /write-plan.
+     Rationale: defense-in-depth w/ /write-plan Post-Dispatch Audit — catches
+     plans from prior sessions / older agent versions. Consistency w/ /write-plan
+     gate prevents silent 5× fan-out token waste. See packing enforcement spec.
 
-- Batch Dispatch Protocol (NEW format):
+- Batch Dispatch Protocol:
   - "Batch" here = dispatch unit (one Agent invocation executing 1-N ordered tasks),
     NOT a grouping of separate dispatches. One batch file → one Agent call.
   - Read batch's Agent: + Tier: + Verification: fields from file header
@@ -1137,11 +1167,6 @@ Body — ## /execute-plan — Plan Execution:
   - Solo retry also fails → STOP, report to user, ask how to proceed (do NOT
     silently skip or continue past failing tasks)
   - NEVER collapse multiple failed tasks back into one retry batch
-
-- Legacy Per-Task Protocol (only when format detection → task-NN-*.md):
-  - One agent dispatch per task file, verification runs per-task
-  - Otherwise same rules: read-before-write, MUST dispatch agent from Agent: field,
-    specialist code-standards reminder mandatory, fix+retry once on fail → ask user
 
 - Plan changes mid-execution:
   STOP → explain change + why → update plan file → get approval before continuing

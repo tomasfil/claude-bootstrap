@@ -82,6 +82,7 @@ Body sections:
   - `.claude/rules/general.md`
   - `.claude/rules/skill-routing.md`
   - `.claude/rules/token-efficiency.md`
+  - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
@@ -119,8 +120,8 @@ Purpose: create implementation plans from specs, pack tasks into dispatch-unit b
 Pass-by-reference: writes master plan to .claude/specs/{branch}/{date}-{topic}-plan.md
 AND emits one batch-NN-{summary}.md per dispatch unit under
 .claude/specs/{branch}/{date}-{topic}-plan/ (each batch holds 1-N ordered tasks).
-Legacy task-NN-*.md layout still accepted for executor back-compat but batch-NN-*.md
-is the preferred output. Return master plan path + summary.
+batch-NN-*.md is the ONLY accepted output format — legacy task-NN-*.md is removed.
+Return master plan path + summary.
 
 Description: Use when breaking a design or spec into concrete, ordered, verifiable
 implementation tasks. Takes spec + codebase context, produces dependency-ordered
@@ -135,6 +136,7 @@ Body sections:
   - `.claude/rules/general.md`
   - `.claude/rules/skill-routing.md`
   - `.claude/rules/token-efficiency.md`
+  - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
@@ -158,10 +160,22 @@ Body sections:
   5. Classify every task → Tier Classification (see below)
   6. Pack tasks into dispatch units → Dispatch Unit Packing (see below)
   7. Assign ONE verification command per dispatch unit (runs at end of batch)
-  8. Write master plan (index + execution order + dependency graph + Dispatch Plan)
+  8. Write master plan (index + execution order + dependency graph + Tier
+     Classification Table + Dispatch Plan). Tier Classification Table MUST appear
+     BEFORE Dispatch Plan — forces visible think-step output per task.
   9. Write batch files (one per dispatch unit) — self-contained w/ all context the
      executing agent needs (rule files to read once, file paths, per-task sections,
      batch verification command)
+  10. Self-Audit (MANDATORY, bounded): re-read all emitted batch files. For each
+      pair (Bi, Bj) check merge criteria:
+      `same agent AND same layer AND disjoint dep_sets AND combined_tasks ≤5 AND
+       combined_context <60K AND combined_files ≤10`
+      If satisfied → merge Bi into Bj, delete Bi, update master plan Batch Index +
+      Dispatch Plan. Repeat until no merges possible. Cap: 5 passes — if still
+      converging after 5, plan is structurally broken → hard-fail + report reason.
+      Rationale: packing is specified but unenforced regressed 2026-04-11 (5 batch
+      files emitted for packable micro tasks). Self-audit makes enforcement
+      mechanical. Defense-in-depth: /write-plan skill re-runs same audit gate.
 
 - Tier Classification (5 signals ranked; tie-break: promote up a tier):
   1. Dependency topology [HIGHEST PRIORITY] — does this task share files/symbols w/
@@ -228,6 +242,15 @@ Body sections:
 
 - Output format for master plan:
   ## Plan: {feature}
+  ### Tier Classification Table (REQUIRED — must appear BEFORE Dispatch Plan)
+  | task_id | agent | tier | layer | dep_set | step_count | verb |
+  |---|---|---|---|---|---|---|
+  | 01.1 | proj-code-writer-markdown | micro | docs | {files} | 3 | modify |
+  | 01.2 | proj-code-writer-markdown | micro | docs | {files} | 4 | modify |
+  | ... | ... | ... | ... | ... | ... | ... |
+  All tasks enumerated w/ explicit classification. Forces the think-step to produce
+  visible, inspectable output — if N rows read `(same agent, same layer, disjoint
+  deps, micro)`, packing becomes obvious + auditable. Missing table = plan rejected.
   ### Dispatch Plan
   - Batch 1 (proj-code-writer-csharp, tier: micro, layer: domain, 5 tasks)
       Verification: `dotnet build Foo`. Deps: none. Parallel w/: Batch 2.
@@ -273,6 +296,11 @@ Body sections:
     knowledge; plan-writer does not.
   * FORBIDDEN in task sections: method bodies, using/import statements, full class
     definitions, error-handling code, ready-to-paste code blocks, translated pseudo-code
+  * FORBIDDEN at batch level: emitting multiple batch files when self-audit merge
+    criteria are satisfied. Batch files that could merge (same agent + same layer +
+    disjoint dep_sets + combined tasks ≤5 + combined context <60K + combined files
+    ≤10) MUST be merged before returning. Self-Audit process step (above) enforces
+    this mechanically. Violation = plan rejected at skill-level audit gate.
   * ALLOWED: signatures (`public async Task<X> Foo(Y y, CancellationToken ct)`),
     interface additions (`add byte[] GenerateCsvTemplate();` to IFoo), file paths,
     data shapes (`record Bar(int Id, string Name)`), step prose
@@ -286,6 +314,21 @@ Body sections:
   * Good: "Add `ReadAsync(byte[], Action<T>?, CT)` that sniffs PK magic bytes →
     dispatches to ReadExcelAsync or ReadCsvAsync". Bad: 30-line fenced C# block
     showing the byte check + if/else + delegation.
+
+- Packing examples (worked few-shot — CORRECT vs REJECTED):
+  * CORRECT — 5 markdown edits to 5 different files, same agent
+    (proj-code-writer-markdown), same layer (docs), disjoint dep_sets, all micro
+    (1-3 steps each) → pack into 1 batch file `batch-01-markdown-edits.md` w/ 5
+    task sub-sections (Task 01.1 through 01.5). ONE dispatch, ONE verification run,
+    one rule-file read. Merge criteria satisfied: same agent + same layer + disjoint
+    deps + combined_tasks=5 + est_context ~42K (25K baseline + 2K·1R + 0.5K·5T +
+    2K·5F) < 60K cap + files=5 < 10 cap.
+  * REJECTED — same 5 tasks emitted as 5 separate batch files (batch-01 through
+    batch-05), each containing 1 task. Observed 2026-04-11 regression. Merge
+    criteria fully satisfied but 5× dispatch overhead incurred (~20-35K/ea fixed),
+    5× rule-file reads, breaches 3-concurrent parallel cap. Self-Audit MUST merge
+    these into 1 batch file before returning. /write-plan skill Post-Dispatch
+    Audit re-checks + loops back (≤2) if agent skipped Self-Audit.
 
 - Anti-hallucination: verify all file paths exist before referencing, never plan
   changes to unread files, every dispatch unit needs ONE concrete verification
@@ -325,6 +368,7 @@ Body sections:
   - `.claude/rules/general.md`
   - `.claude/rules/skill-routing.md`
   - `.claude/rules/token-efficiency.md`
+  - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
@@ -384,6 +428,7 @@ Body sections:
   - `.claude/rules/general.md`
   - `.claude/rules/skill-routing.md`
   - `.claude/rules/token-efficiency.md`
+  - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
@@ -445,6 +490,7 @@ Body sections:
   - `.claude/rules/general.md`
   - `.claude/rules/skill-routing.md`
   - `.claude/rules/token-efficiency.md`
+  - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
@@ -504,6 +550,7 @@ Body sections:
   - `.claude/rules/general.md`
   - `.claude/rules/skill-routing.md`
   - `.claude/rules/token-efficiency.md`
+  - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
@@ -566,6 +613,7 @@ Body sections:
   - `.claude/rules/general.md`
   - `.claude/rules/skill-routing.md`
   - `.claude/rules/token-efficiency.md`
+  - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
