@@ -52,7 +52,7 @@ Read techniques/agent-design.md for pass-by-reference contract + maxTurns table.
 After each dispatch: verify file exists, check frontmatter has required fields
 (`name`, `description`, `model`, `effort`, `maxTurns`, `color`).
 
-NOTE: `tools:` is OPTIONAL — write agents OMIT it to inherit parent MCP access (agent-scope-lock enforces file-level scope); only agents needing hard tool restriction (e.g., `proj-plan-writer`) keep it. When present, agent `tools:` is COMMA-separated (`tools: Read, Grep, Glob`) per Claude Code sub-agents spec. This is DIFFERENT from skill `allowed-tools:` which is SPACE-separated. Do not unify — spec is inconsistent across file types.
+NOTE: ALL agents OMIT `tools:` to inherit parent MCP access (agent-scope-lock enforces file-level scope). When present, agent `tools:` is COMMA-separated (`tools: Read, Grep, Glob`) per Claude Code sub-agents spec. This is DIFFERENT from skill `allowed-tools:` which is SPACE-separated. Do not unify — spec is inconsistent across file types.
 
 ---
 
@@ -113,8 +113,7 @@ Any explicit `tools:` list = strict whitelist that excludes ALL MCP tools.
 ```
 Agent: proj-plan-writer
 Model: sonnet | maxTurns: 100 | effort: high | color: blue
-Tools: Read, Write, Grep, Glob
-Tools-note: KEEP deliberately — proj-plan-writer is MCP-free by design (scope-lock forbids MCP use in planning)
+Tools: OMIT (inherit parent tools incl. MCP — plan-writer benefits from semantic code lookup via MCPs; scope discipline lives in "Plan ONLY what's specified" rule, not tool restriction)
 Purpose: create implementation plans from specs, pack tasks into dispatch-unit batch files
 
 Pass-by-reference: writes master plan to .claude/specs/{branch}/{date}-{topic}-plan.md

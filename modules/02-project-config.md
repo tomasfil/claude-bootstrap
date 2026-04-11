@@ -157,9 +157,9 @@ Create ALWAYS:
    `allowed-tools:` controls skill's own invocation permissions — does NOT cascade to
    dispatched agents. Adding `mcp__*` to a skill's `allowed-tools:` is always wrong.
 
-   ## Agent layer (write agents only)
-   Write agents: OMIT `tools:` entirely → inherit parent tools incl. MCP. `agent-scope-lock.md` enforces file-level scope restriction. Only add explicit `tools:` if the agent must be HARD-RESTRICTED from certain tools AND you are willing to maintain a literal (non-glob) MCP tool list.
-   Read-only agents: OMIT `tools:` entirely → inherit parent tools incl. MCP.
+   ## Agent layer (all agents)
+   ALL agents (read-only, write, planning): OMIT `tools:` entirely → inherit parent tools incl. MCP.
+   Theoretical exception: hard-restricted agent → literal (non-glob) tool list. Currently unused by any agent in this project.
 
    ## When .mcp.json changes
    Run `/migrate-bootstrap` (triggers migration-001 re-check) or `/audit-agents`

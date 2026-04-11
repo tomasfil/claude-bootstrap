@@ -78,6 +78,12 @@
       "file": "013-mcp-glob-fix.md",
       "description": "Fix MCP glob propagation bug — Claude Code silently ignores mcp__<server>__* glob patterns in agent tools: frontmatter. Strip tools: line from all write agents (proj-debugger, proj-tdd-runner, proj-code-writer-*, proj-test-writer-*) so they inherit MCP access from parent. proj-plan-writer explicitly skipped (intentionally MCP-free per scope lock). Updates .claude/rules/mcp-routing.md Agent layer guidance and fixes modules/06 + modules/08 audit checks that previously required mcp__*__* globs.",
       "breaking": false
+    },
+    {
+      "id": "014",
+      "file": "014-plan-writer-mcp-access.md",
+      "description": "Complete MCP access rollout — drop tools: from proj-plan-writer so it inherits MCP like every other agent. Supersedes migration 013's defensive skip (the 'MCP-free by design' rationale was post-hoc; scope-lock restricts plan CONTENT, not tool access). Rewrites CLAUDE.md + .claude/rules/mcp-routing.md + modules/02 + modules/05 to state the absolute rule: ALL agents (read-only, write, planning) OMIT tools: to inherit parent MCP access. The theoretical hard-restriction escape hatch is kept as a footnote but marked 'currently unused by any agent in this project'.",
+      "breaking": false
     }
   ]
 }
