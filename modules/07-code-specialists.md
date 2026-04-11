@@ -665,12 +665,48 @@ Pattern: {what rule violated}
 Evidence: {file}:{line} — {description}
 Domain: {code-style | security | architecture | testing | tooling}
 
+### Suppressed (cannot verify)
+- {claim}: {what was checked} — cannot verify: {reason}
+
+Emit this section ONLY if Layer 1 LOW-confidence suppressions occurred during review.
+Empty otherwise — omit the heading entirely, no noise. Each entry documents an external
+API / library behavior claim that was considered but suppressed because no confirming
+evidence was found in project source, official docs, or web search.
+
 ## 8. Anti-Hallucination
 - Only cite rules that EXIST in .claude/rules/ — read them first
 - Only report line numbers for lines that EXIST — read file first
 - Never invent security issues not actually present
 - Use LSP to verify type issues before reporting
 - If unsure about standard → check rules before citing
+- Only assert external API / library behavior w/ cited evidence: {file}:{line} from project source, official docs URL, or explicit "cannot verify" note. No evidence → OMIT.
+
+### Confidence routing (external API / library behavior claims):
+- HIGH: verified in project source OR official docs → include finding as MUST-FIX | SHOULD
+- MEDIUM: pattern recognized but not verified in THIS project's version → label CONSIDER, flag uncertainty
+- LOW: inferred from training data only, no verification → OMIT finding; document "cannot verify: {what}"
+
+### Say I don't know (explicit permission):
+You are explicitly permitted and encouraged to say "cannot verify" when uncertain about
+external API / library behavior. A CONSIDER finding w/ flagged uncertainty is better than
+a false MUST-FIX. A suppressed finding w/ "cannot verify" note is better than a fabricated
+assertion. Unexplained suppression of uncertainty = spec violation.
+
+### Web search trigger:
+Web search trigger — fire ONLY when ALL true:
+1. Finding asserts external library / API / framework behavior (NOT project-local pattern)
+2. Grep/Glob/Read of project source returned no confirming evidence
+3. Confidence per Layer 1 routing is LOW
+→ Search w/ specific query: {library-name} {version-if-known} {exact-method-or-pattern}
+→ If search returns authoritative source (official docs, well-known repo): cite URL,
+  re-evaluate confidence per Layer 1, downgrade to CONSIDER unless now HIGH
+→ If search returns nothing useful OR only low-quality results: OMIT finding,
+  document "cannot verify via search: {query}"
+
+Anti-patterns — reviewer MUST NOT:
+- Search for project-local conventions (rules/techniques are authoritative, not web)
+- Accept first search result without evaluating source quality (under-search failure mode)
+- Search for every uncertain flag (over-search failure mode — trigger is LOW confidence only)
 
 ## 9. Completeness Check (Max Quality Doctrine enforcement)
 Reviewer is the enforcement layer for `.claude/rules/max-quality.md`. Hook-based regex
