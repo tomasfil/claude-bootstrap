@@ -544,7 +544,7 @@ Expected behavior:
 
 ### Batch 2 — Skills That Reference Agents (dispatch ALL simultaneously)
 
-5 skills that dispatch specific agents from Module 05. Dispatch after Batch 1.
+6 skills that dispatch specific agents from Module 05. Dispatch after Batch 1.
 
 ---
 
@@ -788,6 +788,85 @@ Body — ## /module-write — Bootstrap Content Editing:
 
 - Anti-hallucination: never invent module numbers; verify all cross-refs;
   read before write — always
+```
+
+---
+
+#### Dispatch 14a: /audit-agents
+
+**Spec for dispatch prompt:**
+
+```
+Skill: audit-agents
+Directory: .claude/skills/audit-agents/SKILL.md
+
+Frontmatter:
+  name: audit-agents
+  description: >
+    Use when auditing agents for missing force-read blocks, MCP tool propagation
+    issues, skill anti-patterns, or rule file gaps. Dispatches
+    proj-consistency-checker with a widened audit brief.
+  allowed-tools: Agent Read
+  model: opus
+  effort: high
+  # Skill Class: main-thread — dispatches proj-consistency-checker, interactive report review
+
+Body — ## /audit-agents — Agent Rules + MCP Propagation Audit:
+
+{PRE_FLIGHT_GATE_BLOCK — see top of module}
+
+## Dispatch Map
+- Audit report: `proj-consistency-checker`
+
+{AGENT_DISPATCH_POLICY_BLOCK — see top of module}
+
+- Dispatch agent via `subagent_type="proj-consistency-checker"` w/ audit task brief:
+  - **A1 — STEP 0 force-read presence**: for every `.claude/agents/*.md` (exclude
+    `references/` subtree), verify body contains marker `STEP 0 — Load critical rules`.
+    Report agents missing the marker w/ `file:line` evidence (line = frontmatter close).
+  - **A2 — Rule file existence**: parse every `.claude/rules/<name>.md` reference
+    inside STEP 0 blocks. Verify each referenced file exists in `.claude/rules/`.
+    Report dangling refs w/ source agent + rule path.
+  - **A3 — MCP tool propagation**: if `.mcp.json` exists — parse `mcpServers` keys.
+    For every agent w/ an explicit `tools:` line, verify one `mcp__<server>__*` entry
+    exists per server key. Report missing entries w/ agent + missing server name.
+    No `.mcp.json` → skip A3 w/ INFO.
+  - **A4 — Skill anti-pattern**: scan every `.claude/skills/*/SKILL.md` frontmatter
+    `allowed-tools:` value. FAIL if any value contains `mcp__*` (skills must not
+    name MCP tools directly — MCPs belong on agents). Report offenders w/ file:line.
+  - **A5 — CLAUDE.md imports**: verify `CLAUDE.md` exists at project root and
+    `@import`s `general.md` + `skill-routing.md`. If `.mcp.json` present, also
+    verify `@import .claude/rules/mcp-routing.md`. Report missing imports.
+  - **A6 — cmm index status**: if `.mcp.json` configures a cmm-compatible MCP
+    (serena, code-context, etc.), verify repo is indexed (server-specific probe
+    or presence of index artifacts). Absent cmm MCP → skip w/ WARN.
+
+- Output: agent writes YAML-ish report to
+  `.claude/reports/audit-agents-{timestamp}.md` via Bash heredoc. Format:
+
+  ```yaml
+  audit: agent-rules-mcp
+  timestamp: {ISO8601}
+  checks:
+    A1_force_read:   {PASS|FAIL|SKIP}
+    A2_rule_exists:  {PASS|FAIL|SKIP}
+    A3_mcp_tools:    {PASS|FAIL|SKIP}
+    A4_skill_mcp:    {PASS|FAIL|SKIP}
+    A5_claude_md:    {PASS|FAIL|SKIP}
+    A6_cmm_index:    {PASS|WARN|SKIP}
+  findings:
+    - check: A1
+      severity: FAIL
+      evidence: "{file}:{line}"
+      detail: "{what's missing}"
+  ```
+
+- Return: report path + 1-line summary (PASS count / FAIL count / WARN count).
+- Agent does NOT auto-patch — reports only. Main thread presents findings to user.
+
+- Anti-hallucination: only cite files that exist; only report line numbers via
+  actual grep output; uncertain check → SKIP not FAIL; no speculation about
+  MCP servers not declared in `.mcp.json`.
 ```
 
 ---
@@ -1543,7 +1622,7 @@ After all batches complete:
 
 ```bash
 # Verify all skills created
-expected_skills="brainstorm write-plan execute-plan tdd debug code-write verify review audit-file audit-memory commit pr reflect consolidate evolve-agents migrate-bootstrap coverage coverage-gaps write-ticket ci-triage write-prompt module-write"
+expected_skills="brainstorm write-plan execute-plan tdd debug code-write verify review audit-file audit-memory audit-agents commit pr reflect consolidate evolve-agents migrate-bootstrap coverage coverage-gaps write-ticket ci-triage write-prompt module-write"
 for skill in $expected_skills; do
   [[ -f ".claude/skills/${skill}/SKILL.md" ]] || echo "MISSING: ${skill}"
 done
@@ -1568,11 +1647,11 @@ Fix any missing skills by re-dispatching from the spec above.
 ```
 ✅ Module 06 complete — Skills created:
   Dev: /brainstorm, /write-plan, /execute-plan, /tdd, /debug, /code-write (placeholder)
-  Quality: /verify, /review, /audit-file, /audit-memory
+  Quality: /verify, /review, /audit-file, /audit-memory, /audit-agents
   Git: /commit, /pr
   Maintenance: /reflect, /consolidate, /evolve-agents, /migrate-bootstrap
   Reporting: /coverage, /coverage-gaps
   Utilities: /write-ticket, /ci-triage, /write-prompt, /module-write
   {/sync — if git_strategy == companion}
-  Total: 22-23 skills via proj-code-writer-markdown dispatch
+  Total: 23-24 skills via proj-code-writer-markdown dispatch
 ```

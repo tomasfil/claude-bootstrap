@@ -44,7 +44,12 @@ Task: Write CLAUDE.md from discovery data below.
 
 Requirements:
 - <120 lines total — every line earns its place
-- @import .claude/rules/code-standards-{lang}.md for writing conventions
+- MANDATORY `@import` lines (always, regardless of language):
+  - `@import .claude/rules/general.md`
+  - `@import .claude/rules/skill-routing.md`
+  - `@import .claude/rules/code-standards-{lang}.md` for each detected language
+  - `@import .claude/rules/mcp-routing.md` (ONLY if `.mcp.json` exists at project root)
+  These are required for /audit-agents A5 check — adding custom imports is fine, removing these is not.
 - Compressed telegraphic notation throughout (Claude-facing, not human-facing)
 - Language-agnostic — use {placeholders} filled from discovery, ZERO hardcoded examples
 
@@ -141,17 +146,45 @@ Create ALWAYS:
    NEVER refuse or block because no skill matches.
    Uncertain → respond normally. False blocks worse than missed routing.
 
+5. .claude/rules/mcp-routing.md (embed verbatim — DO NOT paraphrase)
+   Content:
+   # MCP Routing
+
+   ## Rule
+   MCP tools route through sub-agents — NEVER skill `allowed-tools:`.
+
+   ## Skill layer (NEVER add mcp__* here)
+   `allowed-tools:` controls skill's own invocation permissions — does NOT cascade to
+   dispatched agents. Adding `mcp__*` to a skill's `allowed-tools:` is always wrong.
+
+   ## Agent layer (write agents only)
+   Write agents that need MCP access: keep `tools:` list + add `mcp__<server>__*` per
+   `.mcp.json` `mcpServers` keys. One glob entry per server key.
+   Read-only agents: OMIT `tools:` entirely → inherit parent tools incl. MCP.
+
+   ## When .mcp.json changes
+   Run `/migrate-bootstrap` (triggers migration-001 re-check) or `/audit-agents`
+   to validate MCP propagation across all agents.
+
+   ## Routing table
+   If MCPs present, the routing table below is the single source for tool→action mappings.
+   Populate per project during bootstrap or when new MCP servers are added.
+
+   | MCP Server | Glob | Use for |
+   |------------|------|---------|
+   | {server}   | mcp__<server>__* | {description — fill from .mcp.json} |
+
 Create CONDITIONALLY:
-5. .claude/rules/shell-standards.md — only if .sh files exist
+6. .claude/rules/shell-standards.md — only if .sh files exist
    - Shebang, set -euo pipefail, quote vars, [[ ]], command -v, local, printf
    - Hook scripts: JSON on stdin via cat, exit codes, settings format
 
-6. .claude/rules/data-access.md — only if ORM detected
+7. .claude/rules/data-access.md — only if ORM detected
    - ORM patterns (never raw context, AsNoTracking, projections, parameterized queries)
    - Migration conventions
    - Repository patterns (from codebase analysis)
 
-7. .claude/rules/lsp-guidance.md — only if LSP detected
+8. .claude/rules/lsp-guidance.md — only if LSP detected
    - When LSP vs Grep (semantics vs text)
    - Per-language: workspace requirements, effective operations, known limitations, tips
 
@@ -160,7 +193,7 @@ Write all files. Return ONLY: paths + 1-line summary <100 chars."
 )
 ```
 
-Verify: `ls .claude/rules/` → general.md, skill-routing.md, token-efficiency.md present minimum.
+Verify: `ls .claude/rules/` → general.md, skill-routing.md, mcp-routing.md, token-efficiency.md present minimum.
 
 ### 4. Dispatch: CLAUDE.local.md
 

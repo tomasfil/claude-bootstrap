@@ -60,6 +60,12 @@
       "file": "010-plan-writer-dispatch-units.md",
       "description": "Regenerate proj-plan-writer agent + write-plan + execute-plan skills with dispatch-unit batching — tier classification (5 signals), FFD packing algorithm over dep-isolated layer bins, batch file format.",
       "breaking": false
+    },
+    {
+      "id": "011",
+      "file": "011-agent-rules-audit.md",
+      "description": "Generalized force-read pattern + MCP routing rule + /audit-agents skill. Retrofit STEP 0 force-read blocks into all sub-agents, add .claude/rules/mcp-routing.md, add orchestrator skill that dispatches proj-consistency-checker to audit force-read + MCP propagation.",
+      "breaking": false
     }
   ]
 }

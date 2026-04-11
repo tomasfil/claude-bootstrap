@@ -92,7 +92,7 @@ No mode detection needed. Run bootstrap any time — brings everything to curren
 - [ ] Module 03: Hook scripts + `.claude/settings.json` — all via proj-code-writer-bash dispatch
 - [ ] Module 04: `.learnings/` initialized (log, instincts, patterns, decisions, environment, tracking)
 - [ ] Module 05: 7 core agents created (proj-quick-check, proj-plan-writer, proj-consistency-checker, proj-debugger, proj-verifier, proj-reflector, proj-tdd-runner)
-- [ ] Module 06: ~23 skills generated (dev workflow, quality, git/lifecycle, maintenance, reporting, utilities)
+- [ ] Module 06: ~24 skills generated (dev workflow, quality incl. /audit-agents, git/lifecycle, maintenance, reporting, utilities)
 - [ ] Module 07: Per-language proj-code-writer-* + proj-test-writer-* + proj-code-reviewer agents via 7-phase research pipeline; agent index + capability index + pipeline traces
 - [ ] Module 08: Wiring verification, routing infrastructure (3 tiers), scoped CLAUDE.md, MCP/plugin setup, plugin collision check
 - [ ] Module 09: Companion repo sync (conditional — only if git_strategy == "companion")
@@ -110,7 +110,7 @@ Read and execute each module file in order. Each module is self-contained with f
 | 03 | `modules/03-hooks.md` | Hook scripts + settings.json via proj-code-writer-bash |
 | 04 | `modules/04-learnings.md` | `.learnings/` directory init (inline — mkdir + touch) |
 | 05 | `modules/05-core-agents.md` | 7 utility/diagnostic agents via proj-code-writer-markdown |
-| 06 | `modules/06-skills.md` | ~23 skills — all via agent dispatch, batched by dependency |
+| 06 | `modules/06-skills.md` | ~24 skills — all via agent dispatch, batched by dependency |
 | 07 | `modules/07-code-specialists.md` | Research-driven per-language specialists (7-phase pipeline) |
 | 08 | `modules/08-verification.md` | Wiring verification, routing, scoped configs, MCP, plugins |
 | 09 | `modules/09-companion.md` | Companion repo sync (conditional on git_strategy) |

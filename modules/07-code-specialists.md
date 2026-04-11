@@ -317,6 +317,25 @@ Rationale: explicit `tools:` whitelist blocks MCP by default (see techniques/age
 §MCP Tool Propagation). Write agents keep `tools:` for security lockdown; MCP entries must be
 injected per-project. Read-only agents omit `tools:` entirely and inherit — see modules/05.
 
+Before the 9 sections below, inject the following block immediately after the frontmatter closing `---` (as the FIRST body content, pre-section — do NOT renumber the 9 sections). Replace `{your primary lang}` literally with this agent's language (e.g. `csharp`, `typescript`, `python`, `bash`, `markdown`) so the Read line resolves to the correct `code-standards-{lang}.md` file:
+
+```markdown
+## STEP 0 — Load critical rules (MANDATORY first action)
+
+Before any task-specific work, Read these rule files (in parallel where possible):
+- `.claude/rules/general.md`
+- `.claude/rules/skill-routing.md`
+- `.claude/rules/token-efficiency.md`
+- `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+- `.claude/rules/code-standards-{your primary lang}.md` (if present)
+
+Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
+
+If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+
+---
+```
+
 REQUIRED 9 SECTIONS (populate every section w/ project-specific content):
 
 ## Section 1: Role + Stack
@@ -457,6 +476,25 @@ IF .mcp.json absent:
 Rationale: explicit `tools:` whitelist blocks MCP by default (see techniques/agent-design.md
 §MCP Tool Propagation). Write agents keep `tools:` for security lockdown; MCP entries must be
 injected per-project. Read-only agents omit `tools:` entirely and inherit — see modules/05.
+
+Before the 8 sections below, inject the following block immediately after the frontmatter closing `---` (as the FIRST body content, pre-section — do NOT renumber the 8 sections). Replace `{your primary lang}` literally with this agent's language (e.g. `csharp`, `typescript`, `python`, `bash`, `markdown`) so the Read line resolves to the correct `code-standards-{lang}.md` file:
+
+```markdown
+## STEP 0 — Load critical rules (MANDATORY first action)
+
+Before any task-specific work, Read these rule files (in parallel where possible):
+- `.claude/rules/general.md`
+- `.claude/rules/skill-routing.md`
+- `.claude/rules/token-efficiency.md`
+- `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+- `.claude/rules/code-standards-{your primary lang}.md` (if present)
+
+Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
+
+If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+
+---
+```
 
 REQUIRED 8 SECTIONS (populate every section w/ project-specific content):
 

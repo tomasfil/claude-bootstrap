@@ -74,6 +74,23 @@ if something exists, reading a specific section, or answering factual questions 
 the codebase. Optimized for speed over depth.
 
 Body sections:
+- Inject the following block immediately after frontmatter closing `---`, before any other body content:
+
+  ## STEP 0 — Load critical rules (MANDATORY first action)
+
+  Before any task-specific work, Read these rule files (in parallel where possible):
+  - `.claude/rules/general.md`
+  - `.claude/rules/skill-routing.md`
+  - `.claude/rules/token-efficiency.md`
+  - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/code-standards-{your primary lang}.md` (if present)
+
+  Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
+
+  If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+
+  ---
+
 - Scope: find files by name/pattern, check class/method/type existence, read specific
   file sections, answer factual code questions
 - Out of scope: no file modifications, no builds/tests, deep analysis → proj-researcher
@@ -110,6 +127,23 @@ implementation tasks. Takes spec + codebase context, produces dependency-ordered
 task list packed into dispatch-unit batch files for focused agent dispatch.
 
 Body sections:
+- Inject the following block immediately after frontmatter closing `---`, before any other body content:
+
+  ## STEP 0 — Load critical rules (MANDATORY first action)
+
+  Before any task-specific work, Read these rule files (in parallel where possible):
+  - `.claude/rules/general.md`
+  - `.claude/rules/skill-routing.md`
+  - `.claude/rules/token-efficiency.md`
+  - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/code-standards-{your primary lang}.md` (if present)
+
+  Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
+
+  If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+
+  ---
+
 - Role: senior architect — analyze specs + codebases → tier-classified, dep-ordered
   dispatch units (one agent invocation per unit executes N ordered tasks back-to-back)
 - Reframe: dispatch unit = execution primitive (one Agent call); task = planning
@@ -283,6 +317,23 @@ edited, or removed. Checks file paths, module numbering, skill/agent references,
 routing completeness, and checklist sync.
 
 Body sections:
+- Inject the following block immediately after frontmatter closing `---`, before any other body content:
+
+  ## STEP 0 — Load critical rules (MANDATORY first action)
+
+  Before any task-specific work, Read these rule files (in parallel where possible):
+  - `.claude/rules/general.md`
+  - `.claude/rules/skill-routing.md`
+  - `.claude/rules/token-efficiency.md`
+  - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/code-standards-{your primary lang}.md` (if present)
+
+  Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
+
+  If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+
+  ---
+
 - Process:
   1. Scan modules for file path references → verify each exists
   2. Check module numbering is sequential, no gaps
@@ -325,6 +376,23 @@ or tracing bugs. Reads code, traces execution paths, identifies root cause. Retu
 diagnosis with proposed fix.
 
 Body sections:
+- Inject the following block immediately after frontmatter closing `---`, before any other body content:
+
+  ## STEP 0 — Load critical rules (MANDATORY first action)
+
+  Before any task-specific work, Read these rule files (in parallel where possible):
+  - `.claude/rules/general.md`
+  - `.claude/rules/skill-routing.md`
+  - `.claude/rules/token-efficiency.md`
+  - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/code-standards-{your primary lang}.md` (if present)
+
+  Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
+
+  If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+
+  ---
+
 - Role: senior debugger — trace bugs methodically: read errors → trace paths →
   root cause before fixes
 - Process:
@@ -369,6 +437,23 @@ issues. Also performs consistency checking (cross-ref integrity) — dispatched
 together with proj-consistency-checker by /verify skill.
 
 Body sections:
+- Inject the following block immediately after frontmatter closing `---`, before any other body content:
+
+  ## STEP 0 — Load critical rules (MANDATORY first action)
+
+  Before any task-specific work, Read these rule files (in parallel where possible):
+  - `.claude/rules/general.md`
+  - `.claude/rules/skill-routing.md`
+  - `.claude/rules/token-efficiency.md`
+  - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/code-standards-{your primary lang}.md` (if present)
+
+  Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
+
+  If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+
+  ---
+
 - Role: QA engineer — verify changes are complete, correct, non-breaking
 - Process:
   1. Run build command — must pass
@@ -411,6 +496,23 @@ to identify improvement opportunities. Clusters themes, promotes high-confidence
 patterns to rules, prunes stale entries.
 
 Body sections:
+- Inject the following block immediately after frontmatter closing `---`, before any other body content:
+
+  ## STEP 0 — Load critical rules (MANDATORY first action)
+
+  Before any task-specific work, Read these rule files (in parallel where possible):
+  - `.claude/rules/general.md`
+  - `.claude/rules/skill-routing.md`
+  - `.claude/rules/token-efficiency.md`
+  - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/code-standards-{your primary lang}.md` (if present)
+
+  Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
+
+  If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+
+  ---
+
 - Role: meta-learning analyst — review accumulated learnings → identify patterns
   for promotion to rules | agents
 - Process:
@@ -456,6 +558,23 @@ red-green-refactor cycles. Writes failing tests first, implements minimal code
 to pass, then refactors. Uses Bash heredoc for ALL file writes.
 
 Body sections:
+- Inject the following block immediately after frontmatter closing `---`, before any other body content:
+
+  ## STEP 0 — Load critical rules (MANDATORY first action)
+
+  Before any task-specific work, Read these rule files (in parallel where possible):
+  - `.claude/rules/general.md`
+  - `.claude/rules/skill-routing.md`
+  - `.claude/rules/token-efficiency.md`
+  - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/code-standards-{your primary lang}.md` (if present)
+
+  Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
+
+  If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+
+  ---
+
 - Role: strict red-green-refactor practitioner
 - Process:
   1. Read feature description + affected code
