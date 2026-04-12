@@ -90,6 +90,18 @@
       "file": "015-max-quality-doctrine.md",
       "description": "Max Quality Doctrine — 10-layer defense against output truncation and effort inflation. Creates .claude/rules/max-quality.md rule, .claude/hooks/check-quality.sh SubagentStop hook (high-precision literal elision + effort-pad scan, self-block prevention, TODO/weeks-days delegated to Layer 6 reviewer), .claude/hooks/prompt-nudge.sh UserPromptSubmit script (SKILL CHECK + conditional MAX QUALITY on write/impl verbs), extends .claude/hooks/stop-verify.sh nudge text (no scan — Stop schema lacks last_assistant_message), updates .claude/settings.json hook wiring, syncs techniques/prompt-engineering.md + techniques/token-efficiency.md + techniques/agent-design.md to .claude/references/techniques/ (agent-design gains Hook Input Schema Gotcha + Use/Mention Discipline + Template Placeholder Conventions sections), adds @import .claude/rules/max-quality.md to CLAUDE.md, retrofits STEP 0 reinforcement + max-quality force-read across all proj-*.md agents, adds Completeness Check section to proj-code-reviewer*.md, adds calibrated-effort FORBIDDEN/REQUIRED rules to proj-plan-writer*.md. Dogfooded — plan itself complies with the doctrine it implements.",
       "breaking": false
+    },
+    {
+      "id": "016",
+      "file": "016-review-agent-confidence-gate.md",
+      "description": "Reviewer confidence gate — suppress hallucinated external-API findings. Patches proj-code-reviewer + proj-code-reviewer-<lang> agents to require BLOCKER/MAJOR findings about external APIs/libraries/frameworks to cite a verified source (docs URL, source file path, or explicit 'VERIFIED-UNCERTAIN' marker) before report inclusion; low-confidence API claims downgrade to MINOR w/ '(unverified)' tag. Adds Confidence Gate section to agent body + force-read list. Closes 2026-04-11 regression where reviewer invented non-existent SDK method signatures as BLOCKERs.",
+      "breaking": false
+    },
+    {
+      "id": "017",
+      "file": "017-deep-think-skill.md",
+      "description": "Ship /deep-think skill — 'brainstorm on steroids' 7-phase main-thread orchestrator for multi-pass adversarial ideation. Phases: evidence scan → parallel persona-rotated divergent ideation → separate-evaluator shortlisting → deepening of top candidates → adversarial gap hunt → gap-resolution loop → dual-artifact synthesis (proposals.md + brainstorm-format spec.md). Hard caps: 3 Phase-1 passes / 5 critic rounds / 15 gap-resolution dispatches. Convergence signal: 0 HIGH-severity gaps from critic for 1 consecutive round. Self-contained migration inlines full SKILL.md + references/personas.md + references/dispatch-templates.md as heredocs, adds routing-trigger bullet to client-project brainstorm/SKILL.md Decision Tree (idempotent grep-guarded).",
+      "breaking": false
     }
   ]
 }

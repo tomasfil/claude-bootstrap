@@ -944,6 +944,58 @@ Body — ## /brainstorm — Design Before Build:
 
 ---
 
+#### Dispatch 15a: /deep-think
+
+**Spec for dispatch prompt:**
+
+```
+Skill: deep-think
+Directory: .claude/skills/deep-think/SKILL.md
+
+Frontmatter:
+  name: deep-think
+  description: >
+    Use when a problem requires multi-pass adversarial ideation: parallel
+    divergent exploration, evidence-gated shortlisting, deepening of top
+    candidates, and iterative gap-hunting until no HIGH-severity critiques
+    remain. Trigger on: "deeply think", "innovate", "improve", "upgrade",
+    "research X thoroughly", or when /brainstorm feels insufficient for a
+    genuinely uncertain/multi-layer problem. Dispatches proj-researcher
+    across 7 phases including an adversarial critic loop.
+  argument-hint: "[topic] [--passes=N] [--max-critic=N] [--sequential] [--no-critic] [--quick]"
+  allowed-tools: Agent Read Write
+  model: opus
+  effort: high
+  # Skill Class: main-thread — multi-dispatch iterative orchestrator w/ interactive user-gate
+
+Body — ## /deep-think — Multi-Pass Adversarial Gap-Hunting Ideation:
+
+{PRE_FLIGHT_GATE_BLOCK — see top of module}
+
+## Dispatch Map
+- Research: `proj-researcher` (sole dispatch target across all 7 phases)
+
+{AGENT_DISPATCH_POLICY_BLOCK — see top of module}
+
+- Main-thread orchestrator; 7 phases; sole dispatch target: proj-researcher
+- Pre-flight gate: verify proj-researcher exists (verbatim PRE_FLIGHT_GATE_BLOCK)
+- Agent dispatch policy block (verbatim AGENT_DISPATCH_POLICY_BLOCK)
+- Capability checks: WebSearch available? MCP code-search available? → set mode
+- Argument parsing: --passes=N, --max-critic=N, --sequential, --no-critic, --quick
+- Phase 0: evidence-first local scan (1 researcher, no web)
+- Phase 1: parallel divergent ideation (5 persona researchers, error handling)
+- Phase 2: evaluator scoring + clustering + user gate + shortlist.md checkpoint
+- Phase 3: deepen top-N (Reflexion critique injected)
+- Phase 4: adversarial critic dispatch + convergence check
+- Phase 5: gap resolution loop (≤5 critic iterations, ≤15 total dispatches)
+- Phase 6: dual-artifact synthesis — proposals.md + spec.md (brainstorm-format)
+- Phase 7: handoff (suggest /write-plan, do NOT auto-invoke)
+- References: .claude/skills/deep-think/references/personas.md, dispatch-templates.md
+- Anti-hallucination: verify artifact paths before writing; cite file:line
+```
+
+---
+
 #### Dispatch 16: /write-plan
 
 **Spec for dispatch prompt:**
@@ -1653,7 +1705,7 @@ After all batches complete:
 
 ```bash
 # Verify all skills created
-expected_skills="brainstorm write-plan execute-plan tdd debug code-write verify review audit-file audit-memory audit-agents commit pr reflect consolidate evolve-agents migrate-bootstrap coverage coverage-gaps write-ticket ci-triage write-prompt module-write"
+expected_skills="brainstorm deep-think write-plan execute-plan tdd debug code-write verify review audit-file audit-memory audit-agents commit pr reflect consolidate evolve-agents migrate-bootstrap coverage coverage-gaps write-ticket ci-triage write-prompt module-write"
 for skill in $expected_skills; do
   [[ -f ".claude/skills/${skill}/SKILL.md" ]] || echo "MISSING: ${skill}"
 done
@@ -1677,12 +1729,12 @@ Fix any missing skills by re-dispatching from the spec above.
 
 ```
 ✅ Module 06 complete — Skills created:
-  Dev: /brainstorm, /write-plan, /execute-plan, /tdd, /debug, /code-write (placeholder)
+  Dev: /brainstorm, /deep-think, /write-plan, /execute-plan, /tdd, /debug, /code-write (placeholder)
   Quality: /verify, /review, /audit-file, /audit-memory, /audit-agents
   Git: /commit, /pr
   Maintenance: /reflect, /consolidate, /evolve-agents, /migrate-bootstrap
   Reporting: /coverage, /coverage-gaps
   Utilities: /write-ticket, /ci-triage, /write-prompt, /module-write
   {/sync — if git_strategy == companion}
-  Total: 23-24 skills via proj-code-writer-markdown dispatch
+  Total: 24-25 skills via proj-code-writer-markdown dispatch
 ```

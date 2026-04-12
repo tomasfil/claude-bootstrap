@@ -92,7 +92,7 @@ No mode detection needed. Run bootstrap any time — brings everything to curren
 - [ ] Module 03: Hook scripts + `.claude/settings.json` — all via proj-code-writer-bash dispatch
 - [ ] Module 04: `.learnings/` initialized (log, instincts, patterns, decisions, environment, tracking)
 - [ ] Module 05: 7 core agents created (proj-quick-check, proj-plan-writer, proj-consistency-checker, proj-debugger, proj-verifier, proj-reflector, proj-tdd-runner)
-- [ ] Module 06: ~24 skills generated (dev workflow, quality incl. /audit-agents, git/lifecycle, maintenance, reporting, utilities)
+- [ ] Module 06: ~25 skills generated (dev workflow, quality incl. /audit-agents, /deep-think multi-pass adversarial ideation, git/lifecycle, maintenance, reporting, utilities)
 - [ ] Module 07: Per-language proj-code-writer-* + proj-test-writer-* + proj-code-reviewer agents via 7-phase research pipeline; agent index + capability index + pipeline traces
 - [ ] Module 08: Wiring verification, routing infrastructure (3 tiers), scoped CLAUDE.md, MCP/plugin setup, plugin collision check
 - [ ] Module 09: Companion repo sync (conditional — only if git_strategy == "companion")
