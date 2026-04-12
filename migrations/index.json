@@ -102,6 +102,12 @@
       "file": "017-deep-think-skill.md",
       "description": "Ship /deep-think skill — 'brainstorm on steroids' 7-phase main-thread orchestrator for multi-pass adversarial ideation. Phases: evidence scan → parallel persona-rotated divergent ideation → separate-evaluator shortlisting → deepening of top candidates → adversarial gap hunt → gap-resolution loop → dual-artifact synthesis (proposals.md + brainstorm-format spec.md). Hard caps: 3 Phase-1 passes / 5 critic rounds / 15 gap-resolution dispatches. Convergence signal: 0 HIGH-severity gaps from critic for 1 consecutive round. Self-contained migration inlines full SKILL.md + references/personas.md + references/dispatch-templates.md as heredocs, adds routing-trigger bullet to client-project brainstorm/SKILL.md Decision Tree (idempotent grep-guarded).",
       "breaking": false
+    },
+    {
+      "id": "018",
+      "file": "018-mcp-tool-routing.md",
+      "description": "MCP tool routing retrofit — fixes body-prose layer that survived migration 013. Migration 013 fixed frontmatter-level MCP inheritance (drop tools: from write agents) but agent bodies still prescribed Read/Grep-first discovery as MANDATORY in Section 2 Pre-Work, outranking the soft 'prefer serena' hint in Section 6. STEP 0 force-read cited mcp-routing.md (propagation config) not mcp-tool-routing.md (action→tool table which did not exist). This migration creates .claude/rules/mcp-tool-routing.md (conditional on .mcp.json containing serena or codebase-memory-mcp), adds @import to CLAUDE.md, glob-patches every proj-*.md STEP 0 force-read list + override clause to reference the new rule, rewrites Section 2 Pre-Work in code-writer/test-writer/code-reviewer agents to MCP-first precedence, rewrites Section 6 Plugin/LSP/MCP to hard rule with action→tool table pointer + Grep/Read/Glob fallback. Body-prose patches run unconditionally (agents become MCP-aware regardless of project MCP state); rule-file creation + CLAUDE.md @import are gated on MCP detection. Supersedes external setup prompt at \\\\truenas-pioneer\\media\\software\\claude-mcp-setup-prompt.md (deprecated by this migration — pointer replaces it).",
+      "breaking": false
     }
   ]
 }

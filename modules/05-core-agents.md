@@ -88,12 +88,13 @@ Body sections:
   - `.claude/rules/token-efficiency.md`
   - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/mcp-tool-routing.md` (if present — authoritative action→tool routing; overrides any Grep/Glob/Read-first examples later in this file)
   - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
   Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
 
-  If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+  If `mcp-routing.md` is loaded, follow its propagation rules (tools:/allowed-tools: config). If `mcp-tool-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file — route through MCP tools per that rule's action→tool table before falling back to text search.
 
   ---
 
@@ -144,12 +145,13 @@ Body sections:
   - `.claude/rules/token-efficiency.md`
   - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/mcp-tool-routing.md` (if present — authoritative action→tool routing; overrides any Grep/Glob/Read-first examples later in this file)
   - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
   Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
 
-  If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+  If `mcp-routing.md` is loaded, follow its propagation rules (tools:/allowed-tools: config). If `mcp-tool-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file — route through MCP tools per that rule's action→tool table before falling back to text search.
 
   ---
 
@@ -405,12 +407,13 @@ Body sections:
   - `.claude/rules/token-efficiency.md`
   - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/mcp-tool-routing.md` (if present — authoritative action→tool routing; overrides any Grep/Glob/Read-first examples later in this file)
   - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
   Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
 
-  If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+  If `mcp-routing.md` is loaded, follow its propagation rules (tools:/allowed-tools: config). If `mcp-tool-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file — route through MCP tools per that rule's action→tool table before falling back to text search.
 
   ---
 
@@ -467,12 +470,13 @@ Body sections:
   - `.claude/rules/token-efficiency.md`
   - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/mcp-tool-routing.md` (if present — authoritative action→tool routing; overrides any Grep/Glob/Read-first examples later in this file)
   - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
   Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
 
-  If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+  If `mcp-routing.md` is loaded, follow its propagation rules (tools:/allowed-tools: config). If `mcp-tool-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file — route through MCP tools per that rule's action→tool table before falling back to text search.
 
   ---
 
@@ -532,12 +536,13 @@ Body sections:
   - `.claude/rules/token-efficiency.md`
   - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/mcp-tool-routing.md` (if present — authoritative action→tool routing; overrides any Grep/Glob/Read-first examples later in this file)
   - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
   Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
 
-  If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+  If `mcp-routing.md` is loaded, follow its propagation rules (tools:/allowed-tools: config). If `mcp-tool-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file — route through MCP tools per that rule's action→tool table before falling back to text search.
 
   ---
 
@@ -595,12 +600,13 @@ Body sections:
   - `.claude/rules/token-efficiency.md`
   - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/mcp-tool-routing.md` (if present — authoritative action→tool routing; overrides any Grep/Glob/Read-first examples later in this file)
   - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
   Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
 
-  If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+  If `mcp-routing.md` is loaded, follow its propagation rules (tools:/allowed-tools: config). If `mcp-tool-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file — route through MCP tools per that rule's action→tool table before falling back to text search.
 
   ---
 
@@ -660,12 +666,13 @@ Body sections:
   - `.claude/rules/token-efficiency.md`
   - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
   - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+  - `.claude/rules/mcp-tool-routing.md` (if present — authoritative action→tool routing; overrides any Grep/Glob/Read-first examples later in this file)
   - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
   - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
   Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
 
-  If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+  If `mcp-routing.md` is loaded, follow its propagation rules (tools:/allowed-tools: config). If `mcp-tool-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file — route through MCP tools per that rule's action→tool table before falling back to text search.
 
   ---
 

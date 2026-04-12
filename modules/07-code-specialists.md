@@ -315,12 +315,13 @@ Before any task-specific work, Read these rule files (in parallel where possible
 - `.claude/rules/token-efficiency.md`
 - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
 - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+- `.claude/rules/mcp-tool-routing.md` (if present — authoritative action→tool routing; overrides any Grep/Glob/Read-first examples later in this file)
 - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
 - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
 Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
 
-If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+If `mcp-routing.md` is loaded, follow its propagation rules (tools:/allowed-tools: config). If `mcp-tool-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file — route through MCP tools per that rule's action→tool table before falling back to text search.
 
 ---
 ```
@@ -332,12 +333,13 @@ Role: senior {language} specialist for {project}.
 Stack: language, version, framework, ORM, test framework, package manager.
 
 ## Section 2: Pre-Work (Read-Before-Write) — MANDATORY
-1. Read target file (if modifying) | 2-3 similar files (if creating)
-2. Read related: base classes, interfaces, configurations
-3. Use LSP goToDefinition/findReferences if available
-4. Check .claude/rules/{language}-code-standards.md
-5. Check scoped CLAUDE.md in target directory (if exists)
-6. Verify every type/method planned for use actually exists
+1. If `mcp-tool-routing.md` loaded: use MCP tools per routing table for code discovery BEFORE Grep/Read (see that rule's Lead-With Order)
+2. Read target file (if modifying) | 2-3 similar files (if creating)
+3. Read related: base classes, interfaces, configurations
+4. Use LSP goToDefinition/findReferences if available
+5. Check .claude/rules/{language}-code-standards.md
+6. Check scoped CLAUDE.md in target directory (if exists)
+7. Verify every type/method planned for use actually exists
 
 ## Section 3: Component Classification Tree
 Decision tree w/ real code examples from project.
@@ -355,8 +357,14 @@ Post-writing: build command, LSP verify, run affected tests.
 Confidence routing: HIGH → proceed, MEDIUM → verify, LOW → research.
 
 ## Section 6: Plugin/LSP/MCP Requirements
-LSP plugin + operations, MCP servers, recommended plugins.
-Include fallback for when LSP unavailable.
+Precedence order for code discovery and symbol-level operations (when `.claude/rules/mcp-tool-routing.md` is loaded):
+1. MCP tools — route per the action→tool mappings in `.claude/rules/mcp-tool-routing.md`
+2. LSP — rename, goToDefinition, findReferences, documentSymbol, hover (when LSP is available for this language)
+3. Grep / Glob / Read — fallback only when no MCP path fits (literal string search in non-code, config values, raw file reads of known paths)
+
+When `mcp-tool-routing.md` is NOT present: Grep / Read / Glob are primary; LSP used when available. No fallback inversion required.
+
+LSP plugin + operations, MCP servers, recommended plugins — list project-specific picks here. Include explicit fallback steps for when LSP is unavailable.
 
 ## Section 7: Verification Phase
 Build, lint, test commands specific to this project.
@@ -467,12 +475,13 @@ Before any task-specific work, Read these rule files (in parallel where possible
 - `.claude/rules/token-efficiency.md`
 - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
 - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+- `.claude/rules/mcp-tool-routing.md` (if present — authoritative action→tool routing; overrides any Grep/Glob/Read-first examples later in this file)
 - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
 - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
 Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
 
-If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+If `mcp-routing.md` is loaded, follow its propagation rules (tools:/allowed-tools: config). If `mcp-tool-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file — route through MCP tools per that rule's action→tool table before falling back to text search.
 
 ---
 ```
@@ -484,6 +493,7 @@ One line: language, test framework, mock library, assertion library,
 coverage tool — exact version numbers from project manifest.
 
 ## Section 2: Analysis Phase (Understand Before Writing)
+- If `mcp-tool-routing.md` loaded: use MCP tools per routing table for symbol/caller discovery BEFORE Grep/Read (see that rule's Lead-With Order)
 - Read source file, understand every public method
 - Use LSP to trace dependencies (documentSymbol, goToDefinition, findReferences, hover)
 - Read project rules/standards files
@@ -597,12 +607,13 @@ Before any review work, Read these rule files (in parallel where possible):
 - `.claude/rules/code-standards-markdown.md`
 - `.claude/rules/token-efficiency.md`
 - `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+- `.claude/rules/mcp-tool-routing.md` (if present — authoritative action→tool routing; overrides any Grep/Glob/Read-first examples later in this file)
 - `.claude/rules/max-quality.md` (doctrine — the rule THIS agent enforces via § 9 Completeness Check)
 - Any language-specific `.claude/rules/code-standards-{lang}.md` files relevant to the files under review
 
 Rationale: the Layer 6 enforcement agent must force-read the rule it enforces. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface in subagent context. Explicit Read lands content as conversation context and guarantees the doctrine is in scope when § 9 Completeness Check runs. If a referenced rule doesn't exist, note it in the review report and continue.
 
-If `mcp-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file. Route through MCP tools per that rule before falling back to text search.
+If `mcp-routing.md` is loaded, follow its propagation rules (tools:/allowed-tools: config). If `mcp-tool-routing.md` is loaded, it OVERRIDES any `Grep` / `Glob` / `Read`-first examples later in this file — route through MCP tools per that rule's action→tool table before falling back to text search.
 
 ---
 
@@ -614,11 +625,12 @@ security patterns, common mistakes.
 
 ## 2. Pre-Review: Read Before Judging
 BEFORE reviewing ANY code:
-1. Read changed files in full
-2. Read applicable rules from .claude/rules/
-3. Read CLAUDE.md conventions + gotchas
-4. Use LSP for type correctness (if available)
-5. Check pipeline traces — is change complete across all layers?
+1. If `.claude/rules/mcp-tool-routing.md` loaded: use MCP tools per routing table for code discovery BEFORE Grep/Read (see that rule's Lead-With Order)
+2. Read changed files in full
+3. Read applicable rules from .claude/rules/
+4. Read CLAUDE.md conventions + gotchas
+5. Use LSP for type correctness (if available)
+6. Check pipeline traces — is change complete across all layers?
 
 ## 3. Review Checklist (per component type)
 Build per-component checklist from analysis files.

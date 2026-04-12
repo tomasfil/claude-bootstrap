@@ -827,6 +827,7 @@ Body — ## /audit-agents — Agent Rules + MCP Propagation Audit:
   - **A2 — Rule file existence**: parse every `.claude/rules/<name>.md` reference
     inside STEP 0 blocks. Verify each referenced file exists in `.claude/rules/`.
     Report dangling refs w/ source agent + rule path.
+    Note: `mcp-tool-routing.md` is conditional on `.mcp.json` — A2 treats it as optional (PASS when absent).
   - **A3 — MCP tool propagation**: if `.mcp.json` exists — parse `mcpServers` keys.
     Three-state rule per `.claude/agents/*.md`:
       1. No `tools:` line → PASS (agent inherits parent tools incl. MCP).
