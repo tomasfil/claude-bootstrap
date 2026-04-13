@@ -61,6 +61,9 @@ def check(label, src, expected_hash):
 
 for s in manifest.get('skills', []):
     check(f"skill:{s['name']}", s['source'], s['sha256'])
+    # Also verify each reference file listed under the skill
+    for ref in s.get('references', []) or []:
+        check(f"skill-ref:{s['name']}:{ref['source']}", ref['source'], ref['sha256'])
 
 for a in manifest.get('agents', []):
     check(f"agent:{a['name']}", a['source'], a['sha256'])

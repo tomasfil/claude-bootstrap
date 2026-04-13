@@ -432,24 +432,31 @@ Fix any FAIL items by editing `.gitignore`.
 
 Create/update `.claude/bootstrap-state.json` w/ current migration stamp:
 
+Module 01 already created this file with `github_username`. Merge the new fields in — DO NOT overwrite or the handle from Module 01 is lost:
+
 ```bash
-cat > .claude/bootstrap-state.json << 'EOF'
-{
-  "version": "6.0",
-  "bootstrapped": "{date}",
-  "bootstrap_repo": "tomasfil/claude-bootstrap",
-  "last_migration": "000",
-  "last_applied": "{date}",
-  "applied": [
-    { "id": "000", "applied_at": "{date}", "description": "v6-initial bootstrap" }
-  ],
-  "git_strategy": "{git_strategy}",
-  "modules_completed": [1, 2, 3, 4, 5, 6, 7, 8]
-}
-EOF
+set -euo pipefail
+
+# Existing github_username is preserved; new fields are added/updated.
+existing_user="$(jq -r '.github_username // "tomasfil"' .claude/bootstrap-state.json 2>/dev/null || echo tomasfil)"
+
+tmp="$(mktemp)"
+jq --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+   --arg git_strategy "{git_strategy}" \
+   --arg user "$existing_user" \
+   '.version = "6.0"
+    | .bootstrapped = (.bootstrapped // $date)
+    | .bootstrap_repo = "tomasfil/claude-bootstrap"
+    | .github_username = $user
+    | .last_migration = "000"
+    | .last_applied = $date
+    | .applied = [{ id: "000", applied_at: $date, description: "v6-initial bootstrap" }]
+    | .git_strategy = $git_strategy
+    | .modules_completed = [1, 2, 3, 4, 5, 6, 7, 8]' \
+   .claude/bootstrap-state.json > "$tmp" && mv "$tmp" .claude/bootstrap-state.json
 ```
 
-Note: fresh bootstrap sets `"last_migration": "000"`. Migration 001 bumps to `"001"` when applied via `/migrate-bootstrap`.
+Note: fresh bootstrap sets `"last_migration": "000"`. Migration 001 bumps to `"001"` when applied via `/migrate-bootstrap`. `github_username` is written by Module 01 and preserved here — Modules 05/06/07 fetch loops and `/migrate-bootstrap` read it to build `gh api repos/{owner}/claude-bootstrap/...` URLs.
 
 ---
 

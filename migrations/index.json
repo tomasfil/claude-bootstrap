@@ -132,6 +132,12 @@
       "file": "022-template-fetch-bootstrap.md",
       "description": "Replace LLM-rendered skill/agent bootstrap with template-fetch from tracked templates/ directory. Modules 05+06 become thin fetch loops. SHA-idempotent per-file overwrite.",
       "breaking": false
+    },
+    {
+      "id": "023",
+      "file": "023-migrate-bootstrap-owner-resolution.md",
+      "description": "Patch .claude/skills/migrate-bootstrap/SKILL.md to resolve the bootstrap source repo from BOOTSTRAP_REPO env var → .claude/bootstrap-state.json bootstrap_repo field → canonical tomasfil/claude-bootstrap default, instead of hardcoding the canonical slug. Enables fork users to point /migrate-bootstrap at their own migration track. Literal-string idempotency guard (no regex). Additive only — touches one file and leaves a .bak-023 backup.",
+      "breaking": false
     }
   ]
 }

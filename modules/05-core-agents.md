@@ -43,10 +43,12 @@ done
 
 ### Step 1 — Fetch Manifest
 
-Resolve `{owner}` from Module 01 discovery (see `.claude/bootstrap-state.json` `github_username` or the value detected during Module 01 — fill from Module 01 `github_username` detection). Default for the canonical repo: `tomasfil`.
+Resolve `{owner}` from `.claude/bootstrap-state.json` `github_username` (Module 01 persists this field after detecting the GitHub handle via `gh api user` or `git config user.name`, default `tomasfil`). The `BOOTSTRAP_OWNER` env var, if set, takes precedence.
 
 ```bash
-OWNER="${BOOTSTRAP_OWNER:-tomasfil}"
+set -euo pipefail
+
+OWNER="${BOOTSTRAP_OWNER:-$(jq -r '.github_username // "tomasfil"' .claude/bootstrap-state.json 2>/dev/null || echo tomasfil)}"
 REPO="claude-bootstrap"
 BRANCH="main"
 
@@ -68,7 +70,10 @@ echo "$MANIFEST_JSON" | jq -e '.agents | length > 0' >/dev/null || {
 Iterate the `agents` array. For each entry: compute on-disk sha256 (if the target exists), compare against manifest, skip or fetch accordingly. Every write uses `gh api ... | base64 -d > {target}` exactly — no WebFetch, no raw URL fallback unless `gh` is unavailable.
 
 ```bash
-echo "$MANIFEST_JSON" | jq -c '.agents[]' | while read -r entry; do
+set -euo pipefail
+
+# Process substitution (not jq | while) — keeps the loop in the current shell so `exit 1` propagates.
+while IFS= read -r entry; do
   name=$(echo "$entry" | jq -r '.name')
   source=$(echo "$entry" | jq -r '.source')
   target=$(echo "$entry" | jq -r '.target')
@@ -95,10 +100,10 @@ echo "$MANIFEST_JSON" | jq -c '.agents[]' | while read -r entry; do
   # Post-write verification — fail loud if the written file does not match the manifest SHA
   written_sha=$(sha256sum "$target" | awk '{print $1}')
   if [[ "$written_sha" != "$expected_sha" ]]; then
-    echo "ERROR: ${target} sha mismatch after fetch — expected ${expected_sha}, got ${written_sha}"
+    printf 'ERROR: %s sha mismatch after fetch — expected %s, got %s\n' "$target" "$expected_sha" "$written_sha" >&2
     exit 1
   fi
-done
+done < <(echo "$MANIFEST_JSON" | jq -c '.agents[]')
 ```
 
 ### Step 3 — Post-Fetch Verification
@@ -106,9 +111,11 @@ done
 Confirm every agent listed in the manifest is now present on disk:
 
 ```bash
-echo "$MANIFEST_JSON" | jq -r '.agents[].target' | while read -r target; do
-  [[ -f "$target" ]] || { echo "MISSING: $target"; exit 1; }
-done
+set -euo pipefail
+
+while IFS= read -r target; do
+  [[ -f "$target" ]] || { printf 'MISSING: %s\n' "$target" >&2; exit 1; }
+done < <(echo "$MANIFEST_JSON" | jq -r '.agents[].target')
 echo "All manifest agents present in .claude/agents/"
 ```
 

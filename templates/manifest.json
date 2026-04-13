@@ -13,7 +13,18 @@
       "source": "templates/skills/deep-think/SKILL.md",
       "target": ".claude/skills/deep-think/SKILL.md",
       "sha256": "f266ad6f780a1668949d8a05370a1406f744c9a3aefe19031d7e3e4a62669505",
-      "references": []
+      "references": [
+        {
+          "source": "templates/skills/deep-think/references/dispatch-templates.md",
+          "target": ".claude/skills/deep-think/references/dispatch-templates.md",
+          "sha256": "8151fd82cbb289ec8e38c4c1b4c2db630ad9ec7542145476fae418a7ec397f90"
+        },
+        {
+          "source": "templates/skills/deep-think/references/personas.md",
+          "target": ".claude/skills/deep-think/references/personas.md",
+          "sha256": "403588a43522f87329500833f3fc1606162bf6fb28424c2d96a52eee681bdd50"
+        }
+      ]
     },
     {
       "name": "write-plan",
@@ -34,21 +45,64 @@
       "source": "templates/skills/tdd/SKILL.md",
       "target": ".claude/skills/tdd/SKILL.md",
       "sha256": "8f55b905f5bf37bdef306084ff4f88e9dbb125deaec45044d3d5dd712f513602",
-      "references": []
+      "references": [
+        {
+          "source": "templates/skills/tdd/references/red-green-refactor.md",
+          "target": ".claude/skills/tdd/references/red-green-refactor.md",
+          "sha256": "7d0a6dd26ac723bc92da8ff19255fd63f52921786e2c94a3a01a2378cbfe7200"
+        }
+      ]
     },
     {
       "name": "debug",
       "source": "templates/skills/debug/SKILL.md",
       "target": ".claude/skills/debug/SKILL.md",
       "sha256": "425ebb4579f31e95f40d247cd36d23cb300f3b71d7066000a35834f30374df2c",
-      "references": []
+      "references": [
+        {
+          "source": "templates/skills/debug/references/debug-checklist.md",
+          "target": ".claude/skills/debug/references/debug-checklist.md",
+          "sha256": "e4f50cd234ea867c5504205972de0c2ce16ce55fdc5607c1622b9cbb98f26124"
+        }
+      ]
     },
     {
       "name": "code-write",
       "source": "templates/skills/code-write/SKILL.md",
       "target": ".claude/skills/code-write/SKILL.md",
       "sha256": "e3aeedb966bd301f14c18c21d51d4e23c8943418c0946c2d9fa0c8928dc5b743",
-      "references": []
+      "references": [
+        {
+          "source": "templates/skills/code-write/references/bash-analysis.md",
+          "target": ".claude/skills/code-write/references/bash-analysis.md",
+          "sha256": "d5b22805e1122f676f7c47ad216d39570eb3698afddd9ca2dcb587a925d0d721"
+        },
+        {
+          "source": "templates/skills/code-write/references/bash-research.md",
+          "target": ".claude/skills/code-write/references/bash-research.md",
+          "sha256": "6227db0ace60754c2e271f1647466e9b17c7b412f4726e801603cf9114349831"
+        },
+        {
+          "source": "templates/skills/code-write/references/capability-index.md",
+          "target": ".claude/skills/code-write/references/capability-index.md",
+          "sha256": "2b05563f5a242feea727830261112077370a5ef2903886e029dc7fc21768db87"
+        },
+        {
+          "source": "templates/skills/code-write/references/markdown-analysis.md",
+          "target": ".claude/skills/code-write/references/markdown-analysis.md",
+          "sha256": "a40f1eb3792692dff6b60d19eb2ea161e1afc8e85e095ad0aee5fad3b91ef6f6"
+        },
+        {
+          "source": "templates/skills/code-write/references/markdown-research.md",
+          "target": ".claude/skills/code-write/references/markdown-research.md",
+          "sha256": "605d8a82e21a0ca49233eccfec6a1df7bb01b93490e4aca8c8dbfcea99bde1df"
+        },
+        {
+          "source": "templates/skills/code-write/references/pipeline-traces.md",
+          "target": ".claude/skills/code-write/references/pipeline-traces.md",
+          "sha256": "d7acda8ed2cc839166d94ba0503e4b4199f74bdac66c4884b6bf5e25a1eae076"
+        }
+      ]
     },
     {
       "name": "verify",
@@ -90,7 +144,13 @@
       "source": "templates/skills/commit/SKILL.md",
       "target": ".claude/skills/commit/SKILL.md",
       "sha256": "e114fbc407b67a88686640c2cafbc220827268cc9fcc366bf848a0283b438f52",
-      "references": []
+      "references": [
+        {
+          "source": "templates/skills/commit/references/conventional-commits.md",
+          "target": ".claude/skills/commit/references/conventional-commits.md",
+          "sha256": "097c249ea7eed05c4abb6532b7151dd71093d66d10a51502ea41f4c4cac6876a"
+        }
+      ]
     },
     {
       "name": "pr",
@@ -124,7 +184,7 @@
       "name": "migrate-bootstrap",
       "source": "templates/skills/migrate-bootstrap/SKILL.md",
       "target": ".claude/skills/migrate-bootstrap/SKILL.md",
-      "sha256": "7fc97a327385f3c261a5db5d1d9aeb536de1e09f6dad9e1b55c6b2de87b2ae63",
+      "sha256": "4550effc66f74dcf723a8aa9e691ca7d179b15e9d8696efb527c607593d73b19",
       "references": []
     },
     {
@@ -160,14 +220,26 @@
       "source": "templates/skills/write-prompt/SKILL.md",
       "target": ".claude/skills/write-prompt/SKILL.md",
       "sha256": "b2a095d640ebe3eae528c7d3b3fc3eea1366542ea6bd60c0071d3209e6894b0f",
-      "references": []
+      "references": [
+        {
+          "source": "templates/skills/write-prompt/references/frontmatter-fields.md",
+          "target": ".claude/skills/write-prompt/references/frontmatter-fields.md",
+          "sha256": "9689dc1d505cbb15b21f2b95b01c4a115443f82973400de64160c2eb34f49ae0"
+        }
+      ]
     },
     {
       "name": "module-write",
       "source": "templates/skills/module-write/SKILL.md",
       "target": ".claude/skills/module-write/SKILL.md",
       "sha256": "9c623dcd9c09b1406770d0f0b4ea96266d13a6bbf9491487c23fa0ec839fad9e",
-      "references": []
+      "references": [
+        {
+          "source": "templates/skills/module-write/references/pipeline-traces.md",
+          "target": ".claude/skills/module-write/references/pipeline-traces.md",
+          "sha256": "1e05a1a0c4e420b4ef9decb65d68e9ddd4462ca978b7d28dcb335952e5c88d67"
+        }
+      ]
     },
     {
       "name": "sync",

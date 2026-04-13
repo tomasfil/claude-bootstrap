@@ -41,6 +41,11 @@ mkdir -p templates/agents
 # These are the project-agnostic agents every bootstrap produces.
 # proj-code-writer-{lang} and proj-test-writer-{lang} are handled by
 # code-writer.template.md / test-writer.template.md (parameterized).
+# NOTE: proj-code-reviewer is deliberately excluded — it is a project-specific
+# agent generated per-bootstrap by Module 07 Phase 5 (dispatches proj-code-writer-markdown
+# to read all {lang}-analysis.md + {lang}-research.md refs and produce a project-aware
+# reviewer). Including it as a static template would clobber the project-specific version
+# on every Module 05 fetch loop run. See migrations/022 + modules/07-code-specialists.md.
 CORE_AGENTS=(
     proj-quick-check
     proj-plan-writer
@@ -52,7 +57,6 @@ CORE_AGENTS=(
     proj-researcher
     proj-code-writer-markdown
     proj-code-writer-bash
-    proj-code-reviewer
 )
 
 # --- Skill names (from module 06 skill list, excluding conditional /sync) ---
@@ -109,13 +113,27 @@ MISSING_SKILLS=()
 
 for skill in "${SKILLS[@]}"; do
     src=".claude/skills/${skill}/SKILL.md"
+    src_refs_dir=".claude/skills/${skill}/references"
     dst_dir="templates/skills/${skill}"
     dst="templates/skills/${skill}/SKILL.md"
+    dst_refs_dir="templates/skills/${skill}/references"
     if [[ -f "$src" ]]; then
         mkdir -p "$dst_dir"
         cp "$src" "$dst"
         printf '  OK: %s\n' "$dst"
         EXTRACTED_SKILLS+=("$skill")
+
+        # Walk references/ subdirectory recursively (progressive-disclosure docs).
+        # find is the most portable way to pick up nested files (references/sub/foo.md).
+        if [[ -d "$src_refs_dir" ]]; then
+            while IFS= read -r -d '' ref_src; do
+                rel="${ref_src#${src_refs_dir}/}"
+                ref_dst="${dst_refs_dir}/${rel}"
+                mkdir -p "$(dirname "$ref_dst")"
+                cp "$ref_src" "$ref_dst"
+                printf '    REF: %s\n' "$ref_dst"
+            done < <(find "$src_refs_dir" -type f -print0 2>/dev/null)
+        fi
     else
         printf '  SKIP (not found): %s\n' "$src"
         MISSING_SKILLS+=("$skill")
@@ -295,25 +313,36 @@ printf '  OK: templates/agents/test-writer.template.md\n'
 # --- Build manifest JSON ---
 printf '==> Building manifest.json...\n'
 
-# Collect all skill entries
+# Collect all skill entries. references[] is an array of objects:
+#   { source, target, sha256 }
+# Module 06 fetch loop reads each object and fetches the referenced file with
+# the same SHA-compare + overwrite protocol as SKILL.md itself.
 SKILLS_JSON=""
 for skill in "${EXTRACTED_SKILLS[@]}"; do
     f="templates/skills/${skill}/SKILL.md"
     hash="$(sha256_file "$f")"
-    # Determine if there are references/ files
+
     refs_json="[]"
     refs_dir="templates/skills/${skill}/references"
     if [[ -d "$refs_dir" ]]; then
-        ref_list=""
-        for ref_file in "${refs_dir}"/*; do
-            [[ -f "$ref_file" ]] || continue
-            ref_rel="${ref_file#templates/}"
-            ref_list="${ref_list}\"${ref_rel}\","
-        done
-        if [[ -n "$ref_list" ]]; then
-            refs_json="[${ref_list%,}]"
+        ref_entries=""
+        while IFS= read -r -d '' ref_file; do
+            ref_rel="${ref_file#templates/skills/${skill}/references/}"
+            ref_source="templates/skills/${skill}/references/${ref_rel}"
+            ref_target=".claude/skills/${skill}/references/${ref_rel}"
+            ref_hash="$(sha256_file "$ref_file")"
+            ref_obj="{\"source\":\"${ref_source}\",\"target\":\"${ref_target}\",\"sha256\":\"${ref_hash}\"}"
+            if [[ -n "$ref_entries" ]]; then
+                ref_entries="${ref_entries},${ref_obj}"
+            else
+                ref_entries="${ref_obj}"
+            fi
+        done < <(find "$refs_dir" -type f -print0 2>/dev/null)
+        if [[ -n "$ref_entries" ]]; then
+            refs_json="[${ref_entries}]"
         fi
     fi
+
     entry="{\"name\":\"${skill}\",\"source\":\"templates/skills/${skill}/SKILL.md\",\"target\":\".claude/skills/${skill}/SKILL.md\",\"sha256\":\"${hash}\",\"references\":${refs_json}}"
     if [[ -n "$SKILLS_JSON" ]]; then
         SKILLS_JSON="${SKILLS_JSON},${entry}"
@@ -338,7 +367,7 @@ done
 # Agent templates
 CW_HASH="$(sha256_file "templates/agents/code-writer.template.md")"
 TW_HASH="$(sha256_file "templates/agents/test-writer.template.md")"
-AGENT_TEMPLATES_JSON="[{\"name\":\"code-writer\",\"source\":\"templates/agents/code-writer.template.md\",\"target_pattern\":\".claude/agents/code-writer-{lang}.md\",\"sha256\":\"${CW_HASH}\",\"placeholders\":[\"{lang}\",\"{build_cmd}\",\"{test_cmd}\",\"{lint_cmd}\"]},{\"name\":\"test-writer\",\"source\":\"templates/agents/test-writer.template.md\",\"target_pattern\":\".claude/agents/test-writer-{lang}.md\",\"sha256\":\"${TW_HASH}\",\"placeholders\":[\"{lang}\",\"{build_cmd}\",\"{test_cmd}\",\"{lint_cmd}\"]}]"
+AGENT_TEMPLATES_JSON="[{\"name\":\"code-writer\",\"source\":\"templates/agents/code-writer.template.md\",\"target_pattern\":\".claude/agents/proj-code-writer-{lang}.md\",\"sha256\":\"${CW_HASH}\",\"placeholders\":[\"{lang}\",\"{build_cmd}\",\"{test_cmd}\",\"{lint_cmd}\"]},{\"name\":\"test-writer\",\"source\":\"templates/agents/test-writer.template.md\",\"target_pattern\":\".claude/agents/proj-test-writer-{lang}.md\",\"sha256\":\"${TW_HASH}\",\"placeholders\":[\"{lang}\",\"{build_cmd}\",\"{test_cmd}\",\"{lint_cmd}\"]}]"
 
 # Write manifest via python3 for valid JSON formatting
 python3 - <<PYEOF

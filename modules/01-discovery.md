@@ -26,6 +26,45 @@ Record (dynamic — SessionStart hook, NOT CLAUDE.md):
 - Shell: bash | zsh | PowerShell
 - Line endings: CRLF (Windows) | LF (Unix)
 
+**GitHub username detection** — Modules 05/06 need an `owner` to build `gh api repos/{owner}/claude-bootstrap/...` URLs when fetching template content from the bootstrap repo. Canonical repo owner is `tomasfil`, but forks need the forker's username. Detect + persist once here so downstream modules never prompt:
+
+```bash
+# Prefer authenticated gh identity; fall back to git config; default to canonical repo owner.
+if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+  GITHUB_USERNAME="$(gh api user --jq '.login' 2>/dev/null || true)"
+fi
+if [[ -z "${GITHUB_USERNAME:-}" ]]; then
+  # git config user.name is a display name — only use it if it looks like a GitHub handle (no spaces, <40 chars)
+  cand="$(git config --global user.name 2>/dev/null || true)"
+  if [[ -n "$cand" && "$cand" != *" "* && ${#cand} -le 39 ]]; then
+    GITHUB_USERNAME="$cand"
+  fi
+fi
+GITHUB_USERNAME="${GITHUB_USERNAME:-tomasfil}"
+printf 'GitHub username: %s\n' "$GITHUB_USERNAME"
+```
+
+Persist the handle immediately so Modules 05/06/07 can read it when they run (Module 08 later merges in the rest of the state). Create `.claude/` first if absent:
+
+```bash
+mkdir -p .claude
+if [[ -f .claude/bootstrap-state.json ]]; then
+  # Preserve any existing state; only set github_username if missing or empty.
+  tmp="$(mktemp)"
+  jq --arg u "$GITHUB_USERNAME" '.github_username = ( .github_username // $u )' \
+    .claude/bootstrap-state.json > "$tmp" && mv "$tmp" .claude/bootstrap-state.json
+else
+  cat > .claude/bootstrap-state.json <<EOF
+{
+  "version": "6.0",
+  "github_username": "${GITHUB_USERNAME}"
+}
+EOF
+fi
+```
+
+Downstream modules read `OWNER="${BOOTSTRAP_OWNER:-$(jq -r '.github_username // "tomasfil"' .claude/bootstrap-state.json 2>/dev/null || echo tomasfil)}"`.
+
 ### 2. Detect Languages + Frameworks
 
 Scan for ALL languages present:
@@ -566,6 +605,7 @@ NEVER: Read A → respond → Read B. INSTEAD: Read A + B → respond.
 ✅ Module 01 complete — Discovery + Foundation Agents
 
 Environment: {OS} / {shell}
+GitHub username: {github_username}
 Languages: {list w/ versions}
 Frameworks: {list w/ versions}
 Architecture: {type} w/ {N} projects/packages

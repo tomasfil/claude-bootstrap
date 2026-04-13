@@ -13,6 +13,20 @@ effort: high
 
 ## /migrate-bootstrap — Apply Pending Migrations
 
+### Step 0: Resolve bootstrap source repo
+
+Resolve `BOOTSTRAP_REPO` (the `{owner}/{repo}` slug used for every `gh api` / WebFetch call below). Precedence:
+
+1. Env var `BOOTSTRAP_REPO` if set.
+2. `.claude/bootstrap-state.json` field `bootstrap_repo`.
+3. Canonical default `tomasfil/claude-bootstrap`.
+
+```bash
+BOOTSTRAP_REPO="${BOOTSTRAP_REPO:-$(jq -r '.bootstrap_repo // "tomasfil/claude-bootstrap"' .claude/bootstrap-state.json 2>/dev/null || echo tomasfil/claude-bootstrap)}"
+```
+
+Every `gh api repos/<slug>/...` URL in the steps below uses `${BOOTSTRAP_REPO}` in place of `tomasfil/claude-bootstrap` — forks that run their own migration track set `bootstrap_repo` in state (or export the env var) and the skill routes accordingly.
+
 ### Step 1: Read migration state
 
 Read `.claude/bootstrap-state.json`.
@@ -26,6 +40,7 @@ Read `.claude/bootstrap-state.json`.
 ```json
 {
   "bootstrap_repo": "tomasfil/claude-bootstrap",
+  "github_username": "tomasfil",
   "last_migration": "000",
   "last_applied": "{current ISO-8601 timestamp}",
   "applied": [
@@ -37,15 +52,15 @@ Read `.claude/bootstrap-state.json`.
 
 ### Step 2: Fetch migration index
 
-Fetch available migrations from bootstrap repo:
+Fetch available migrations from `${BOOTSTRAP_REPO}`:
 
 ```bash
-gh api repos/tomasfil/claude-bootstrap/contents/migrations --jq '[.[] | select(.name != "_template.md") | .name] | sort'
+gh api "repos/${BOOTSTRAP_REPO}/contents/migrations" --jq '[.[] | select(.name != "_template.md") | .name] | sort'
 ```
 
 **Fallback if `gh` unavailable:** WebFetch:
 ```
-https://api.github.com/repos/tomasfil/claude-bootstrap/contents/migrations
+https://api.github.com/repos/${BOOTSTRAP_REPO}/contents/migrations
 ```
 Filter out `_template.md`, sort by filename.
 
@@ -63,9 +78,9 @@ For each pending migration in order:
 
 1. **Fetch** migration file:
    ```bash
-   gh api repos/tomasfil/claude-bootstrap/contents/migrations/{filename} --jq '.content' | base64 -d
+   gh api "repos/${BOOTSTRAP_REPO}/contents/migrations/{filename}" --jq '.content' | base64 -d
    ```
-   Fallback: `https://raw.githubusercontent.com/tomasfil/claude-bootstrap/main/migrations/{filename}`
+   Fallback: `https://raw.githubusercontent.com/${BOOTSTRAP_REPO}/main/migrations/{filename}`
 
 2. **Read YAML frontmatter.** If `breaking: true` → warn user + STOP. Wait for explicit confirmation before applying.
 

@@ -47,6 +47,17 @@ Create the directories consumed by later phases:
 mkdir -p .claude/skills/code-write/references .claude/agents/references
 ```
 
+**Phase 0 output contract — main thread MUST re-emit these four bash declarations as a prefix to EVERY bash block in Phases 1, 2, 3, and 4.** Each fenced `bash` block runs in a fresh shell (separate Bash-tool invocation), and every Phase 1-4 block runs under `set -euo pipefail`. Variables declared in one block do NOT persist to the next — referencing `${DETECTED_LANGS[@]}` in a fresh shell under `set -u` where the array was never declared is a hard error. Treat the block below as the prelude that must be pasted at the top of each Phase 1-4 bash invocation, immediately after `set -euo pipefail`. Substitute real languages + commands from the scan:
+
+```bash
+declare -a DETECTED_LANGS=(python typescript)
+declare -A BUILD_CMD=( [python]="pytest && mypy" [typescript]="npm run build" )
+declare -A TEST_CMD=( [python]="pytest" [typescript]="npm test" )
+declare -A LINT_CMD=( [python]="ruff check" [typescript]="npm run lint" )
+```
+
+Every detected language MUST have an entry in all four structures. Empty string is acceptable (e.g., `[go]=""` if a language has no lint command) but the key must be present — Phase 3/4 reads `${BUILD_CMD[$lang]}` unconditionally. Missing key under `set -u` = hard error. `bash` + `markdown` are excluded from `DETECTED_LANGS` entirely per the exclusion rule above — they never appear as either keys or array entries.
+
 **Checkpoint:** `Phase 0 complete — {N} languages detected: {summaries}`
 
 ---
@@ -58,8 +69,14 @@ Dispatch ONE `proj-researcher` per detected language via `subagent_type="proj-re
 Wait for all Phase 1 dispatches to complete. Verify:
 
 ```bash
-for lang in ${DETECTED_LANGS}; do
-  [[ -s ".claude/skills/code-write/references/${lang}-analysis.md" ]] || { echo "MISSING: ${lang}-analysis.md"; exit 1; }
+set -euo pipefail
+
+# Re-emit the Phase 0 contract (DETECTED_LANGS + BUILD_CMD/TEST_CMD/LINT_CMD)
+# as the prelude here — each Phase 1-4 bash block runs in a fresh shell.
+# <paste contract declarations from Phase 0 output contract above>
+
+for lang in "${DETECTED_LANGS[@]}"; do
+  [[ -s ".claude/skills/code-write/references/${lang}-analysis.md" ]] || { printf 'MISSING: %s-analysis.md\n' "$lang" >&2; exit 1; }
 done
 ```
 
@@ -74,8 +91,14 @@ Dispatch ONE `proj-researcher` per detected language (parallel). Each researcher
 Verify:
 
 ```bash
-for lang in ${DETECTED_LANGS}; do
-  [[ -s ".claude/skills/code-write/references/${lang}-research.md" ]] || { echo "MISSING: ${lang}-research.md"; exit 1; }
+set -euo pipefail
+
+# Re-emit the Phase 0 contract (DETECTED_LANGS + BUILD_CMD/TEST_CMD/LINT_CMD)
+# as the prelude here — each Phase 1-4 bash block runs in a fresh shell.
+# <paste contract declarations from Phase 0 output contract above>
+
+for lang in "${DETECTED_LANGS[@]}"; do
+  [[ -s ".claude/skills/code-write/references/${lang}-research.md" ]] || { printf 'MISSING: %s-research.md\n' "$lang" >&2; exit 1; }
 done
 ```
 
@@ -88,7 +111,13 @@ done
 Fetch `templates/agents/code-writer.template.md` (placeholders `{lang}`, `{build_cmd}`, `{test_cmd}`, `{lint_cmd}`) once, then render one file per detected language. Main thread only — NO LLM dispatch. Project-specific patterns live in the `{lang}-analysis.md` / `{lang}-research.md` reference files the rendered agent reads at runtime.
 
 ```bash
-OWNER="${BOOTSTRAP_OWNER:-tomasfil}"
+set -euo pipefail
+
+# Re-emit the Phase 0 contract (DETECTED_LANGS + BUILD_CMD/TEST_CMD/LINT_CMD)
+# as the prelude here — each Phase 1-4 bash block runs in a fresh shell.
+# <paste contract declarations from Phase 0 output contract above>
+
+OWNER="${BOOTSTRAP_OWNER:-$(jq -r '.github_username // "tomasfil"' .claude/bootstrap-state.json 2>/dev/null || echo tomasfil)}"
 REPO="claude-bootstrap"
 BRANCH="main"
 TEMPLATE_PATH="templates/agents/code-writer.template.md"
@@ -99,23 +128,36 @@ else
   CODE_WRITER_TEMPLATE="$(gh api "repos/${OWNER}/${REPO}/contents/${TEMPLATE_PATH}?ref=${BRANCH}" --jq '.content' | base64 -d)"
 fi
 
-# DETECTED_LANGS + per-lang build/test/lint commands come from Phase 0
-for lang in ${DETECTED_LANGS}; do
-  build_cmd="${BUILD_CMD[$lang]}"
-  test_cmd="${TEST_CMD[$lang]}"
-  lint_cmd="${LINT_CMD[$lang]}"
+# Escape sed-replacement metacharacters: \, |, & (| is our s delimiter).
+# Without this, commands like `npm test | grep PASSED` break sed.
+sed_escape() {
+  local raw="$1"
+  raw="${raw//\\/\\\\}"
+  raw="${raw//|/\\|}"
+  raw="${raw//&/\\&}"
+  printf '%s' "$raw"
+}
+
+# DETECTED_LANGS + per-lang build/test/lint commands come from Phase 0 output contract.
+for lang in "${DETECTED_LANGS[@]}"; do
+  build_cmd="$(sed_escape "${BUILD_CMD[$lang]}")"
+  test_cmd="$(sed_escape "${TEST_CMD[$lang]}")"
+  lint_cmd="$(sed_escape "${LINT_CMD[$lang]}")"
+  lang_esc="$(sed_escape "$lang")"
   target=".claude/agents/proj-code-writer-${lang}.md"
 
   printf '%s\n' "$CODE_WRITER_TEMPLATE" \
-    | sed -e "s|{lang}|${lang}|g" \
+    | sed -e "s|{lang}|${lang_esc}|g" \
           -e "s|{build_cmd}|${build_cmd}|g" \
           -e "s|{test_cmd}|${test_cmd}|g" \
           -e "s|{lint_cmd}|${lint_cmd}|g" \
     > "$target"
 
-  # Verify no unsubstituted placeholders remain
-  grep -E '\{(lang|build_cmd|test_cmd|lint_cmd)\}' "$target" && { echo "ERROR: unresolved placeholder in $target"; exit 1; } || true
-  echo "  RENDERED $target"
+  if grep -qE '\{(lang|build_cmd|test_cmd|lint_cmd)\}' "$target"; then
+    printf 'ERROR: unresolved placeholder in %s\n' "$target" >&2
+    exit 1
+  fi
+  printf '  RENDERED %s\n' "$target"
 done
 ```
 
@@ -128,6 +170,12 @@ done
 Same mechanic as Phase 3 against `templates/agents/test-writer.template.md`. Same placeholders. NO LLM dispatch.
 
 ```bash
+set -euo pipefail
+
+# Re-emit the Phase 0 contract (DETECTED_LANGS + BUILD_CMD/TEST_CMD/LINT_CMD)
+# as the prelude here — each Phase 1-4 bash block runs in a fresh shell.
+# <paste contract declarations from Phase 0 output contract above>
+
 TEMPLATE_PATH="templates/agents/test-writer.template.md"
 
 if [[ -f "$TEMPLATE_PATH" ]]; then
@@ -136,21 +184,34 @@ else
   TEST_WRITER_TEMPLATE="$(gh api "repos/${OWNER}/${REPO}/contents/${TEMPLATE_PATH}?ref=${BRANCH}" --jq '.content' | base64 -d)"
 fi
 
-for lang in ${DETECTED_LANGS}; do
-  build_cmd="${BUILD_CMD[$lang]}"
-  test_cmd="${TEST_CMD[$lang]}"
-  lint_cmd="${LINT_CMD[$lang]}"
+# sed_escape defined in Phase 3; if Phase 4 runs in a separate shell, redefine here.
+sed_escape() {
+  local raw="$1"
+  raw="${raw//\\/\\\\}"
+  raw="${raw//|/\\|}"
+  raw="${raw//&/\\&}"
+  printf '%s' "$raw"
+}
+
+for lang in "${DETECTED_LANGS[@]}"; do
+  build_cmd="$(sed_escape "${BUILD_CMD[$lang]}")"
+  test_cmd="$(sed_escape "${TEST_CMD[$lang]}")"
+  lint_cmd="$(sed_escape "${LINT_CMD[$lang]}")"
+  lang_esc="$(sed_escape "$lang")"
   target=".claude/agents/proj-test-writer-${lang}.md"
 
   printf '%s\n' "$TEST_WRITER_TEMPLATE" \
-    | sed -e "s|{lang}|${lang}|g" \
+    | sed -e "s|{lang}|${lang_esc}|g" \
           -e "s|{build_cmd}|${build_cmd}|g" \
           -e "s|{test_cmd}|${test_cmd}|g" \
           -e "s|{lint_cmd}|${lint_cmd}|g" \
     > "$target"
 
-  grep -E '\{(lang|build_cmd|test_cmd|lint_cmd)\}' "$target" && { echo "ERROR: unresolved placeholder in $target"; exit 1; } || true
-  echo "  RENDERED $target"
+  if grep -qE '\{(lang|build_cmd|test_cmd|lint_cmd)\}' "$target"; then
+    printf 'ERROR: unresolved placeholder in %s\n' "$target" >&2
+    exit 1
+  fi
+  printf '  RENDERED %s\n' "$target"
 done
 ```
 

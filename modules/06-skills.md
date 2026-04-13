@@ -110,10 +110,12 @@ done
 
 ### Step 1 — Fetch Manifest
 
-Resolve `{owner}` from Module 01 discovery (fill from Module 01 `github_username` detection; default `tomasfil`):
+Resolve `{owner}` from `.claude/bootstrap-state.json` `github_username` (Module 01 persists this field; default `tomasfil`). `BOOTSTRAP_OWNER` env var, if set, takes precedence:
 
 ```bash
-OWNER="${BOOTSTRAP_OWNER:-tomasfil}"
+set -euo pipefail
+
+OWNER="${BOOTSTRAP_OWNER:-$(jq -r '.github_username // "tomasfil"' .claude/bootstrap-state.json 2>/dev/null || echo tomasfil)}"
 REPO="claude-bootstrap"
 BRANCH="main"
 
@@ -131,7 +133,10 @@ echo "$MANIFEST_JSON" | jq -e '.skills | length > 0' >/dev/null || { echo "ERROR
 For each skill entry: resolve `source` + `target` + `sha256` + optional `references` list. Compare on-disk sha against manifest. Skip, update, or create as needed. Every reference file follows the same protocol.
 
 ```bash
-echo "$MANIFEST_JSON" | jq -c '.skills[]' | while read -r entry; do
+set -euo pipefail
+
+# Process substitution — keeps the outer loop in the current shell so `exit 1` propagates.
+while IFS= read -r entry; do
   name=$(echo "$entry" | jq -r '.name')
   source=$(echo "$entry" | jq -r '.source')
   target=$(echo "$entry" | jq -r '.target')
@@ -158,12 +163,14 @@ echo "$MANIFEST_JSON" | jq -c '.skills[]' | while read -r entry; do
 
   written_sha=$(sha256sum "$target" | awk '{print $1}')
   if [[ "$written_sha" != "$expected_sha" ]]; then
-    echo "ERROR: ${target} sha mismatch after fetch — expected ${expected_sha}, got ${written_sha}"
+    printf 'ERROR: %s sha mismatch after fetch — expected %s, got %s\n' "$target" "$expected_sha" "$written_sha" >&2
     exit 1
   fi
 
-  # References — progressive-disclosure docs under references/ subdirectory
-  echo "$entry" | jq -c '.references[]? // empty' | while read -r ref; do
+  # References — progressive-disclosure docs under references/ subdirectory.
+  # Inner loop ALSO uses process substitution — nested `jq | while` would swallow exit propagation.
+  while IFS= read -r ref; do
+    [[ -z "$ref" ]] && continue
     ref_source=$(echo "$ref" | jq -r '.source')
     ref_target=$(echo "$ref" | jq -r '.target')
     ref_sha=$(echo "$ref" | jq -r '.sha256')
@@ -174,16 +181,23 @@ echo "$MANIFEST_JSON" | jq -c '.skills[]' | while read -r entry; do
     if [[ -f "$ref_source" ]]; then cp "$ref_source" "$ref_target"
     else gh api "repos/${OWNER}/${REPO}/contents/${ref_source}?ref=${BRANCH}" --jq '.content' | base64 -d > "$ref_target"
     fi
-  done
-done
+    ref_written_sha=$(sha256sum "$ref_target" | awk '{print $1}')
+    if [[ "$ref_written_sha" != "$ref_sha" ]]; then
+      printf 'ERROR: %s sha mismatch after fetch — expected %s, got %s\n' "$ref_target" "$ref_sha" "$ref_written_sha" >&2
+      exit 1
+    fi
+  done < <(echo "$entry" | jq -c '.references[]? // empty')
+done < <(echo "$MANIFEST_JSON" | jq -c '.skills[]')
 ```
 
 ### Step 3 — Post-Fetch Verification
 
 ```bash
-echo "$MANIFEST_JSON" | jq -r '.skills[].target' | while read -r target; do
-  [[ -f "$target" ]] || { echo "MISSING: $target"; exit 1; }
-done
+set -euo pipefail
+
+while IFS= read -r target; do
+  [[ -f "$target" ]] || { printf 'MISSING: %s\n' "$target" >&2; exit 1; }
+done < <(echo "$MANIFEST_JSON" | jq -r '.skills[].target')
 echo "All manifest skills present in .claude/skills/"
 ```
 
