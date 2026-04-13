@@ -74,20 +74,150 @@ All scripts use .claude/scripts/json-val.sh for JSON extraction.
 Scripts to create:
 
 1. .claude/hooks/detect-env.sh (SessionStart)
-   Purpose: inject environment context into every session.
-   Content:
-   - OS detection via uname -s (Linux|macOS|Windows via MINGW/MSYS/CYGWIN)
-   - Shell, branch, uncommitted count, project name
-   - Branch-aware hints (main→create feature branch, hotfix→minimal changes, release→bugfixes only)
-   - Companion auto-import: if .claude/settings.json missing but ~/.claude-configs/{project}/.claude/ exists,
-     copy .claude/, .learnings/, CLAUDE.md, CLAUDE.local.md from companion
-   - Docker detection (docker info test)
-   - Spec cleanup: find .claude/specs -mtime +30 -type f -delete 2>/dev/null || true
-   - Session maintenance checks:
-     * Increment .learnings/.session-count
-     * CONSOLIDATE_DUE=true if session_count>=5 AND 24h since .learnings/.last-dream
-     * REFLECT_DUE=true if 3+ new entries in .learnings/log.md since .learnings/.last-reflect-lines
-     (count entries via grep -c '^##+ [0-9]{4}-')
+   Purpose: inject environment context + run session-maintenance counters.
+   Shell-standards compliant: #!/usr/bin/env bash, set -euo pipefail, quoted vars, [[ ]].
+   **CRITICAL — bulletproof numeric reads.** This script runs on every SessionStart. Any
+   failure renders the hook broken for the entire session. Two landmines to avoid:
+   (a) `grep -c` prints `0` AND exits 1 on zero matches — with pipefail + `||` fallback
+       INSIDE `$()`, the fallback output concatenates to grep's `0`, yielding `0\n0` which
+       then breaks `$((...))` arithmetic with `syntax error: operand expected`. Verified
+       real-world failure 2026-04-13 (blazedex project).
+   (b) Empty / CRLF / non-numeric file content breaks `$((VAR - X))` arithmetic.
+   Fix: NEVER put fallback inside `$()` for a numeric capture — use the canonical
+   `VAR=$(cmd) || VAR=0` idiom OUTSIDE `$()`, then regex-validate the numeric value
+   before arithmetic.
+
+   Content (full spec — write exactly as shown, no elision, no "similar pattern"):
+   ```bash
+   #!/usr/bin/env bash
+   # detect-env.sh — SessionStart hook
+   # Outputs environment context + runs session maintenance checks.
+   set -euo pipefail
+
+   PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
+
+   # OS detection
+   OS="unknown"
+   case "$(uname -s 2>/dev/null)" in
+     Linux*)  OS="Linux" ;;
+     Darwin*) OS="macOS" ;;
+     MINGW*|MSYS*|CYGWIN*) OS="Windows" ;;
+     *) OS="$(uname -s 2>/dev/null || printf 'Windows')" ;;
+   esac
+
+   SHELL_NAME=$(basename "${SHELL:-bash}")
+   BRANCH=$(git branch --show-current 2>/dev/null) || BRANCH="unknown"
+   [[ -n "$BRANCH" ]] || BRANCH="unknown"
+   UNCOMMITTED=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ') || UNCOMMITTED=0
+   [[ "$UNCOMMITTED" =~ ^[0-9]+$ ]] || UNCOMMITTED=0
+   PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+   PROJECT_NAME=$(basename "$PROJECT_ROOT")
+
+   # Branch-aware hints
+   BRANCH_HINT=""
+   case "$BRANCH" in
+     main|master) BRANCH_HINT="— on main, create feature branch for non-trivial work" ;;
+     hotfix/*)    BRANCH_HINT="— hotfix branch, minimal changes only" ;;
+     release/*)   BRANCH_HINT="— release branch, bugfixes and version bumps only" ;;
+     feature/*)   BRANCH_HINT="— feature branch, normal development" ;;
+   esac
+
+   # Docker availability
+   DOCKER_STATUS="unavailable"
+   if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+     DOCKER_STATUS="available"
+   fi
+
+   # Companion repo auto-import (nested layout: ~/.claude-configs/{project}/.claude/)
+   COMPANION_DIR="$HOME/.claude-configs/$PROJECT_NAME"
+   COMPANION_STATUS=""
+   if [[ -d "$HOME/.claude-configs/.git" ]]; then
+     if [[ ! -f "$PROJECT_DIR/.claude/settings.json" ]] && [[ -f "$COMPANION_DIR/.claude/settings.json" ]]; then
+       mkdir -p "$PROJECT_DIR/.claude"
+       cp -r "$COMPANION_DIR/.claude/"* "$PROJECT_DIR/.claude/" 2>/dev/null || true
+       [[ -d "$COMPANION_DIR/.learnings" ]] && cp -r "$COMPANION_DIR/.learnings" "$PROJECT_DIR/" 2>/dev/null || true
+       [[ -f "$COMPANION_DIR/CLAUDE.md" ]] && cp "$COMPANION_DIR/CLAUDE.md" "$PROJECT_DIR/" 2>/dev/null || true
+       [[ -f "$COMPANION_DIR/CLAUDE.local.md" ]] && cp "$COMPANION_DIR/CLAUDE.local.md" "$PROJECT_DIR/" 2>/dev/null || true
+       COMPANION_STATUS="COMPANION_IMPORTED=true"
+     fi
+   fi
+
+   # Spec cleanup — delete specs older than 30 days
+   if [[ -d "$PROJECT_DIR/.claude/specs" ]]; then
+     find "$PROJECT_DIR/.claude/specs" -mtime +30 -type f -delete 2>/dev/null || true
+   fi
+
+   cat <<EOF
+   Environment:
+     OS: $OS
+     Shell: $SHELL_NAME
+     Project: $PROJECT_NAME
+     Branch: $BRANCH $BRANCH_HINT
+     Uncommitted files: $UNCOMMITTED
+     Docker: $DOCKER_STATUS
+   EOF
+
+   [[ -n "$COMPANION_STATUS" ]] && printf '%s\n' "$COMPANION_STATUS"
+
+   # --- Session maintenance: bulletproof numeric reads ---
+   SESSION_COUNT_FILE="$PROJECT_DIR/.learnings/.session-count"
+   LAST_DREAM_FILE="$PROJECT_DIR/.learnings/.last-dream"
+   LAST_REFLECT_FILE="$PROJECT_DIR/.learnings/.last-reflect-lines"
+   LOG_FILE="$PROJECT_DIR/.learnings/log.md"
+
+   mkdir -p "$PROJECT_DIR/.learnings"
+
+   # read_int: return a validated integer from a file, 0 on any failure/missing/garbage.
+   # NEVER inline this as `VAR=$(cat f || printf 0)` — output concatenation corrupts the value.
+   read_int() {
+     local file="$1"
+     local val=0
+     if [[ -f "$file" ]]; then
+       val=$(tr -d '\r\n ' < "$file" 2>/dev/null) || val=0
+     fi
+     [[ "$val" =~ ^[0-9]+$ ]] || val=0
+     printf '%s' "$val"
+   }
+
+   # count_matches: return a validated match count, 0 on any failure/missing/zero-match.
+   # grep -c prints "0" AND exits 1 on zero matches — that is the landmine.
+   # `VAR=$(grep -c ...) || VAR=0` is the canonical fix: the `|| VAR=0` sits OUTSIDE
+   # the command substitution, so the fallback does not concatenate to grep's stdout.
+   count_matches() {
+     local pattern="$1"
+     local file="$2"
+     local n=0
+     [[ -f "$file" ]] || { printf '0'; return; }
+     n=$(grep -cE "$pattern" "$file" 2>/dev/null) || n=0
+     [[ "$n" =~ ^[0-9]+$ ]] || n=0
+     printf '%s' "$n"
+   }
+
+   # Increment session count
+   COUNT=$(read_int "$SESSION_COUNT_FILE")
+   COUNT=$((COUNT + 1))
+   printf '%s\n' "$COUNT" > "$SESSION_COUNT_FILE"
+
+   # Consolidate: 5+ sessions AND 24h since last dream
+   if [[ "$COUNT" -ge 5 ]]; then
+     LAST_DREAM=$(read_int "$LAST_DREAM_FILE")
+     NOW=$(date +%s)
+     ELAPSED=$(( NOW - LAST_DREAM ))
+     if [[ "$ELAPSED" -gt 86400 ]]; then
+       printf 'CONSOLIDATE_DUE=true\n'
+     fi
+   fi
+
+   # Reflect: 3+ new dated entries in log.md since last reflect
+   CURRENT_ENTRIES=$(count_matches '^##+ [0-9]{4}-' "$LOG_FILE")
+   LAST_ENTRIES=$(read_int "$LAST_REFLECT_FILE")
+   NEW_ENTRIES=$(( CURRENT_ENTRIES - LAST_ENTRIES ))
+   if [[ "$NEW_ENTRIES" -ge 3 ]]; then
+     printf 'REFLECT_DUE=true\n'
+   fi
+   ```
+   Verification: `chmod +x .claude/hooks/detect-env.sh`. Smoke test after writing:
+   `bash .claude/hooks/detect-env.sh >/dev/null` must exit 0 even when `.learnings/` is empty.
 
 2. .claude/hooks/guard-git.sh (PreToolUse — matcher: Bash)
    Purpose: block dangerous git operations. Exit 2 = block.
