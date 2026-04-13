@@ -103,6 +103,7 @@ Create ALWAYS:
    - Code quality: no dead code, no TODO w/o issue, English, follow existing patterns, extend not duplicate
    - Process: READ_BEFORE_WRITE, test after change, 2-fail→web, log corrections,
      dispatch agents when specified, no built-in Explore/general-purpose/plugin agents (use proj-quick-check | proj-researcher), never background agents
+   - Templates: post-P2 bootstrap repo's `templates/` is source of truth for skill + agent body content. Edit skills/agents via `templates/skills/{name}/SKILL.md` / `templates/agents/{name}.md` in the bootstrap repo, NOT the client project's `.claude/` (that's generated output). `modules/05` + `modules/06` are fetch-loop orchestration only — not skill/agent content.
 
 2. .claude/rules/code-standards-{lang}.md (one per detected language)
    - Naming conventions (from codebase analysis)

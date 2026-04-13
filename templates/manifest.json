@@ -1,0 +1,282 @@
+{
+  "version": 1,
+  "skills": [
+    {
+      "name": "brainstorm",
+      "source": "templates/skills/brainstorm/SKILL.md",
+      "target": ".claude/skills/brainstorm/SKILL.md",
+      "sha256": "49cb82d67e08ba22fca6355c4932851726802487058c64cab1dfedd77773d5c0",
+      "references": []
+    },
+    {
+      "name": "deep-think",
+      "source": "templates/skills/deep-think/SKILL.md",
+      "target": ".claude/skills/deep-think/SKILL.md",
+      "sha256": "f266ad6f780a1668949d8a05370a1406f744c9a3aefe19031d7e3e4a62669505",
+      "references": []
+    },
+    {
+      "name": "write-plan",
+      "source": "templates/skills/write-plan/SKILL.md",
+      "target": ".claude/skills/write-plan/SKILL.md",
+      "sha256": "7caac93c131c16d44503d6ecf634acec6a27e019f3ebbb02a71da6e8a83dc56d",
+      "references": []
+    },
+    {
+      "name": "execute-plan",
+      "source": "templates/skills/execute-plan/SKILL.md",
+      "target": ".claude/skills/execute-plan/SKILL.md",
+      "sha256": "de0052e973b86c932deb79c336e480ec033446440782602089b53c40ba5800d3",
+      "references": []
+    },
+    {
+      "name": "tdd",
+      "source": "templates/skills/tdd/SKILL.md",
+      "target": ".claude/skills/tdd/SKILL.md",
+      "sha256": "8f55b905f5bf37bdef306084ff4f88e9dbb125deaec45044d3d5dd712f513602",
+      "references": []
+    },
+    {
+      "name": "debug",
+      "source": "templates/skills/debug/SKILL.md",
+      "target": ".claude/skills/debug/SKILL.md",
+      "sha256": "425ebb4579f31e95f40d247cd36d23cb300f3b71d7066000a35834f30374df2c",
+      "references": []
+    },
+    {
+      "name": "code-write",
+      "source": "templates/skills/code-write/SKILL.md",
+      "target": ".claude/skills/code-write/SKILL.md",
+      "sha256": "e3aeedb966bd301f14c18c21d51d4e23c8943418c0946c2d9fa0c8928dc5b743",
+      "references": []
+    },
+    {
+      "name": "verify",
+      "source": "templates/skills/verify/SKILL.md",
+      "target": ".claude/skills/verify/SKILL.md",
+      "sha256": "ad0def7addc34eff02046ef8fd48c76b1b0503e0d91fa59593ac005bb2075753",
+      "references": []
+    },
+    {
+      "name": "review",
+      "source": "templates/skills/review/SKILL.md",
+      "target": ".claude/skills/review/SKILL.md",
+      "sha256": "d200f698a666086b4d17b02245977d97dd5f40ba6ced8b7c20f37aa07cbce445",
+      "references": []
+    },
+    {
+      "name": "audit-file",
+      "source": "templates/skills/audit-file/SKILL.md",
+      "target": ".claude/skills/audit-file/SKILL.md",
+      "sha256": "a080b8203c8f9ae053db6e6f3e3348b0fb0dc6d31cb43f591a6de1bbc3a767af",
+      "references": []
+    },
+    {
+      "name": "audit-memory",
+      "source": "templates/skills/audit-memory/SKILL.md",
+      "target": ".claude/skills/audit-memory/SKILL.md",
+      "sha256": "ab01d3c67157e0b8b7bdd5f78a3d3b1c020956c6c79d2038e0f5e5bbffcb8607",
+      "references": []
+    },
+    {
+      "name": "audit-agents",
+      "source": "templates/skills/audit-agents/SKILL.md",
+      "target": ".claude/skills/audit-agents/SKILL.md",
+      "sha256": "ada908ec25ea3c825cdc138d70c8170c13021ac86f524b4fb8908572966e634d",
+      "references": []
+    },
+    {
+      "name": "commit",
+      "source": "templates/skills/commit/SKILL.md",
+      "target": ".claude/skills/commit/SKILL.md",
+      "sha256": "e114fbc407b67a88686640c2cafbc220827268cc9fcc366bf848a0283b438f52",
+      "references": []
+    },
+    {
+      "name": "pr",
+      "source": "templates/skills/pr/SKILL.md",
+      "target": ".claude/skills/pr/SKILL.md",
+      "sha256": "148ab08f4e8572d4b1d358125b206019dc17ecb4d414bfd4f7f53334f875ff51",
+      "references": []
+    },
+    {
+      "name": "reflect",
+      "source": "templates/skills/reflect/SKILL.md",
+      "target": ".claude/skills/reflect/SKILL.md",
+      "sha256": "bae5b359a902d575e25a45084fdf3d1995fff40e99901ace6a6415304b3021b7",
+      "references": []
+    },
+    {
+      "name": "consolidate",
+      "source": "templates/skills/consolidate/SKILL.md",
+      "target": ".claude/skills/consolidate/SKILL.md",
+      "sha256": "dd03ebcefdcb89499c0dea26363ee54a08596b906bce44e08b57913124867343",
+      "references": []
+    },
+    {
+      "name": "evolve-agents",
+      "source": "templates/skills/evolve-agents/SKILL.md",
+      "target": ".claude/skills/evolve-agents/SKILL.md",
+      "sha256": "499db0ed75c18bef1c6ae6dd3d62de1b01fe2f9135ab25a7e3272404442aec03",
+      "references": []
+    },
+    {
+      "name": "migrate-bootstrap",
+      "source": "templates/skills/migrate-bootstrap/SKILL.md",
+      "target": ".claude/skills/migrate-bootstrap/SKILL.md",
+      "sha256": "7fc97a327385f3c261a5db5d1d9aeb536de1e09f6dad9e1b55c6b2de87b2ae63",
+      "references": []
+    },
+    {
+      "name": "coverage",
+      "source": "templates/skills/coverage/SKILL.md",
+      "target": ".claude/skills/coverage/SKILL.md",
+      "sha256": "3a4d0e0cb51da4946f4ec410c4262966bfcbb17601f7dafa985df1ed6ba71eae",
+      "references": []
+    },
+    {
+      "name": "coverage-gaps",
+      "source": "templates/skills/coverage-gaps/SKILL.md",
+      "target": ".claude/skills/coverage-gaps/SKILL.md",
+      "sha256": "20e6c404b8cdf79f30ccabdfa9d66bd17a169aa61a817b5160226475d4ebedb3",
+      "references": []
+    },
+    {
+      "name": "write-ticket",
+      "source": "templates/skills/write-ticket/SKILL.md",
+      "target": ".claude/skills/write-ticket/SKILL.md",
+      "sha256": "78c0599d09b1ffd60376082d854595be111425604c72505e173320d02ad49b81",
+      "references": []
+    },
+    {
+      "name": "ci-triage",
+      "source": "templates/skills/ci-triage/SKILL.md",
+      "target": ".claude/skills/ci-triage/SKILL.md",
+      "sha256": "e60543139adede6edb7cfa0484f597c003d0bfbd790dd4a139e01ecb7760748a",
+      "references": []
+    },
+    {
+      "name": "write-prompt",
+      "source": "templates/skills/write-prompt/SKILL.md",
+      "target": ".claude/skills/write-prompt/SKILL.md",
+      "sha256": "b2a095d640ebe3eae528c7d3b3fc3eea1366542ea6bd60c0071d3209e6894b0f",
+      "references": []
+    },
+    {
+      "name": "module-write",
+      "source": "templates/skills/module-write/SKILL.md",
+      "target": ".claude/skills/module-write/SKILL.md",
+      "sha256": "9c623dcd9c09b1406770d0f0b4ea96266d13a6bbf9491487c23fa0ec839fad9e",
+      "references": []
+    },
+    {
+      "name": "sync",
+      "source": "templates/skills/sync/SKILL.md",
+      "target": ".claude/skills/sync/SKILL.md",
+      "sha256": "4c7a7c0749a5d5a1ed968af425a28baa3475f7790d27decbc0da3763f12d7fa4",
+      "references": []
+    },
+    {
+      "name": "test-fork",
+      "source": "templates/skills/test-fork/SKILL.md",
+      "target": ".claude/skills/test-fork/SKILL.md",
+      "sha256": "66059096ef07acd3a99e46db360ffc2094627370bde090a73b355e0fee65ac38",
+      "references": []
+    },
+    {
+      "name": "test-fork-success",
+      "source": "templates/skills/test-fork-success/SKILL.md",
+      "target": ".claude/skills/test-fork-success/SKILL.md",
+      "sha256": "f0e00511942572a354fcac18833485131c3cd09161f5b271f7f17c21cf555aff",
+      "references": []
+    }
+  ],
+  "agents": [
+    {
+      "name": "proj-quick-check",
+      "source": "templates/agents/proj-quick-check.md",
+      "target": ".claude/agents/proj-quick-check.md",
+      "sha256": "0b934172e8e6082b979af60b1af6be5eecea8c06b1a38a3bf0e6642839d0c924"
+    },
+    {
+      "name": "proj-plan-writer",
+      "source": "templates/agents/proj-plan-writer.md",
+      "target": ".claude/agents/proj-plan-writer.md",
+      "sha256": "9bc73c2067c1cd8375c2be17d509c4f301d8e5a1ea0fb87340beb3fab924d135"
+    },
+    {
+      "name": "proj-consistency-checker",
+      "source": "templates/agents/proj-consistency-checker.md",
+      "target": ".claude/agents/proj-consistency-checker.md",
+      "sha256": "77a1da9f1625ca7c307db4e3b3b7780588abb98d7d2812e2088956c013af073a"
+    },
+    {
+      "name": "proj-debugger",
+      "source": "templates/agents/proj-debugger.md",
+      "target": ".claude/agents/proj-debugger.md",
+      "sha256": "c42d1eb3668b7d7afd3a310dd7b1a78d43daf9091fbc60cbeb136b592441d48e"
+    },
+    {
+      "name": "proj-verifier",
+      "source": "templates/agents/proj-verifier.md",
+      "target": ".claude/agents/proj-verifier.md",
+      "sha256": "258efa2488d9815e2afe54ceb44c7fa3b6078b3f38172b0d6f11bb6b090d6ff0"
+    },
+    {
+      "name": "proj-reflector",
+      "source": "templates/agents/proj-reflector.md",
+      "target": ".claude/agents/proj-reflector.md",
+      "sha256": "67386113f2c27977b4ea69928978ce42e91e16149e5a6f7622d5f01645fa0dcf"
+    },
+    {
+      "name": "proj-tdd-runner",
+      "source": "templates/agents/proj-tdd-runner.md",
+      "target": ".claude/agents/proj-tdd-runner.md",
+      "sha256": "3ef61d6bc17906ee82eb4194e2a7ef7e6fdf7dede87489664936f94d37b10348"
+    },
+    {
+      "name": "proj-researcher",
+      "source": "templates/agents/proj-researcher.md",
+      "target": ".claude/agents/proj-researcher.md",
+      "sha256": "41a92c8dd47709dc36210ddc3450f2c693900d5c8b2990f2b22e6b782478ae14"
+    },
+    {
+      "name": "proj-code-writer-markdown",
+      "source": "templates/agents/proj-code-writer-markdown.md",
+      "target": ".claude/agents/proj-code-writer-markdown.md",
+      "sha256": "d6d65c4f491719e3c18faf26eac0a483b435fd9f0bf51772556e307ed518e942"
+    },
+    {
+      "name": "proj-code-writer-bash",
+      "source": "templates/agents/proj-code-writer-bash.md",
+      "target": ".claude/agents/proj-code-writer-bash.md",
+      "sha256": "dd6d1f7c94d9832d8dad3fd33003773e336c9f8453435eb0bf0589997f7c612c"
+    }
+  ],
+  "agent-templates": [
+    {
+      "name": "code-writer",
+      "source": "templates/agents/code-writer.template.md",
+      "target_pattern": ".claude/agents/proj-code-writer-{lang}.md",
+      "sha256": "dda814419b915fca467a0ebd4cdf42530b76d63ab2d623f6177b82c641f97df4",
+      "placeholders": [
+        "{lang}",
+        "{build_cmd}",
+        "{test_cmd}",
+        "{lint_cmd}"
+      ]
+    },
+    {
+      "name": "test-writer",
+      "source": "templates/agents/test-writer.template.md",
+      "target_pattern": ".claude/agents/proj-test-writer-{lang}.md",
+      "sha256": "40f9de44bd7e691114d24f0594bf78961d173514da4759608b0bbaeca9592ca0",
+      "placeholders": [
+        "{lang}",
+        "{build_cmd}",
+        "{test_cmd}",
+        "{lint_cmd}"
+      ]
+    }
+  ]
+}

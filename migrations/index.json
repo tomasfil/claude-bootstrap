@@ -126,6 +126,12 @@
       "file": "021-taskcreate-gate-execute-plan-deep-think.md",
       "description": "TaskCreate observability gate for /execute-plan and /deep-think — idempotent awk patches inject a ToolSearch-loaded TaskCreate/TaskUpdate call-site into both SKILL.md files: Step 0 + Post-Execution closeout in execute-plan; post-Iteration-State gate section + per-phase TaskUpdate markers (Phases 1-6) + Phase 7 closeout in deep-think. Sentinel-guarded (literal 'ToolSearch(\"select:TaskCreate,TaskUpdate\")'), re-run safe, no regex with '.*' anywhere (per .learnings/log.md:10-11 rule — sed anchors must be literal). Backed by the shared TASKCREATE_GATE_BLOCK definition newly added to modules/06-skills.md after PRE_FLIGHT_GATE_BLOCK; client-project bootstrap refreshes regenerate both skills with the gate in place, this migration brings already-bootstrapped projects forward without a full refresh. Fails fast on anchor drift with a clear manual-patch message — never silently half-patches.",
       "breaking": false
+    },
+    {
+      "id": "022",
+      "file": "022-template-fetch-bootstrap.md",
+      "description": "Replace LLM-rendered skill/agent bootstrap with template-fetch from tracked templates/ directory. Modules 05+06 become thin fetch loops. SHA-idempotent per-file overwrite.",
+      "breaking": false
     }
   ]
 }
