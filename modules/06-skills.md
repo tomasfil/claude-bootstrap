@@ -105,6 +105,40 @@ Skill specs below reference this via `{PRE_FLIGHT_GATE_BLOCK — see top of modu
 
 ---
 
+### TASKCREATE_GATE_BLOCK
+
+Reusable block injected into long-running main-thread orchestrator skills (`/execute-plan`, `/deep-think`, and any future multi-phase skill) to create a harness-level task entry on start and close it on completion or abort. Purpose: make long skills observable in the harness task list, enabling cross-session tracking and allowing `/reflect` + `/consolidate` to correlate learning entries with the task that produced them.
+
+**Parameters the skill must substitute at invocation site:**
+
+- `{TASK_NAME_EXPR}` — short human-readable task subject (e.g., `f"execute-plan: {plan-basename}"`, `f"deep-think: {topic_slug}"`). MUST be a single line, ≤80 chars, no newlines.
+- `{TASK_DESCRIPTION_EXPR}` — 1-sentence task description capturing scope (e.g., `"Execute plan {plan-path} — {batch-count} batches"`, `"Deep-think on {topic} — {phase_count} phases, {persona_count} personas"`). Free-form prose.
+
+**Block body (4 numbered steps — execute top-down at the skill's first executable step):**
+
+```
+1. Load TaskCreate/TaskUpdate via `ToolSearch("select:TaskCreate,TaskUpdate")`.
+   If the ToolSearch returns no schemas OR calling TaskCreate raises InputValidationError
+   → set TASK_TRACKING=false, print one warning line
+     (`TaskCreate unavailable — continuing without harness task tracking`), continue.
+2. (TASK_TRACKING=true) Call `TaskCreate(subject={TASK_NAME_EXPR}, description={TASK_DESCRIPTION_EXPR})`,
+   then immediately `TaskUpdate(taskId=<returned-id>, status="in_progress")`.
+   Remember the returned taskId for the duration of the skill run (in-memory only; do
+   not persist to disk — the harness owns the task-list state).
+3. On successful skill completion (all phases/batches passed, review clean):
+   `TaskUpdate(taskId=<id>, status="completed")`. This is the closeout call.
+4. On error / abort / user-cancel / hard-fail:
+   `TaskUpdate(taskId=<id>, status="in_progress", description={original_description} + "\n\nBLOCKED: {reason}")`.
+   Do NOT mark completed. Leaving status=in_progress with a BLOCKED suffix lets the
+   harness task list surface the failure instead of silently closing it.
+```
+
+**Idempotency marker:** presence of the literal string `ToolSearch("select:TaskCreate,TaskUpdate")` anywhere in a target file means this block has already been applied. Migrations and re-runs MUST `grep -q` for this literal before patching and skip if found. Do not use a regex with `.*` — the check is a literal-string match.
+
+Skill specs below reference this via `{TASKCREATE_GATE_BLOCK — see top of module}` — agent generating the skill MUST expand the reference to the literal block above, substituting `{TASK_NAME_EXPR}` and `{TASK_DESCRIPTION_EXPR}` with the skill-specific expressions defined in that skill's dispatch spec.
+
+---
+
 ### Batch 1 — Independent Simple Skills (dispatch ALL simultaneously)
 
 9 skills w/ no cross-skill dependencies. Inline execution (no agent dispatch within skill body).
