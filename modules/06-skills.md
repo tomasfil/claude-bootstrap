@@ -350,7 +350,7 @@ Frontmatter:
   description: >
     Use when syncing .claude/ config to companion repo or importing from it.
     Push/pull config between project and ~/.claude-configs/{project}/.
-  argument-hint: "[push|pull|status|export|import]"
+  argument-hint: "[push|pull|status|export [--prune]|import]"
 
 Body — ## /sync — Companion Repo Sync:
 - Delegates to .claude/scripts/sync-config.sh
@@ -359,7 +359,7 @@ Body — ## /sync — Companion Repo Sync:
   - import: copy companion repo → .claude/
   - push: export + git push companion
   - pull: git pull companion + import
-  - status: show sync state (last sync time, dirty files)
+  - status: show per-directory sync state — three categories: NEW (project-only), DIFF (content differs), STALE (companion-only). Appends "To prune stale files: /sync export --prune" hint when STALE > 0
 - Anti-hallucination: verify sync-config.sh exists before running;
   if missing → tell user "Run Module 09 first" or create from Module 09 template
 ```

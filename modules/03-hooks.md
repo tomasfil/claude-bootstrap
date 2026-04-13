@@ -129,15 +129,33 @@ Scripts to create:
    fi
 
    # Companion repo auto-import (nested layout: ~/.claude-configs/{project}/.claude/)
+   # Additive-only per-target restore: copies only targets MISSING from project.
+   # Never overwrites existing project files. Never copies machine-specific files.
    COMPANION_DIR="$HOME/.claude-configs/$PROJECT_NAME"
    COMPANION_STATUS=""
    if [[ -d "$HOME/.claude-configs/.git" ]]; then
      if [[ ! -f "$PROJECT_DIR/.claude/settings.json" ]] && [[ -f "$COMPANION_DIR/.claude/settings.json" ]]; then
        mkdir -p "$PROJECT_DIR/.claude"
-       cp -r "$COMPANION_DIR/.claude/"* "$PROJECT_DIR/.claude/" 2>/dev/null || true
-       [[ -d "$COMPANION_DIR/.learnings" ]] && cp -r "$COMPANION_DIR/.learnings" "$PROJECT_DIR/" 2>/dev/null || true
-       [[ -f "$COMPANION_DIR/CLAUDE.md" ]] && cp "$COMPANION_DIR/CLAUDE.md" "$PROJECT_DIR/" 2>/dev/null || true
-       [[ -f "$COMPANION_DIR/CLAUDE.local.md" ]] && cp "$COMPANION_DIR/CLAUDE.local.md" "$PROJECT_DIR/" 2>/dev/null || true
+       # Per-SYNC_DIR additive restore — matches sync scope exactly; never touches settings.local.json
+       for d in rules skills agents hooks scripts specs references; do
+         if [[ -d "$COMPANION_DIR/.claude/$d" ]] && [[ ! -d "$PROJECT_DIR/.claude/$d" ]]; then
+           mkdir -p "$PROJECT_DIR/.claude/$d"
+           cp -r "$COMPANION_DIR/.claude/$d/." "$PROJECT_DIR/.claude/$d/" 2>/dev/null || true
+         fi
+       done
+       # settings.json: copy only if missing (never settings.local.json — machine-specific)
+       if [[ -f "$COMPANION_DIR/.claude/settings.json" ]] && [[ ! -f "$PROJECT_DIR/.claude/settings.json" ]]; then
+         cp "$COMPANION_DIR/.claude/settings.json" "$PROJECT_DIR/.claude/settings.json" 2>/dev/null || true
+       fi
+       # .learnings/: copy only if missing
+       if [[ -d "$COMPANION_DIR/.learnings" ]] && [[ ! -d "$PROJECT_DIR/.learnings" ]]; then
+         cp -r "$COMPANION_DIR/.learnings" "$PROJECT_DIR/" 2>/dev/null || true
+       fi
+       # CLAUDE.md: copy only if missing
+       if [[ -f "$COMPANION_DIR/CLAUDE.md" ]] && [[ ! -f "$PROJECT_DIR/CLAUDE.md" ]]; then
+         cp "$COMPANION_DIR/CLAUDE.md" "$PROJECT_DIR/" 2>/dev/null || true
+       fi
+       # CLAUDE.local.md: NEVER restored — machine-specific, in DO NOT SYNC (modules/09:65)
        COMPANION_STATUS="COMPANION_IMPORTED=true"
      fi
    fi
@@ -332,10 +350,15 @@ Scripts to create:
    - Abort if [[ -d "$COMPANION/.git" ]] — echo "sync-companion: nested .git at $COMPANION, run /migrate-bootstrap (migration 006)" >&2; exit 1
    - NEVER run `git init` inside "$COMPANION" — umbrella is the only repo
    - mkdir -p "$COMPANION/.claude" "$COMPANION/.learnings"
-   - rsync (preferred) or cp -r fallback:
-       .claude/       → "$COMPANION/.claude/"
-       .learnings/    → "$COMPANION/.learnings/"
-   - Copy (if exist): CLAUDE.md, CLAUDE.local.md → "$COMPANION/"
+   - rsync (preferred) or nuke-and-repave cp -r fallback:
+       rsync: --exclude='.git' --exclude='settings.local.json' on export (settings.local.json is DO NOT SYNC)
+       .claude/       → "$COMPANION/.claude/"    (rsync --delete | rm -rf + cp -r /.)
+       .learnings/    → "$COMPANION/.learnings/" (rsync --delete | rm -rf + cp -r /.)
+       Fallback (no rsync): nuke-and-repave — rm -rf "${COMPANION:?}/.claude/" then cp -r "$PROJECT_ROOT/.claude/." "$COMPANION/.claude/"
+       Fallback cp -r: use trailing /. (not /*) to include dotfiles
+       After fallback cp -r: rm -f "$COMPANION/.claude/settings.local.json" (machine-specific, DO NOT SYNC)
+   - Copy (if exist): CLAUDE.md → "$COMPANION/"
+   - NEVER copy CLAUDE.local.md — machine-specific, in DO NOT SYNC (modules/09:65)
    - Stage + commit via umbrella ONLY, path-scoped to this project:
        git -C "$COMPANION_ROOT" add -- "$PROJECT_NAME"
        git -C "$COMPANION_ROOT" diff --cached --quiet -- "$PROJECT_NAME" && exit 0
