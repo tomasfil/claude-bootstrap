@@ -168,7 +168,7 @@ Scripts to create:
    mkdir -p "$PROJECT_DIR/.learnings"
 
    # read_int: return a validated integer from a file, 0 on any failure/missing/garbage.
-   # NEVER inline this as `VAR=$(cat f || printf 0)` — output concatenation corrupts the value.
+   # NEVER inline the fallback inside the substitution — output concatenation corrupts the value.
    read_int() {
      local file="$1"
      local val=0
