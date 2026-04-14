@@ -323,6 +323,12 @@
       "source": "templates/agents/proj-code-writer-bash.md",
       "target": ".claude/agents/proj-code-writer-bash.md",
       "sha256": "dd6d1f7c94d9832d8dad3fd33003773e336c9f8453435eb0bf0589997f7c612c"
+    },
+    {
+      "name": "proj-code-reviewer",
+      "source": "templates/agents/proj-code-reviewer.md",
+      "target": ".claude/agents/proj-code-reviewer.md",
+      "sha256": "f1f7fc1a1f757f0b7cca568f889ed456df39ff18afeee789a0aad4f7e407a91e"
     }
   ],
   "agent-templates": [
