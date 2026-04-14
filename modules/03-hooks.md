@@ -81,7 +81,7 @@ Scripts to create:
    (a) `grep -c` prints `0` AND exits 1 on zero matches — with pipefail + `||` fallback
        INSIDE `$()`, the fallback output concatenates to grep's `0`, yielding `0\n0` which
        then breaks `$((...))` arithmetic with `syntax error: operand expected`. Verified
-       real-world failure 2026-04-13 (blazedex project).
+       real-world failure on a downstream project (2026-04).
    (b) Empty / CRLF / non-numeric file content breaks `$((VAR - X))` arithmetic.
    Fix: NEVER put fallback inside `$()` for a numeric capture — use the canonical
    `VAR=$(cmd) || VAR=0` idiom OUTSIDE `$()`, then regex-validate the numeric value
@@ -481,6 +481,250 @@ Scripts to create:
    Verification: chmod +x .claude/hooks/gate-task-complete.sh. Smoke-test fixtures (see Step 5
    Verify Wiring) confirm no-marker → exit 2 and with-marker → exit 0.
 
+11. .claude/hooks/mcp-discovery-gate.sh (PreToolUse — matcher: Grep|Glob|Search)
+   Purpose: block symbol-shaped Grep/Glob/Search when codebase-memory-mcp or serena is registered in any MCP scope (project .mcp.json, user ~/.claude.json top-level or projects.<cwd>.mcpServers, managed managed-settings.json, or a plugin-bundled server).
+   Reads PreToolUse JSON on stdin, classifies via python3 regex, emits JSON decision + exit 2 on block.
+   Fail-open on parse errors (broken hook never breaks unrelated tool use). See .claude/rules/mcp-routing.md.
+   Layer 3 enforcement for the MCP-first discipline — layer 1 is the rule (mcp-routing.md Grep Ban),
+   layer 2 is the STEP 0 First-Tool Contract clause in every proj-* agent, layer 3 is this hook
+   mechanically blocking symbol-shaped Grep/Glob/Search at PreToolUse.
+
+   Content (full spec — write exactly as shown, no elision, no "similar pattern follows"):
+   ```bash
+   #!/usr/bin/env bash
+   # mcp-discovery-gate.sh — PreToolUse hook: block symbol-shaped Grep/Glob/Search
+   # when cmm or serena MCP is available in ANY scope (project, user, local,
+   # managed, plugin). Routes the agent/main to the graph instead.
+   # Reads PreToolUse JSON on stdin. Emits JSON decision on stdout. Exits 2 to block.
+   # Fail-open on every error path (a broken hook must never break unrelated tool use).
+   set -euo pipefail
+
+   # Read PreToolUse JSON from stdin into a shell variable, then pass to python3
+   # via an environment variable. This avoids the MINGW64 heredoc/stdin collision:
+   # `printf ... | python3 - <<'PY'` sends the heredoc (script) to python3's stdin,
+   # NOT the piped INPUT — so the pipe is lost on MINGW64 / Git Bash. Env-var
+   # passing is reliable across platforms and does not collide with the script
+   # heredoc.
+   INPUT=$(cat)
+
+   # Single python3 invocation: parse tool input JSON, check MCP availability
+   # across all known scopes, classify pattern. Emits one of:
+   #   allow                   → exit 0
+   #   block|<trigger label>   → emit decision JSON on stdout + stderr reason + exit 2
+   RESULT=$(CLAUDE_HOOK_INPUT="$INPUT" python3 - <<'PY'
+   import sys, json, os, re, glob
+
+   def fail_open():
+       print("allow")
+       sys.exit(0)
+
+   # ── Parse PreToolUse JSON from CLAUDE_HOOK_INPUT env var ────────
+   raw = os.environ.get("CLAUDE_HOOK_INPUT", "")
+   if not raw:
+       fail_open()
+   try:
+       data = json.loads(raw)
+   except Exception:
+       fail_open()
+   if not isinstance(data, dict):
+       fail_open()
+
+   tool_name = data.get("tool_name") or ""
+   tool_input = data.get("tool_input") or {}
+
+   # Only gate Grep / Glob / Search — Read handled by user-level priming hook
+   if tool_name not in ("Grep", "Glob", "Search"):
+       fail_open()
+
+   pattern = ""
+   if isinstance(tool_input, dict):
+       pattern = tool_input.get("pattern") or tool_input.get("query") or ""
+   if not isinstance(pattern, str):
+       pattern = str(pattern)
+   if not pattern:
+       fail_open()
+
+   # ── MCP availability check (multi-scope) ────────────────────────
+   # Returns True if codebase-memory-mcp or serena is registered in any scope
+   # Claude Code reads: project, user, local, managed, plugin. Silent fail-open
+   # on every parse error — a broken hook must never break unrelated tool use.
+   #
+   # Scopes covered (per https://code.claude.com/docs/en/mcp and
+   # https://code.claude.com/docs/en/settings):
+   #
+   #   1. Project scope — ./.mcp.json (`mcpServers` key) at project root
+   #   2. User scope    — ~/.claude.json top-level `mcpServers` key
+   #   3. Local scope   — ~/.claude.json → `projects.<abs-path>.mcpServers`
+   #                      (stored per-project in the same ~/.claude.json file)
+   #   4. Managed scope — file-based managed-settings.json + managed-mcp.json
+   #                      per-OS system path, plus managed-settings.d/*.json
+   #                      drop-in directory (merged alphabetically)
+   #   5. Plugin scope  — plugins may bundle .mcp.json at plugin root; best-effort
+   #                      shallow scan under ~/.claude/plugins/*/.mcp.json
+   #
+   # NOT covered (unreachable or out-of-scope for a bash hook):
+   #   - Windows HKCU registry managed settings (requires reg.exe query)
+   #   - Server-managed remote fetch (requires auth + network)
+   #   - Plugins installed under non-standard roots
+   TARGET_SERVERS = ("codebase-memory-mcp", "serena")
+
+   def has_target(mcp_servers):
+       if not isinstance(mcp_servers, dict):
+           return False
+       return any(name in mcp_servers for name in TARGET_SERVERS)
+
+   def load_json(path):
+       try:
+           with open(path, "r", encoding="utf-8") as f:
+               return json.load(f)
+       except Exception:
+           return None
+
+   def mcp_available():
+       cwd = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+       home = os.path.expanduser("~")
+
+       # 1. Project scope — ./.mcp.json
+       d = load_json(os.path.join(cwd, ".mcp.json"))
+       if d and has_target(d.get("mcpServers")):
+           return True
+
+       # 2. User scope + 3. Local scope — ~/.claude.json
+       d = load_json(os.path.join(home, ".claude.json"))
+       if d:
+           # User scope: top-level "mcpServers"
+           if has_target(d.get("mcpServers")):
+               return True
+           # Local scope: projects.<cwd>.mcpServers
+           projects = d.get("projects") or {}
+           if isinstance(projects, dict):
+               # Build candidate keys for the current project. Claude Code may store
+               # paths with native or forward-slash separators, absolute or realpath.
+               candidates = {cwd, os.path.abspath(cwd)}
+               try:
+                   candidates.add(os.path.realpath(cwd))
+               except Exception:
+                   pass
+               for c in list(candidates):
+                   candidates.add(c.replace("\\", "/"))
+               for key, entry in projects.items():
+                   if key in candidates and isinstance(entry, dict):
+                       if has_target(entry.get("mcpServers")):
+                           return True
+
+       # 4. Managed scope — file-based managed-settings.json + managed-mcp.json
+       managed_dirs = []
+       if sys.platform == "darwin":
+           managed_dirs.append("/Library/Application Support/ClaudeCode")
+       elif sys.platform.startswith("linux"):
+           managed_dirs.append("/etc/claude-code")
+       if os.name == "nt" or sys.platform == "win32":
+           managed_dirs.append(r"C:\Program Files\ClaudeCode")
+
+       for mdir in managed_dirs:
+           for fname in ("managed-settings.json", "managed-mcp.json"):
+               d = load_json(os.path.join(mdir, fname))
+               if d and has_target(d.get("mcpServers")):
+                   return True
+           dropin = os.path.join(mdir, "managed-settings.d")
+           if os.path.isdir(dropin):
+               try:
+                   for f in sorted(os.listdir(dropin)):
+                       if f.startswith(".") or not f.endswith(".json"):
+                           continue
+                       d = load_json(os.path.join(dropin, f))
+                       if d and has_target(d.get("mcpServers")):
+                           return True
+               except Exception:
+                   pass
+
+       # 5. Plugin scope — best-effort shallow scan of ~/.claude/plugins/*/.mcp.json
+       plugin_root = os.path.join(home, ".claude", "plugins")
+       if os.path.isdir(plugin_root):
+           try:
+               for plugin_mcp in glob.glob(os.path.join(plugin_root, "*", ".mcp.json")):
+                   d = load_json(plugin_mcp)
+                   if d and has_target(d.get("mcpServers")):
+                       return True
+           except Exception:
+               pass
+
+       return False
+
+   try:
+       if not mcp_available():
+           fail_open()
+   except Exception:
+       fail_open()
+
+   # ── Exemptions (text search is correct) ─────────────────────────
+   # 1. Quoted phrase containing whitespace → literal string
+   if re.search(r'"[^"]*\s[^"]*"', pattern) or re.search(r"'[^']*\s[^']*'", pattern):
+       print("allow"); sys.exit(0)
+   # 2. File-extension / path literal
+   if re.search(r'\.(md|json|yaml|yml|toml|ini|conf|cfg|env|log|txt|csv|xml|sh|ps1|bat)(\b|$)', pattern):
+       print("allow"); sys.exit(0)
+   # 3. URL / absolute path literal
+   if re.search(r'https?://|file://|[a-zA-Z]:\\|/tmp/|/etc/|/usr/|\$HOME', pattern):
+       print("allow"); sys.exit(0)
+   # 4. Error / log marker prefix
+   if re.search(r'(?i)\b(error|exception|failed|warning|unable|cannot|refused|timeout)[:\s]', pattern):
+       print("allow"); sys.exit(0)
+   # 5. Pure lowercase phrase with whitespace
+   if re.fullmatch(r'[a-z0-9_\- ]+', pattern) and ' ' in pattern:
+       print("allow"); sys.exit(0)
+   # 6. Short lowercase snake_case / kebab identifier
+   if re.fullmatch(r'[a-z][a-z0-9_\-]*', pattern) and len(pattern) <= 40:
+       print("allow"); sys.exit(0)
+   # 7. Markdown heading anchor
+   if pattern.startswith('^#'):
+       print("allow"); sys.exit(0)
+
+   # ── Symbol-shape triggers (block) ───────────────────────────────
+   triggers = [
+       (r'\b[A-Z][a-z]+[A-Z][a-zA-Z0-9]*\b', "CamelCase identifier"),
+       (r'\bI[A-Z][a-z][a-zA-Z0-9]+\b', "I-prefixed interface"),
+       (r'\b(class|namespace|interface|struct|record|trait|impl|enum|type)\s+[A-Z]', "type declaration search"),
+       (r'\b(def|fn|function|func|public|private|protected|internal|static)\s+[A-Za-z_]', "function / method declaration search"),
+       (r'^\^?[A-Z][a-zA-Z0-9]{2,}\$?$', "bare PascalCase anchor"),
+       (r'(\||^)\s*[A-Z][a-zA-Z0-9]{2,}\s*(\||$)', "alternation with PascalCase token"),
+       (r'\b[A-Z][a-zA-Z0-9]*\.[A-Z][a-zA-Z0-9]*\b', "qualified type reference"),
+   ]
+   for rx, label in triggers:
+       if re.search(rx, pattern):
+           print("block|" + label)
+           sys.exit(0)
+
+   print("allow")
+   PY
+   )
+
+   case "$RESULT" in
+     allow|"")
+       exit 0
+       ;;
+     block\|*)
+       TRIGGER="${RESULT#block|}"
+       # Emit structured decision on stdout + reason on stderr + exit 2
+       cat <<JSON
+   {"decision":"block","reason":"MCP-first discipline: pattern looks like a named symbol (${TRIGGER}). Use cmm.search_graph(name_pattern=...) or serena.find_symbol(name_path=...) first. Stale cmm graph → detect_changes → index_repository → retry (silent, no permission-seek, per max-quality.md §6). Grep fallback only after a fresh cmm search returns 0 hits, and MUST be disclosed per mcp-routing.md Transparent Fallback section. See .claude/rules/mcp-routing.md sections: CMM Freshness, Grep Ban, Permission-Seeking Ban, Transparent Fallback."}
+   JSON
+       printf 'BLOCKED by mcp-discovery-gate: pattern matches %s — route through cmm/serena first. See .claude/rules/mcp-routing.md.\n' "$TRIGGER" >&2
+       exit 2
+       ;;
+     *)
+       # Unknown result → fail-open (defense in depth)
+       exit 0
+       ;;
+   esac
+   ```
+   Constraints: MINGW64-safe (python3 for JSON + regex, base64 round-trip on pattern to survive
+   shell word-splitting), fail-open (parse errors → exit 0), read-only (no state files),
+   python3 only dependency, ~30ms typical.
+   Verification: chmod +x .claude/hooks/mcp-discovery-gate.sh; bash -n .claude/hooks/mcp-discovery-gate.sh.
+   Smoke test: `printf '{"tool_name":"Grep","tool_input":{"pattern":"FooBarService"}}' | bash .claude/hooks/mcp-discovery-gate.sh`
+   → exit 2 if cmm/serena is reachable in any MCP scope (project, user, managed, plugin), exit 0 if dormant.
+
 Write all files. chmod +x each. Return ONLY: all paths + 1-line summary <100 chars."
 )
 ```
@@ -507,7 +751,9 @@ Structure:
       { 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/detect-env.sh' }] }
     ],
     'PreToolUse': [
-      { 'matcher': 'Bash', 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/guard-git.sh' }] }
+      { 'matcher': 'Bash', 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/guard-git.sh' }] },
+      // mcp-discovery-gate: mechanically enforces MCP-first discipline per .claude/rules/mcp-routing.md (Grep Ban / First-Tool Contract).
+      { 'matcher': 'Grep|Glob|Search', 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/mcp-discovery-gate.sh' }] }
     ],
     'SubagentStop': [
       { 'hooks': [
@@ -620,6 +866,7 @@ fi
 ✅ Module 03 complete — Hooks + settings.json created:
   - SessionStart: env detection + companion auto-import + maintenance + spec cleanup
   - PreToolUse Bash: git guard (blocks force push, push to main, hard reset)
+  - PreToolUse Grep|Glob|Search: mcp-discovery-gate (blocks symbol-shaped patterns when codebase-memory-mcp or serena is reachable in any MCP scope — project .mcp.json, user ~/.claude.json, managed settings, or plugin-bundled; fail-open on parse errors)
   - SubagentStop: agent usage tracking + Max Quality Doctrine Layer 3 literal scan (check-quality.sh)
   - Stop: verification nudge (incl. MAX QUALITY reminder) + companion sync ({if companion})
   - PreCompact: state preservation

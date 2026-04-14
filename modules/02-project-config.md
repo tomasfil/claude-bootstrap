@@ -214,7 +214,40 @@ Create ALWAYS:
    - cmm is read-only — all mutations via serena edit tools.
    - cmm's `trace_path` + `search_code` are known-broken on some projects — fall back to `query_graph` + `serena.search_for_pattern`.
    - MCP tool schemas are DEFERRED in forked skill contexts — call `ToolSearch "select:<tool>"` first before invoking.
-   - cmm project key = full path with `-` instead of `/` (e.g. `C-Users-Alice-src-MyProj`), not the bare folder name. If `search_graph` returns "project not found", try `mcp__codebase-memory-mcp__list_projects` first.
+
+   ## CMM Freshness (pre-flight when codebase-memory-mcp present)
+   Before symbol exploration on an indexed project:
+   1. First cmm tool call this session → `cmm.list_projects` → verify target project exists + read `nodeCount`
+   2. Stale heuristic: `nodeCount < 200` on a non-trivial repo OR `cmm.detect_changes` reports drift → treat as stale
+   3. Stale detected → run `cmm.detect_changes` → `cmm.index_repository` → retry original query. **NO permission-seek** (per `max-quality.md` §6 — solvable blocker, resolve silently)
+   4. Fresh index + 0 hits on a named symbol → THEN serena / Grep fallback is justified
+   Note: cmm server does NOT auto-reindex on MCP startup; it loads the last on-disk graph. Client-side pre-flight is the only freshness guarantee.
+
+   ## Grep Ban (indexed projects)
+   Grep / Glob on a **named** type / class / function / method / interface in an indexed project = RULE VIOLATION unless BOTH conditions hold:
+   - cmm graph confirmed fresh this session (list_projects check passed OR index_repository ran this session), AND
+   - `cmm.search_graph(name_pattern=<Name>)` returned 0 hits on the fresh graph
+   Exempt (text search is correct): literal strings in non-code (logs, config values, README prose, error messages, commit messages), raw reads of known file paths, files outside the indexed source tree.
+   Rationale: Grep bypasses the cross-reference graph, returns no structural context (no callers, callees, inheritance), costs more tokens on large result sets, silently misses renamed/reformatted occurrences that `search_graph` catches by label.
+
+   ## Permission-Seeking Ban
+   Never ask the user "reindex or fall back to grep?" — a stale index on a running MCP server is a **solvable blocker**. Run `cmm.detect_changes` → `cmm.index_repository` → retry, silently. Reindex cost is seconds to ~1 minute cold build; a permission round-trip costs user attention and breaks flow. Per `max-quality.md` §6: *if the task is solvable, solve it*.
+
+   ## Project Slug Convention
+   cmm indexes projects by **path-slug**: the project's full absolute path with `/` and `\` replaced by `-` (e.g. `C-Users-Alice-src-MyProject`), NOT the bare folder name. If `cmm.search_graph` returns "project not found":
+   1. Call `mcp__codebase-memory-mcp__list_projects` → get the full slug list
+   2. Match the target by suffix (e.g. `*-MyProject`)
+   3. Use the full slug in every subsequent cmm call this session
+   This is a naming convention of the cmm server, not a bug. `list_projects` is the single resolver.
+
+   ## Transparent Fallback (when MCP path fails)
+   When you DO fall back from an MCP path to Grep / Glob / Read / serena text search, state it **explicitly** in the next user-facing message. The user must know which tool class served the answer so they can calibrate confidence. Format:
+   `MCP→fallback: {what was tried} → {why it failed} → {fallback path taken}`
+   Examples:
+   - `cmm.search_graph(FooService) on fresh 772-node graph → 0 hits → serena.find_symbol fallback`
+   - `cmm.get_code_snippet(Foo.Bar) → "symbol not in graph" after reindex → Read fallback on known path`
+   - `cmm server unreachable (connection refused) → Grep fallback, reduced confidence`
+   If the MCP path is genuinely **unsolvable** (server down, project not indexable on this platform, known-broken tool on this repo per Gotchas section) → state it is unsolvable + the specific reason. Never silently degrade. Max-quality discipline still applies to fallback paths — completeness, verification, no elision — but the tool-class disclosure is mandatory.
 
    ## Decision Shortcuts
    - "Who calls X?" → `serena.find_referencing_symbols`
