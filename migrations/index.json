@@ -130,7 +130,7 @@
     {
       "id": "022",
       "file": "022-template-fetch-bootstrap.md",
-      "description": "Replace LLM-rendered skill/agent bootstrap with template-fetch from tracked templates/ directory. Modules 05+06 become thin fetch loops. SHA-idempotent per-file overwrite.",
+      "description": "Replace LLM-rendered skill/agent bootstrap with template-fetch from tracked templates/ directory. Modules 05+06 become thin fetch loops. Per-file SHA classification: missing files INSTALL via byte-download from upstream (no local state to preserve); existing files that differ from upstream MERGE via LLM hand-merge (preserves project-specific customizations while incorporating upstream improvements); identical files SKIP. Dry-run preview + explicit confirmation before writes; --force skips prompt only, never downgrades MERGE to byte-overwrite. No TSV sidecar — each step re-iterates manifest through jq (MINGW64 CR-safe, no trailing-\\r hazard). Verify is loose for merged files (checks existence + non-empty + YAML frontmatter fence, not SHA match) since merged files differ from upstream by design.",
       "breaking": false
     },
     {
