@@ -261,7 +261,7 @@ printf "VERIFIED: .claude/rules/main-thread-orchestrator.md installed\n"
 
 Branch on `HAS_HOOK`:
 - `HAS_HOOK=yes` → SKIP (sentinel first-line comment matches).
-- Otherwise → write the canonical hook content via heredoc (quoted `'EOF'` so `$CLAUDE_PROJECT_DIR`, `$TOOL_NAME` etc. are preserved literally).
+- Otherwise → write the canonical hook content via heredoc (quoted `'HOOK_EOF'` so `$TOOL_NAME`, `$INPUT` etc. are preserved literally).
 
 ```bash
 #!/usr/bin/env bash
