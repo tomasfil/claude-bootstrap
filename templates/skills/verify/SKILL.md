@@ -15,17 +15,23 @@ effort: medium
 
 Run ALL checks — never claim completion until all pass.
 
-### Phase 1: Build + Test verification
+### Phase 1: Scope + Build + Test verification
+Run `git diff --stat HEAD` (or `git diff --stat {base_branch}...HEAD` for PR context).
+Extract file count from the summary line (e.g., "7 files changed").
+Scope signal: SMALL if ≤5 files changed; LARGE if >5 files changed.
+
 Dispatch agent via `subagent_type="proj-verifier"` w/:
 - Build command: {build_command}
 - Lint command: {lint_command}
 - Test suite command: {test_suite_command}
+- Scope: {N} files changed — {SMALL|LARGE}
 - Write report to `.claude/reports/verification.md`
 - Return path + summary
 
 ### Phase 2: Cross-reference + consistency (parallel w/ Phase 1)
 Dispatch agent via `subagent_type="proj-consistency-checker"` w/:
 - Scan: CLAUDE.md references, skill→agent dependencies, rule file integrity
+- Scope: {N} files changed — {SMALL|LARGE} (from Phase 1)
 - Write report to `.claude/reports/consistency.md`
 - Return path + summary
 

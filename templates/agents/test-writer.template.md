@@ -6,6 +6,7 @@ description: >
   mocking conventions, and framework-specific testing gotchas.
 model: opus
 effort: high
+# high: GENERATES_CODE
 maxTurns: 100
 color: green
 scope: "{lang}-tests"

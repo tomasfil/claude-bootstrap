@@ -6,6 +6,7 @@ description: >
   Knows POSIX conventions, Claude Code hook patterns, stdin JSON parsing.
 model: sonnet
 effort: high
+# high: GENERATES_CODE
 maxTurns: 100
 color: yellow
 ---

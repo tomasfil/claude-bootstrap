@@ -57,6 +57,22 @@ Dispatch agent via `subagent_type="proj-consistency-checker"` w/ audit task brie
   (serena, code-context, etc.), verify repo is indexed (server-specific probe
   or presence of index artifacts). Absent cmm MCP → skip w/ WARN.
 
+### A7: effort:high justification presence check
+For each `.claude/agents/*.md`:
+  IF frontmatter contains `effort: high`:
+    Verify the immediately following line matches `^# high: `  (any text after the colon).
+    FAIL if no such line exists.
+    WARN if line matches `^# high: INHERITED_DEFAULT` (tracked debt marker).
+  Do NOT validate the token vocabulary against an enum — presence-only check.
+
+For each `.claude/skills/*/SKILL.md`:
+  IF frontmatter contains `effort: high`:
+    Check `# Skill Class:` comment for "dispatch", "orchestrat", or "synthesis" keywords.
+    IF present → self-justified, no additional check required.
+    ELSE → require `^# high: ` comment line; FAIL if absent.
+
+Output: append A7 section to the audit report markdown.
+
 ### Output
 
 Agent writes YAML-ish report to `.claude/reports/audit-agents-{timestamp}.md`
@@ -72,6 +88,7 @@ checks:
   A4_skill_mcp:    {PASS|FAIL|SKIP}
   A5_claude_md:    {PASS|FAIL|SKIP}
   A6_cmm_index:    {PASS|WARN|SKIP}
+  A7_effort_high_justified: {PASS|FAIL|WARN|SKIP}
 findings:
   - check: A1
     severity: FAIL
@@ -92,6 +109,8 @@ and a one-line fix recommendation per category:
 - A4 FAIL → remove `mcp__*` from skill `allowed-tools:` — MCP belongs in agents
 - A5 FAIL → add missing `@import` lines to CLAUDE.md
 - A6 WARN → index the repo (cmm/serena) or ignore if MCP unused
+- A7 FAIL → add `# high: <TOKEN>` justification comment immediately after `effort: high` in agent frontmatter, or add it after `effort: high` in skill frontmatter when `# Skill Class:` lacks "dispatch"/"orchestrat"/"synthesis" keywords; run `/migrate-bootstrap` if migration 029 is pending
+- A7 WARN → `INHERITED_DEFAULT` is tracked debt; revisit classification per `techniques/agent-design.md` Skill Class → Model Binding
 
 Do NOT auto-patch. User approves fixes.
 

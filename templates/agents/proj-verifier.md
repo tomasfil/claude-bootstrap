@@ -7,7 +7,11 @@ description: >
   validates agent/skill YAML frontmatter. Dispatched alongside
   proj-consistency-checker by /verify skill.
 model: sonnet
-effort: high
+effort: medium
+# medium: procedural tool-use only (Build → Tests → Cross-refs → Frontmatter validation → Report)
+#   No open-ended reasoning. Per Anthropic agentic-coding guidance + CLAUDE.md §Effort Scaling
+#   procedural carve-out. v2.1.94 changed session default to high; this frontmatter override
+#   is load-bearing.
 maxTurns: 75
 color: green
 ---

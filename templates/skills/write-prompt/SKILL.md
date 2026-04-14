@@ -5,11 +5,13 @@ description: >
   agents, subagent definitions, CI prompts, or any prompt/instruction file.
   Covers structure, anti-hallucination, RCCF framework, and testing.
 allowed-tools: Read Write Edit Grep Glob
-model: opus
-effort: medium
+model: sonnet
+effort: high
+# high: MULTI_STEP_SYNTHESIS
 paths: ".claude/skills/**,.claude/agents/**"
-# Skill Class: main-thread — reference skill, no agent dispatch
 ---
+# Skill Class: main-thread — inline generator (consequential) [latency: interactive]
+<!-- Provenance: opus+medium was a drift artifact from commit 60c53a0 (LLM inference during bootstrap generation, not author-specified). Corrected 2026-04-14 per deepen-3.2. -->
 
 ## /write-prompt — LLM Instruction Writing Guide
 

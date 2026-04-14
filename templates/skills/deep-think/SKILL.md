@@ -174,6 +174,10 @@ FORMAT: standard proj-researcher output (Summary / Patterns Detected / Conventio
 
 CRITICAL: Recommendations section contains ONLY investigation directions, NOT proposed solutions. Do not pre-empt Phase 1 ideation.
 
+This is a bounded local scan only. Scope constraint: do not perform web searches; do not synthesize across multiple evidence sources; report factual findings only (file paths, frontmatter field values, line numbers, verbatim text). No synthesis, no inference.
+
+Note: effort:high harness setting is preserved and continues to govern generation thoroughness. This instruction narrows task scope; it does not alter the effort level. Path verification and frontmatter integrity checks should be performed carefully.
+
 Return ONLY: {path} — {1-sentence summary}
 ```
 

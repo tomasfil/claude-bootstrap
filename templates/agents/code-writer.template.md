@@ -6,6 +6,7 @@ description: >
   error handling, and framework-specific gotchas.
 model: opus
 effort: high
+# high: GENERATES_CODE
 maxTurns: 100
 color: blue
 scope: "{lang}"

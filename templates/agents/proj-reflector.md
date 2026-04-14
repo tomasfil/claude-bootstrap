@@ -7,6 +7,7 @@ description: >
   Produces actionable proposals — does not auto-apply changes.
 model: opus
 effort: high
+# high: STATEFUL_MEMORY
 maxTurns: 100
 memory: project
 color: magenta

@@ -360,11 +360,43 @@ All agents MUST have Write tool (or Bash for heredoc writers). Without it, pass-
 | Agent | Model | Agent | Model |
 |-------|-------|-------|-------|
 | proj-code-writer-{lang} | opus | proj-plan-writer | sonnet |
-| proj-code-writer-{lang}-{fw} | opus | | |
-| proj-test-writer | opus | proj-researcher | sonnet |
-| proj-code-reviewer | opus | proj-consistency-checker | sonnet |
-| proj-debugger | opus | proj-verifier | sonnet |
-| proj-tdd-runner / proj-reflector | opus | proj-quick-check | haiku |
+| proj-code-writer-{lang}-{fw} | opus | proj-researcher | sonnet |
+| proj-test-writer | opus | proj-consistency-checker | sonnet |
+| proj-tdd-runner | opus | proj-verifier | sonnet |
+| proj-reflector | opus | proj-code-reviewer | sonnet |
+| | | proj-debugger | sonnet |
+| | | proj-quick-check | haiku |
+
+> Evidence note: `ANALYZES → sonnet` is a prior-based convention aligned with Anthropic's
+> routing guidance (code reviews, debugging → Sonnet tier) and the 4.6-generation SWE-bench
+> gap of 1.2 points. No direct code-analysis benchmark exists. Quality monitoring post-deployment
+> is the verification path; human review of agent output is the feedback loop.
+
+### Skill Class → Model Binding
+
+| Skill class | model | effort† | Key signal |
+|---|---|---|---|
+| main-thread — multi-dispatch orchestrator | opus | high | dispatches 2+ agents or has interactive synthesis loop |
+| main-thread — single-dispatch (thin shell) | opus | high | dispatches 1 agent; pre-dispatch classification is complex |
+| main-thread — inline generator (consequential) | sonnet | medium | no dispatch; outputs artifact that drives downstream work |
+| main-thread — inline executor (irreversible) | sonnet | high | no dispatch; bash mutations; hard to undo |
+| main-thread — inline reads (low consequence) | sonnet | low | no dispatch; read-only; health-check/audit output |
+| forkable — bounded autonomous task | sonnet | medium | context: fork; single terminal artifact |
+| forkable — diagnostic probe | haiku | low | context: fork; binary or trivial output; disable-model-invocation typical |
+
+† For orchestrator skills (rows 1–2), the `effort:` value applies to the skill's shell reasoning only
+(dispatch routing decisions, pre-flight synthesis). Agent effort is set independently in each agent's
+frontmatter and is the primary quality lever. The shell effort column is advisory for orchestrators —
+do not treat it as the quality determinant.
+
+Every skill MUST include `# Skill Class:` comment after the closing `---` YAML fence; class must
+match one of the rows above. If a new class is needed, extend this table before writing the skill —
+don't improvise.
+
+Optional latency qualifier (recommended for new skills): extend `# Skill Class:` with
+`[latency: interactive|background]`. Example:
+`# Skill Class: main-thread — multi-dispatch orchestrator, interactive synthesis [latency: interactive]`
+This is documentation only — no harness effect. (Salvage from retracted proposal 3.4.)
 
 ## Foreground-Only Dispatch
 

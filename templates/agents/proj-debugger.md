@@ -4,8 +4,12 @@ description: >
   Use when investigating test failures, unexpected behavior, runtime errors,
   or tracing bugs. Reads code, traces execution paths, identifies root cause.
   Returns diagnosis with proposed fix.
-model: opus
+model: sonnet
 effort: high
+# high: SUBTLE_ERROR_RISK
+# model_rationale: ANALYZES + traces execution paths → diagnosis text only; no code generation → sonnet
+#   per agent-design.md classification principle. Self-Fix Protocol = diagnosis-refinement loop
+#   only; all Bash calls are read-only (grep/build/test). Fix application is caller-side.
 maxTurns: 100
 color: red
 ---
@@ -102,7 +106,12 @@ NEVER: Read A → respond → Read B. INSTEAD: Read A + B → respond.
 </use_parallel_tool_calls>
 
 ## Self-Fix Protocol
-After proposing fix, verify via Bash (build/test/grep). If verification fails:
-1. Read error → refine diagnosis same turn → re-verify
+After proposing fix, verify via Bash (build/test/grep only — NO mutation commands).
+**READ-ONLY SCOPE**: Bash calls in this section are limited to `grep`, `cat`, build-check, test-run.
+NEVER: `sed -i`, `patch`, `Edit`, `Write`, or any command that modifies source files.
+This agent ANALYZES and DIAGNOSES only — fix application is the caller's responsibility.
+
+If verification (grep/build/test) shows the proposed fix would not resolve the issue:
+1. Read error → refine diagnosis same turn → re-verify (read-only)
 2. Up to 3 attempts
 3. Report unresolved diagnosis if still failing — do not fabricate success

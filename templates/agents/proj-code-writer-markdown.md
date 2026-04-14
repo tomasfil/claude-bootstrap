@@ -6,6 +6,7 @@ description: >
   anti-hallucination patterns, component classification.
 model: opus
 effort: high
+# high: GENERATES_CODE
 maxTurns: 100
 color: blue
 ---

@@ -6,6 +6,7 @@ description: >
   code to pass, then refactors. Uses Bash heredoc for ALL file writes.
 model: opus
 effort: high
+# high: GENERATES_CODE
 maxTurns: 150
 color: green
 ---

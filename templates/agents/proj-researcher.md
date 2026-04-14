@@ -9,6 +9,7 @@ description: >
   For simple file lookups use proj-quick-check instead.
 model: sonnet
 effort: high
+# high: MULTI_STEP_SYNTHESIS
 maxTurns: 100
 memory: project
 color: cyan

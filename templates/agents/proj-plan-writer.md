@@ -6,6 +6,7 @@ description: >
   task list packed into dispatch-unit batch files for focused agent dispatch.
 model: sonnet
 effort: high
+# high: MULTI_STEP_SYNTHESIS
 maxTurns: 100
 color: blue
 ---

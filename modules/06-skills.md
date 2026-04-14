@@ -4,6 +4,8 @@
 > Sources of truth are `templates/manifest.json` (inventory + SHA) + the per-skill `SKILL.md` files. This module contains NO inline skill bodies — edit `templates/skills/{name}/SKILL.md` directly to change a skill.
 > Shared blocks (`AGENT_DISPATCH_POLICY_BLOCK`, `PRE_FLIGHT_GATE_BLOCK`, `TASKCREATE_GATE_BLOCK`) remain in this module because they are referenced verbatim by migrations and by client-project skills that inject them.
 
+Model/effort binding for skills: see `techniques/agent-design.md` §Skill Class → Model Binding.
+
 ---
 
 ## Shared Blocks

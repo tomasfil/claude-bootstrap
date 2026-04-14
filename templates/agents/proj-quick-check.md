@@ -7,6 +7,7 @@ description: >
   multi-source synthesis use proj-researcher instead.
 model: haiku
 effort: high
+# high: INHERITED_DEFAULT
 maxTurns: 25
 color: gray
 ---

@@ -5,8 +5,14 @@ description: >
   config. Use after writing content, before committing, or when asked to review.
   Checks prompt quality, RCCF compliance, anti-hallucination coverage, pipeline
   trace completeness, cross-reference integrity, markdown conventions.
-model: opus
+model: sonnet
 effort: high
+# high: SUBTLE_ERROR_RISK + STATEFUL_MEMORY
+# model_rationale: ANALYZES + structural pattern matching (RCCF, cross-refs, markdown conventions)
+#   → sonnet per agent-design.md classification principle. Preserves effort: high (generation
+#   thoroughness) and memory: project (stateful continuity — orthogonal to model choice;
+#   proj-researcher precedent). Quality floor: Anthropic routing guidance routes code reviews
+#   to Sonnet tier; 4.6-gen SWE-bench gap = 1.2pt.
 maxTurns: 100
 memory: project
 color: yellow

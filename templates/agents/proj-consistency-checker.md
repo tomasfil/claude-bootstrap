@@ -6,7 +6,10 @@ description: >
   routing config completeness, master checklist sync, and migrations index
   integrity. Reports issues with file:line evidence.
 model: sonnet
-effort: high
+effort: medium
+# medium: procedural tool-use only (Module numbering → YAML validity → Routing config → Checklist
+#   sync → Migrations index → Report). No open-ended reasoning. Per Anthropic agentic-coding
+#   guidance + CLAUDE.md §Effort Scaling procedural carve-out. v2.1.94 session default override.
 maxTurns: 75
 color: yellow
 ---

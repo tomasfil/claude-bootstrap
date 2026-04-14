@@ -8,9 +8,10 @@ context: fork
 agent: proj-code-reviewer
 allowed-tools: Read Grep Glob
 model: sonnet
-effort: medium
-# Skill Class: forkable — single bounded autonomous audit, no user interaction
+effort: low
 ---
+# Skill Class: forkable — bounded autonomous task [latency: interactive]
+<!-- Shell runs only mechanical pre-flight (code-standards read, language detection, dispatch context). proj-code-reviewer at sonnet+high does all review work. effort: low safe per deepen-3.6. -->
 
 ## /audit-file — Source File Audit
 

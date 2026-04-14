@@ -150,6 +150,36 @@
       "file": "025-taskcompleted-gate.md",
       "description": "TaskCompleted gate — writes .claude/hooks/gate-task-complete.sh (TaskCompleted standard event, top-level payload fields task_subject/task_description/task_id) and merges TaskCompleted entry into .claude/settings.json via Python3. Blocks marking medium+ risk tasks completed without verification evidence (verified:/tests: pass/build: pass markers). Idempotent sentinel guard on 'gate-task-complete.sh' in settings.json. Smoke-tested with 4 fixture payloads. Bypass: TASKCOMPLETED_GATE_BYPASS=1.",
       "breaking": false
+    },
+    {
+      "id": "026",
+      "file": "026-agents-analyze-class-sonnet.md",
+      "description": "Reclassify proj-debugger and proj-code-reviewer from opus to sonnet per agent-design.md ANALYZES → sonnet classification principle. Both agents are read-only analyzers (proj-debugger traces execution paths and produces diagnosis text; proj-code-reviewer does structural pattern matching, RCCF compliance, cross-reference checking). Preserves effort:high (generation thoroughness via reasoning_effort, NOT thinking blocks per GitHub #31536 empirical test) and proj-code-reviewer's memory:project. Quality floor: Anthropic routing guidance routes code reviews + debugging to Sonnet tier; 4.6-generation SWE-bench gap = 1.2pt. Migration fetches updated proj-debugger.md, proj-code-reviewer.md, and techniques/agent-design.md (to .claude/references/techniques/) from bootstrap repo via gh api with sentinel-guarded idempotency. Includes SGAP-1 Post-Apply note for bootstrap self-update workflow.",
+      "breaking": false
+    },
+    {
+      "id": "027",
+      "file": "027-procedural-effort-medium.md",
+      "description": "Reclassify proj-verifier and proj-consistency-checker from effort:high to effort:medium per Anthropic agentic-coding guidance for procedural tool-use workloads (Build→Tests→Cross-refs→Frontmatter checklist). The frontmatter override is load-bearing post-session-default-change (effort:high was a v2.1.94 session-default artifact). Also patches templates/skills/verify/SKILL.md to add `git diff --stat HEAD` pre-dispatch scope signal (SMALL/LARGE classification forwarded to both agents) — gap 2.5-HIGH-2 fix lets the now-medium-effort agents calibrate report depth. Migration fetches updated proj-verifier.md, proj-consistency-checker.md, and verify/SKILL.md from bootstrap repo. CLAUDE.md edit is bootstrap-repo-only (client CLAUDE.md is user-maintained, not templated). SGAP-1 Post-Apply note included.",
+      "breaking": false
+    },
+    {
+      "id": "028",
+      "file": "028-skill-taxonomy-corrections.md",
+      "description": "Skill class taxonomy + skill frontmatter corrections. Adds Skill Class → Model Binding section to techniques/agent-design.md (7-row table mapping main-thread inline / orchestrator / forkable bounded / forkable analysis classes to model+effort defaults). Corrects write-prompt/SKILL.md drift (opus+medium → sonnet+high; opus+medium was a commit 60c53a0 LLM inference artifact, not author-specified). Lowers audit-file/SKILL.md effort:medium → low (shell body is mechanical pre-flight only; proj-code-reviewer at sonnet+high does the actual review work). Adds Phase 0 scope constraint to deep-think/SKILL.md dispatch prompt (bounded local scan, no web search, no synthesis — corrected text from gap-res-2-effort-semantics.md §RET-HIGH-1, preserves effort:high generation thoroughness framing). Migration fetches techniques/agent-design.md to client `.claude/references/techniques/`, plus the 3 skill SKILL.md files. Step 5 (code-standards-markdown.md sync) is PENDING FOLLOW-UP — source template not located in modules/ or templates/rules/; documented as gap in .learnings/log.md and in the migration body. SGAP-1 Post-Apply note included.",
+      "breaking": false
+    },
+    {
+      "id": "029",
+      "file": "029-effort-justification-invariant.md",
+      "description": "Backfill effort:high justification invariant on all agent templates + install audit-agents A7 presence check. Every agent with `effort: high` must have a `# high: <TOKEN>` comment line immediately after (and every `effort: medium` a `# medium:` comment). Token vocabulary: GENERATES_CODE, SUBTLE_ERROR_RISK, STATEFUL_MEMORY, MULTI_STEP_SYNTHESIS, INHERITED_DEFAULT, DISPATCHES_AGENTS. Migration fetches 7 primary agent templates (proj-code-writer-markdown, proj-code-writer-bash, proj-tdd-runner, proj-reflector, proj-researcher, proj-plan-writer, proj-quick-check) + glob-loop awk backfill for code-writer-*.md and test-writer-*.md client variants + defensive re-fetch of proj-debugger/proj-code-reviewer/proj-verifier/proj-consistency-checker with cmp -s SKIP when 026/027 already applied + templates/skills/audit-agents/SKILL.md (A7 presence check appended). Prerequisite: migration 026 must be applied first (proj-debugger and proj-code-reviewer `# high:` comments land in 026). SGAP-1 Post-Apply note included.",
+      "breaking": false
+    },
+    {
+      "id": "030",
+      "file": "030-audit-model-usage.md",
+      "description": "Install /audit-model-usage skill + .claude/rules/model-selection.md machine-readable policy. Closes the model-effort-selection deep-think loop — migrations 026-029 updated agent/skill templates to the new policy, but drift accumulates over time as new specialists are spawned via /evolve-agents, /reflect rewrites agent bodies, or hand edits bypass the template→migration workflow. The audit skill (sonnet+medium, read-only) walks .claude/agents/*.md + .claude/skills/**/SKILL.md, parses frontmatter via Grep, joins against model-selection.md expected bindings, and emits COMPLIANT/DRIFT/UNKNOWN per row with file:line evidence. The policy rule is the single source of truth for expected (model, effort) per agent/skill class. Additive only — installs one new skill directory and one new rule file; no existing agents, skills, modules, hooks, or settings modified. Migration fetches both artifacts from bootstrap repo via gh api with sentinel-guarded idempotency. SGAP-1 Post-Apply note included.",
+      "breaking": false
     }
   ]
 }
