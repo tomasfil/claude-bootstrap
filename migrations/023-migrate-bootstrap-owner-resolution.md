@@ -120,9 +120,18 @@ grep -q '### Step 0: Resolve bootstrap source repo' "$TARGET" || { printf 'FAIL:
 # 2. BOOTSTRAP_REPO variable reference present.
 grep -q 'BOOTSTRAP_REPO="\${BOOTSTRAP_REPO:-' "$TARGET" || { printf 'FAIL: BOOTSTRAP_REPO assignment missing\n' >&2; exit 1; }
 
-# 3. Zero hardcoded tomasfil/claude-bootstrap in gh api / raw.githubusercontent.com lines.
+# 3. Zero hardcoded tomasfil/claude-bootstrap in gh api / raw.githubusercontent.com URLs.
 # Only the retrofit JSON literal + canonical default fallback are allowed to contain the string.
-bad="$(grep -nE 'gh api.*tomasfil/claude-bootstrap|raw\.githubusercontent\.com/tomasfil/claude-bootstrap' "$TARGET" || true)"
+#
+# Tightened 2026-04-14 to match command-position usages only. The prior pattern
+# 'gh api.*tomasfil/claude-bootstrap' false-positived on prose lines like
+#   Every `gh api repos/<slug>/...` URL ... uses `${BOOTSTRAP_REPO}` in place of `tomasfil/claude-bootstrap`
+# because both `gh api` (in the first code span) and `tomasfil/claude-bootstrap` (in the last code span)
+# coexist on the same line. The fix: require the literal command form `gh api "repos/tomasfil/claude-bootstrap`
+# (with the opening double-quote and the literal owner/repo after `repos/`), which cannot appear in prose
+# that uses placeholder text like `repos/<slug>/` or `${BOOTSTRAP_REPO}`. Same treatment for raw.githubusercontent.com —
+# require the https:// scheme prefix + literal owner, since prose references typically omit the scheme.
+bad="$(grep -nE 'gh api "repos/tomasfil/claude-bootstrap|https://raw\.githubusercontent\.com/tomasfil/claude-bootstrap' "$TARGET" || true)"
 if [[ -n "$bad" ]]; then
   printf 'FAIL: hardcoded tomasfil/claude-bootstrap in fetch URL:\n%s\n' "$bad" >&2
   exit 1
