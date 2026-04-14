@@ -138,6 +138,18 @@
       "file": "023-migrate-bootstrap-owner-resolution.md",
       "description": "Patch .claude/skills/migrate-bootstrap/SKILL.md to resolve the bootstrap source repo from BOOTSTRAP_REPO env var → .claude/bootstrap-state.json bootstrap_repo field → canonical tomasfil/claude-bootstrap default, instead of hardcoding the canonical slug. Enables fork users to point /migrate-bootstrap at their own migration track. Literal-string idempotency guard (no regex). Additive only — touches one file and leaves a .bak-023 backup.",
       "breaking": false
+    },
+    {
+      "id": "024",
+      "file": "024-plan-writer-failure-modes.md",
+      "description": "Add risk classification + Failure Modes checklist to proj-plan-writer — idempotent awk patch adds ## Risk Classification section, #### Risk: line in task template, #### Failure Modes sub-section with 5 questions (production failure, detection, rollback, invalidating dependency, least-certain assumption). Sentinel-guarded on '#### Risk: {low|medium|high|critical}'. Backed by templates/agents/proj-plan-writer.md update in bootstrap repo.",
+      "breaking": false
+    },
+    {
+      "id": "025",
+      "file": "025-taskcompleted-gate.md",
+      "description": "TaskCompleted gate — writes .claude/hooks/gate-task-complete.sh (TaskCompleted standard event, top-level payload fields task_subject/task_description/task_id) and merges TaskCompleted entry into .claude/settings.json via Python3. Blocks marking medium+ risk tasks completed without verification evidence (verified:/tests: pass/build: pass markers). Idempotent sentinel guard on 'gate-task-complete.sh' in settings.json. Smoke-tested with 4 fixture payloads. Bypass: TASKCOMPLETED_GATE_BYPASS=1.",
+      "breaking": false
     }
   ]
 }

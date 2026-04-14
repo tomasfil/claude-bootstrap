@@ -89,6 +89,23 @@ Return ONLY: master plan path + summary <100 chars.
 
 **FORBIDDEN in tier classification:** MUST NOT estimate LOC, token counts, or tool-call counts to tier a task. Plan-writer sees intent only, not generated code. Use intent-level signals ONLY (dep topology, step count, verb, file count, layer). Output size is not a planning-time signal.
 
+## Risk Classification
+Informal risk labels assigned during Tier Classification. Distinct from Tier — Tier measures planning-primitive size (step/file count, dep topology); Risk measures blast radius of a production failure. Plan-writer emits `#### Risk: {level}` immediately after `#### Tier: {tier}` on every task sub-section.
+
+Four levels (intent-level criteria — plan-writer judges at planning time, not at execution time):
+
+1. **low** — isolated change, no cross-file impact, trivially reversible via `git restore`, no user-facing surface. Examples: one-file doc typo fix, add a rule line to an existing rules file, rename a local variable in a leaf module, add a test for an already-tested function. Failure mode is obvious in review; rollback cost near zero.
+
+2. **medium** — changes a contract, convention, or template consumed by multiple downstream files; rollback requires touching more than the edited file; subtle silent-failure potential if the change is wrong. Examples: add a new section to an agent template that downstream migrations read; change a hook script's exit code semantics; add a new field to a task format consumed by skills; modify a shared rule file. Requires `#### Failure Modes` section.
+
+3. **high** — migration, schema change, hook event wiring, settings.json merge, or any change that runs inside client projects via `/migrate-bootstrap` and cannot be rolled back by a single `git restore` in the bootstrap repo. Examples: new hook event registered in settings.json, migration that edits `.claude/agents/*.md` in client projects, payload-schema assumption for a hook input, new Claude Code hook event integration. Requires `#### Failure Modes` section with detection + rollback explicit.
+
+4. **critical** — any change to authentication, credentials, secret handling, git-destructive commands (force push, reset --hard, clean -f), or a change that could silently disable an existing safety gate (verify, review, guard-git). Also: any change to shell scripts that run during bootstrap with elevated trust (companion-repo sync, settings merge). Requires `#### Failure Modes` section and an explicit "blast radius bound" note in rationale.
+
+Scope rule: `#### Failure Modes` section is REQUIRED iff risk ∈ {medium, high, critical}; OMIT for low.
+
+If plan-writer cannot answer any of the 5 failure-mode questions concretely → bump risk DOWN one level (the concrete analysis produced did not justify the higher classification) OR flag "insufficient context — ask user" in the Risks section of the master plan and stop. Never fabricate a Failure Modes answer to satisfy the scope rule.
+
 ## Dispatch Unit Packing
 First Fit Decreasing over dep-isolated, layer-grouped bins.
 
@@ -164,12 +181,20 @@ Body cap: ≤200 lines per batch file (bounds intra-batch context rot).
 ---
 ### Task {NN}.1: {title}
 #### Tier: {micro|moderate|complex}
+#### Risk: {low|medium|high|critical}
 #### Operation: {create|modify|migrate}
 #### Context (1-3 sentences — what executing agent needs + WHY)
 #### Contract (interface shapes, method signatures, data types — intent, NOT bodies)
 #### Steps (imperative prose, 1-11+ depending on tier)
 #### Files (paths + what changes — "add method X", NOT literal snippets)
 #### Dep set: {files+symbols this specific task touches}
+#### Failure Modes
+REQUIRED iff risk ∈ {medium, high, critical}; OMIT for low. Five numbered one-line answers:
+1. What could fail in production?
+2. How would we detect it quickly?
+3. What is the fastest safe rollback?
+4. What dependency could invalidate this plan?
+5. What assumption is least certain?
 
 ### Task {NN}.2: {title}
 [...]

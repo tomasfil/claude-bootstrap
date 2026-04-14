@@ -419,6 +419,68 @@ Scripts to create:
    All formatter calls: append 2>/dev/null || true (never fail hook)
    {if auto_format == no}: skip this script entirely
 
+10. .claude/hooks/gate-task-complete.sh (TaskCompleted — risk-aware completion gate)
+   Purpose: block task completion on medium/high/critical risk tasks that lack verification evidence
+   in their subject or description. `TaskCompleted` is a standard Claude Code hook event
+   (https://code.claude.com/docs/en/hooks) — NOT a PreToolUse matcher. Payload fields are
+   TOP-LEVEL (`.task_subject`, `.task_description`, `.task_id`, `.transcript_path`) — NOT nested under
+   `tool_input`. Block semantics: write diagnostic to stderr and `exit 2` — NO JSON stdout
+   (`decision:block` is the PreToolUse pattern, not TaskCompleted). Bypass escape hatch:
+   `TASKCOMPLETED_GATE_BYPASS=1` environment variable emits a warning line to stderr and exits 0.
+   Shell-standards compliant: #!/usr/bin/env bash, set -euo pipefail, cat stdin, [[ ]], quoted vars,
+   printf over echo -e.
+
+   Content (full spec — write exactly as shown, no elision, no "similar pattern follows"):
+   ```bash
+   #!/usr/bin/env bash
+   set -euo pipefail
+
+   # TaskCompleted input: read full stdin JSON. Every task completion attempt fires this hook;
+   # there is no tool_name guard (TaskCompleted is its own event, not a PreToolUse matcher).
+   INPUT=$(cat)
+
+   # Bypass escape hatch: TASKCOMPLETED_GATE_BYPASS=1 emits a warning and exits 0.
+   # Use this for emergency overrides or automated runs where verification happens elsewhere.
+   if [[ "${TASKCOMPLETED_GATE_BYPASS:-}" == "1" ]]; then
+     printf '[gate-task-complete] bypass active (TASKCOMPLETED_GATE_BYPASS=1) — skipping risk + verification checks\n' >&2
+     exit 0
+   fi
+
+   # Extract TaskCompleted payload fields. All fields are TOP-LEVEL — no tool_input nesting.
+   # .claude/scripts/json-val.sh uses BARE field names (no leading dot — leading-dot paths
+   # split to ['', 'name'] which resolve to empty string and silently break the gate).
+   # The script interprets `a.b.c` as nested dict traversal, not a jq-style prefix.
+   SUBJECT=$(printf '%s' "$INPUT" | bash .claude/scripts/json-val.sh 'task_subject' 2>/dev/null || printf '')
+   DESCRIPTION=$(printf '%s' "$INPUT" | bash .claude/scripts/json-val.sh 'task_description' 2>/dev/null || printf '')
+   TASK_ID=$(printf '%s' "$INPUT" | bash .claude/scripts/json-val.sh 'task_id' 2>/dev/null || printf '')
+
+   # Parse risk marker from combined subject + description. Accepts case-insensitive variants:
+   # `risk: low`, `Risk: High`, `risk:medium`, etc. First match wins.
+   COMBINED="$SUBJECT $DESCRIPTION"
+   RISK=$(printf '%s' "$COMBINED" | grep -oiE 'risk: ?(low|medium|high|critical)' | head -n1 | grep -oiE '(low|medium|high|critical)' | tr '[:upper:]' '[:lower:]' || true)
+
+   # No risk marker OR explicit low risk → allow completion (fail-open on unknown,
+   # intentional allow on low). The gate is informational discipline for medium+, not a
+   # hard barrier on every task.
+   if [[ -z "$RISK" || "$RISK" == "low" ]]; then
+     exit 0
+   fi
+
+   # Verification evidence scan. Presence of any of these markers in the subject or
+   # description proves the task author asserted verification before marking complete.
+   # Patterns: `verified:`, `tests: pass`, `build: pass`, `/verify ran`, `/review ran`.
+   if printf '%s' "$COMBINED" | grep -qiE 'verified:|tests: ?pass|build: ?pass|/verify ran|/review ran'; then
+     exit 0
+   fi
+
+   # Medium/high/critical risk with no verification evidence → block.
+   MESSAGE="[gate-task-complete] Task '$TASK_ID' risk=$RISK — verification evidence required before marking complete. Add 'verified: <how>' or 'tests: pass' / 'build: pass' / '/verify ran' / '/review ran' to the task description, or set TASKCOMPLETED_GATE_BYPASS=1 to override."
+   printf '%s\n' "$MESSAGE" >&2
+   exit 2
+   ```
+   Verification: chmod +x .claude/hooks/gate-task-complete.sh. Smoke-test fixtures (see Step 5
+   Verify Wiring) confirm no-marker → exit 2 and with-marker → exit 0.
+
 Write all files. chmod +x each. Return ONLY: all paths + 1-line summary <100 chars."
 )
 ```
@@ -469,6 +531,9 @@ Structure:
     ],
     'UserPromptSubmit': [
       { 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/prompt-nudge.sh' }] }
+    ],
+    'TaskCompleted': [
+      { 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/gate-task-complete.sh' }] }
     ]
   }
 }
@@ -477,6 +542,7 @@ Requirements:
 - settings.json: ONLY hooks + structural config — no model defaults, no attribution, no schema URLs
 - UserPromptSubmit: command-type dispatch to prompt-nudge.sh (NOT prompt-type — prompt-type blocks normal messages). Script emits ~30-token skill nudge + conditional max-quality nudge on write/impl verbs.
 - SubagentStop: both track-agent.sh (logging) AND check-quality.sh (Max Quality Doctrine Layer 3 literal scan) must be registered in the same hooks array
+- TaskCompleted: top-level key, NO `matcher` field (TaskCompleted is its own event type, not a PreToolUse matcher). Single hook entry dispatching gate-task-complete.sh. Merge into existing settings.json — do NOT touch the PreToolUse array.
 - If .claude/settings.json already exists: READ it, MERGE hooks (add missing, update changed, preserve custom)
 - Validate JSON after writing: python3 -c 'import json; json.load(open(\".claude/settings.json\"))'
 
@@ -517,6 +583,35 @@ assert any('track-agent.sh' in c for c in cmds), 'Missing track-agent.sh'
 assert any('check-quality.sh' in c for c in cmds), 'Missing check-quality.sh (Max Quality Layer 3)'
 print('SubagentStop: track-agent + check-quality — OK')
 "
+
+# TaskCompleted gate: syntax check + settings wiring + 2 fixture smoke tests.
+# Smoke tests use `set +e; EC=$?; set -e` + explicit `|| { FAIL; exit 1; }` so a wrong
+# exit code surfaces as a hard failure. The earlier `; [[ $? -eq N ]] && echo OK` form
+# silently passed on failure (no echo, no error) — do NOT reintroduce that pattern.
+bash -n .claude/hooks/gate-task-complete.sh
+grep -qF 'gate-task-complete.sh' .claude/settings.json && echo "TaskCompleted gate — OK"
+
+set +e
+printf '%s' '{"task_subject":"Fix bug","task_description":"risk: high — fixed","task_id":"t1","transcript_path":""}' | bash .claude/hooks/gate-task-complete.sh >/dev/null 2>&1
+EC=$?
+set -e
+if [[ $EC -eq 2 ]]; then
+  echo "smoke: no-marker (risk:high) → exit 2 OK"
+else
+  echo "FAIL: smoke no-marker (risk:high) → expected exit 2, got $EC" >&2
+  exit 1
+fi
+
+set +e
+printf '%s' '{"task_subject":"Fix bug","task_description":"risk: high — fixed. verified: tests pass","task_id":"t1","transcript_path":""}' | bash .claude/hooks/gate-task-complete.sh >/dev/null 2>&1
+EC=$?
+set -e
+if [[ $EC -eq 0 ]]; then
+  echo "smoke: with-marker (risk:high + verified) → exit 0 OK"
+else
+  echo "FAIL: smoke with-marker (risk:high + verified) → expected exit 0, got $EC" >&2
+  exit 1
+fi
 ```
 
 ## Checkpoint
@@ -532,5 +627,6 @@ print('SubagentStop: track-agent + check-quality — OK')
   - PostToolUse Edit|Write|Bash: observation capture
   {- PostToolUse Edit|Write: auto-format (if enabled)}
   - UserPromptSubmit: prompt-nudge.sh — skill-check always + MAX QUALITY on write/impl verbs
+  - TaskCompleted: risk-aware completion gate (blocks medium+ tasks without verification evidence; bypass: TASKCOMPLETED_GATE_BYPASS=1)
   - settings.json: all hooks wired, valid JSON
 ```
