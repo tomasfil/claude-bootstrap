@@ -259,7 +259,7 @@ Before any task-specific work, Read these rule files (in parallel where possible
 - `.claude/rules/skill-routing.md`
 - `.claude/rules/token-efficiency.md`
 - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
-- `.claude/rules/mcp-routing.md` (if present)
+- `.claude/rules/mcp-routing.md` (if present — MCP propagation rules + action→tool routing table; overrides any Grep/Glob/Read-first examples later in this file)
 - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
 - `.claude/rules/code-standards-markdown.md`
 
@@ -397,12 +397,12 @@ Before any research work, Read these rule files (in parallel where possible):
 - `.claude/rules/general.md`
 - `.claude/rules/skill-routing.md`
 - `.claude/rules/token-efficiency.md`
-- `.claude/rules/mcp-routing.md` (if present — routes code discovery through MCP tools)
+- `.claude/rules/mcp-routing.md` (if present — MCP propagation rules + action→tool routing table; overrides any Grep/Glob/Read-first examples later in this file)
 - `.claude/rules/max-quality.md` (doctrine — research summary is summary OF complete findings, never abbreviated findings)
 
 Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it and continue.
 
-If `mcp-routing.md` is loaded, route code discovery through MCP tools before falling back to Read/Grep/Glob.
+If `mcp-routing.md` is loaded, follow its propagation rules (tools:/allowed-tools: config) AND route code discovery through its action→tool table BEFORE any `Grep` / `Glob` / `Read`-first examples later in this file. Fall back to text search only when no MCP path fits.
 
 ---
 
@@ -516,7 +516,7 @@ Before any task-specific work, Read these rule files (in parallel where possible
 - `.claude/rules/token-efficiency.md`
 - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
 - `.claude/rules/shell-standards.md`
-- `.claude/rules/mcp-routing.md` (if present)
+- `.claude/rules/mcp-routing.md` (if present — MCP propagation rules + action→tool routing table; overrides any Grep/Glob/Read-first examples later in this file)
 - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
 
 Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it and continue.
