@@ -50,6 +50,7 @@ Requirements:
   - `@import .claude/rules/code-standards-{lang}.md` for each detected language
   - `@import .claude/rules/mcp-routing.md` (ONLY if `.mcp.json` exists at project root)
   - `@import .claude/rules/max-quality.md` (MANDATORY — doctrine rule; see Step 3 item 10)
+  - `@import .claude/rules/main-thread-orchestrator.md` (MANDATORY — orchestrator doctrine; see Step 3 item 11)
   These are required for /audit-agents A5 check — adding custom imports is fine, removing these is not.
 - Compressed telegraphic notation throughout (Claude-facing, not human-facing)
 - Language-agnostic — use {placeholders} filled from discovery, ZERO hardcoded examples
@@ -68,12 +69,13 @@ Sections (in order):
 11. Behavior — READ_BEFORE_WRITE, verify-before-done, no-false-claims, collaborator,
     never-background-agents, no-builtin-explore, comments-WHY-only, output-lead-w/-answer,
     Claude-facing=compressed/human-facing=prose,
-    'Main thread = pure orchestrator. Dispatches agents, handles questions. Never generates file content.',
+    'Main thread = orchestrator: classify → dispatch → synthesize agent returns → talk to user. Tier 0–3 defined in .claude/rules/main-thread-orchestrator.md. Investigation (Tier 2) → proj-quick-check default; escalate proj-researcher on incomplete/multi-source; multiple sequential quick-checks OK. Code change (Tier 3) → dispatch proj-code-writer-{lang} EXCEPT quick-fix carve-out: single file ≤10 lines, target + location already known, mechanically obvious, zero cross-file impact. Any carve-out criterion fails → dispatch.',
     Anti-patterns (ban these escape hatches):
     - No ownership-dodging: don't deflect w/ "pre-existing issue" | "not caused by my changes" | "known limitation" — own it, fix it
     - No premature stopping: don't quit at "good stopping point" | "natural checkpoint" — push through to complete solution
     - No permission-seeking: don't ask "should I continue?" | "want me to keep going?" — if solvable, solve it
     - No built-in Explore fallback: code investigation → proj-quick-check (simple) | proj-researcher (complex); NEVER built-in Explore/general-purpose/plugin agents — they bypass project context + evidence tracking
+    - No main-thread investigation-Grep/Glob: named-symbol search + multi-file pattern discovery on main = Tier 2 dispatch violation (see main-thread-orchestrator.md)
 12. Self-Improvement — .learnings/log.md gate, categories, hook auto-logs, 2-fail→web
 
 Write to CLAUDE.md. Return ONLY: path + 1-line summary <100 chars."
@@ -366,6 +368,83 @@ Create ALWAYS:
     Output completeness > token efficiency. A shorter-but-incomplete output is a worse
     output, regardless of token savings. If forced to choose between fidelity and brevity
     in deliverables → choose fidelity every time.
+
+11. .claude/rules/main-thread-orchestrator.md (embed verbatim — DO NOT paraphrase)
+    Content:
+    # Main Thread Orchestrator Doctrine
+
+    ## Rule
+    Main thread = orchestrator. Classifies requests, dispatches sub-agents, synthesizes agent returns, talks to user. Main does NOT investigate multi-file, search by pattern, or write production code — except the quick-fix carve-out below. This rule addresses main only; dispatched sub-agents SHOULD use their own tools within scope (a code-writer SHOULD Edit/Write; a researcher SHOULD Read/Grep/Glob). Source: Anthropic orchestrator-workers cookbook pattern — "the orchestrator stays lean because it's delegating the heavy lifting to workers with their own context space".
+
+    ## Tiers
+
+    ### Tier 0 — Direct (no tools, conversational)
+    Classification, synthesis of agent outputs, design discussion, user Q&A, effort/scope judgment calls. Zero tool calls from main. Matches the plurality of main-thread turns.
+
+    ### Tier 1 — Main Read allowed (exact known path)
+    User handed a concrete path (`src/foo.ts:42`, `@file.md`, absolute path in the prompt) OR target is already in-context from a prior agent return. Single-file Read is fine; few-file Read on multiple pre-supplied paths is fine. NO Grep | Glob | search. NO "let me Read the surrounding files to understand".
+
+    ### Tier 2 — Dispatch (investigation)
+    Any "where / how / find / which / what calls / trace / understand / map" question → dispatch, do not investigate on main.
+    - Default: `proj-quick-check` (haiku, fast, cheap, text return — no findings file). Use for factual lookups, symbol existence checks, single-point answers.
+    - Escalate to `proj-researcher` (sonnet, evidence-tracked, writes findings file) when the quick-check return is incomplete | needs multi-source synthesis | needs cross-file reasoning | needs external web research | will be consumed by a downstream code-writer dispatch.
+    - Multiple sequential `proj-quick-check` calls on related-but-separate sub-questions are fine. Parallel: multiple `Agent` calls in one message = parallel foreground dispatch.
+    - No hard dispatch-count limit. Orchestrator weighs dispatch latency (~5–15s per call) vs main-context bloat from direct reads. Anything involving search, correlation, or pattern recognition across files → dispatch always wins. A single Read of one unrelated file on a known path → Tier 1, direct.
+
+    ### Tier 3 — Dispatch (code change)
+    Any Edit | Write | MultiEdit | NotebookEdit beyond the carve-out → route through `/code-write` | `/tdd` | `/execute-plan` | direct `proj-code-writer-{lang}` dispatch. Main does NOT write production code.
+
+    ## Quick-Fix Carve-Out (Tier 3 exception — main may edit directly)
+    Main may edit directly when ALL of the following hold:
+    1. Single file, ≤ ~10 lines changed
+    2. Target file + location already known (user-provided path OR in-context from prior agent return) — NO discovery needed
+    3. Mechanically obvious: typo fix | version bump | config value change | one-line logic swap | single-use local rename | comment edit
+    4. Zero cross-file impact: no import changes, no type/API changes, no shared-contract touches
+    5. User signaled quick intent OR the fix is trivially mechanical (no judgment call required)
+
+    Any ONE criterion fails → Tier 3 dispatch, no exceptions. "Feels quick" is not a criterion. If you find yourself reasoning "it's just one more file" or "it's only slightly cross-file" → dispatch.
+
+    ## Investigation Escalation Ladder
+    1. Start every investigation with `proj-quick-check` — it is the cheapest option with structured file:line evidence return.
+    2. Evaluate the return:
+       - Complete answer + grounded in file:line evidence → done, synthesize for user.
+       - Partial answer, needs deeper synthesis, cross-file reasoning, multi-source correlation, or a structured findings doc for a downstream dispatch → dispatch `proj-researcher` (do NOT Read the files yourself).
+       - One sub-question answered, more sub-questions remain → dispatch more `proj-quick-check` calls (sequential OR parallel — multiple `Agent` calls in one message = parallel foreground, safe concurrency).
+       - Completely wrong domain / missed the question → re-dispatch with a corrected brief. Never fall back to "I'll just Read it myself".
+    3. No hard dispatch-count limit. The orchestrator is trusted to judge depth vs. cost.
+
+    ## Dispatch Prompt Quality (when you do dispatch)
+    Every dispatch prompt MUST include:
+    - **Objective**: the single concrete question, not "explore X"
+    - **Output format**: text return (quick-check) | findings file path (researcher) | structured fields
+    - **Scope bounds**: which directory | file glob | layer to inspect; hard "do not touch Y" if relevant
+    - **Return contract**: path + 1-line summary (<100 chars), OR text answer + file:line evidence for quick-check
+    - **Known context**: anything already-Read or already-known, to avoid duplicate work
+    Source: Anthropic multi-agent research system — "each subagent needs an objective, an output format, guidance on the tools and sources to use, and clear task boundaries".
+
+    ## Anti-Patterns on Main
+    - Grep | Glob for investigation on main → ALWAYS Tier 2 dispatch
+    - Reading 3+ files to "understand" something → Tier 2 dispatch
+    - Editing >10 lines across multiple locations → Tier 3 dispatch
+    - "I'll just quickly check" when the check requires search → Tier 2 dispatch
+    - Main-thread deep code analysis when `proj-researcher` exists → Tier 2 dispatch
+    - Skipping dispatch "to save latency" — saves seconds, costs thousands of main-context tokens, triggers compaction earlier, costs the user far more
+    - Dispatching with a vague prompt ("look into X") when a sharp brief ("does class X call Y; file:line evidence") fits — vague prompts waste sub-agent turns
+
+    ## Rationale
+    Main-thread context is the most expensive token budget in the system: Opus + long conversation history + compaction cost + user-facing latency on every read. Sub-agents run in fresh disposable contexts, return compressed summaries (text for quick-check, findings file for researcher), and leave main's context small. Over a long session, delegating converts expensive main-thread tokens into cheap disposable sub-agent tokens; the context-budget savings dominate per-call latency cost. The user sees faster end-to-end turns once compaction is avoided.
+
+    ## Related
+    - `.claude/rules/skill-routing.md` — routing-time skill check (upstream: "before implementation, check if skill applies")
+    - `.claude/rules/max-quality.md` — §6 No Hedging: solvable → solve, don't ask; §5 Full Rule Compliance: dispatch agents actually dispatched
+    - `.claude/rules/agent-scope-lock.md` — downstream: once dispatched, agents stay in their listed files
+    - `.claude/rules/mcp-routing.md` — MCP tool routing for code discovery (applies inside Tier 2 dispatch)
+
+    ## Enforcement
+    - Advisory PreToolUse hook `.claude/hooks/orchestrator-nudge.sh` on `Edit|Write|MultiEdit|NotebookEdit|Grep|Glob` → stderr reminder citing this rule. NEVER blocks (exit 0). Orchestrator reads the nudge and decides.
+    - `@import .claude/rules/main-thread-orchestrator.md` in `CLAUDE.md` (always loaded on main thread).
+    - Review-time catch: `/review` flags turns violating tier discipline.
+    - `.learnings/log.md` logs every observed violation under `correction` category → feeds `/reflect` for doctrine tightening.
 
 Create CONDITIONALLY:
 7. .claude/rules/shell-standards.md — only if .sh files exist

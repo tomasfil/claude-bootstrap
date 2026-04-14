@@ -850,6 +850,50 @@ Scripts to create:
    Smoke test: `printf '{"tool_name":"Grep","tool_input":{"pattern":"FooBarService"}}' | bash .claude/hooks/mcp-discovery-gate.sh`
    → exit 2 if cmm/serena is reachable in any MCP scope (project, user, managed, plugin), exit 0 if dormant.
 
+12. .claude/hooks/orchestrator-nudge.sh (PreToolUse — matcher: Edit|Write|MultiEdit|NotebookEdit|Grep|Glob)
+    Purpose: advisory nudge that reminds the main thread to delegate to sub-agents per `.claude/rules/main-thread-orchestrator.md`. NEVER blocks (exit 0). Reads the PreToolUse JSON on stdin, extracts `tool_name`, emits a short stderr reminder matched to the tool class. Sub-agents that see the reminder are told in the text to ignore it — the rule is addressed to the main thread.
+
+    Design contract:
+    - Advisory only. Hook output goes to stderr and becomes part of the next-turn context; it never returns `decision:block` and never exits non-zero. The orchestrator reads the reminder and decides whether the carve-out applies.
+    - Fail-open on every parse error. A broken nudge hook must not break unrelated tool use. `set -euo pipefail` at top; every parse path has `|| printf ''` fallback.
+    - No persistent state. No counter files, no turn tracking, no session files. Stateless emission — the hook fires on every match, the orchestrator judges context from its own memory.
+    - No project-type carve-out. The hook fires uniformly — the bootstrap repo dogfoods its own doctrine. Main in the bootstrap repo dispatches `proj-code-writer-markdown` for `modules/` / `migrations/` / `templates/` edits beyond the quick-fix carve-out, same as any client project.
+
+    Content (full spec — write exactly as shown, no elision):
+    ```bash
+    #!/usr/bin/env bash
+    # orchestrator-nudge.sh — PreToolUse advisory nudge (main-thread orchestrator doctrine)
+    # Reminds main thread to delegate to sub-agents per .claude/rules/main-thread-orchestrator.md.
+    # NEVER blocks. Exit 0 always. Sub-agent contexts: the reminder text says "ignore if sub-agent".
+    set -euo pipefail
+
+    INPUT=$(cat)
+    TOOL_NAME=$(printf '%s' "$INPUT" | python3 -c 'import sys,json
+    try:
+      d=json.load(sys.stdin); print(d.get("tool_name",""))
+    except Exception:
+      print("")
+    ' 2>/dev/null || printf '')
+
+    case "$TOOL_NAME" in
+      Edit|Write|MultiEdit|NotebookEdit)
+        printf >&2 '%s\n' "[orchestrator-nudge] Main-thread edit? Quick-fix carve-out applies only when ALL hold: (1) single file, (2) ≤10 lines changed, (3) target + location already known, (4) mechanically obvious (typo/version/config/one-line-swap), (5) zero cross-file impact. Any criterion fails → dispatch proj-code-writer-{lang} via /code-write /tdd /execute-plan. Sub-agents: this nudge targets main, ignore. Rule: .claude/rules/main-thread-orchestrator.md"
+        ;;
+      Grep|Glob)
+        printf >&2 '%s\n' "[orchestrator-nudge] Main-thread investigation? Dispatch proj-quick-check (fast haiku, text return) for factual lookups; escalate to proj-researcher (sonnet, findings file) on incomplete / multi-source / cross-file synthesis. Multiple sequential quick-checks OK — orchestrator decides depth. Sub-agents: this nudge targets main, ignore. Rule: .claude/rules/main-thread-orchestrator.md"
+        ;;
+    esac
+
+    exit 0
+    ```
+
+    Verification: `chmod +x .claude/hooks/orchestrator-nudge.sh`; `bash -n .claude/hooks/orchestrator-nudge.sh`.
+    Smoke tests:
+    - `printf '{"tool_name":"Edit","tool_input":{"file_path":"x.md"}}' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stderr contains `carve-out`
+    - `printf '{"tool_name":"Grep","tool_input":{"pattern":"foo"}}' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stderr contains `proj-quick-check`
+    - `printf '{"tool_name":"Read","tool_input":{"file_path":"x.md"}}' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stderr empty (Read is Tier 1 allowed; no nudge)
+    - `printf 'not json' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stderr empty (fail-open on parse error)
+
 Write all files. chmod +x each. Return ONLY: all paths + 1-line summary <100 chars."
 )
 ```
@@ -878,7 +922,9 @@ Structure:
     'PreToolUse': [
       { 'matcher': 'Bash', 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/guard-git.sh' }] },
       // mcp-discovery-gate: mechanically enforces MCP-first discipline per .claude/rules/mcp-routing.md (Grep Ban / First-Tool Contract).
-      { 'matcher': 'Grep|Glob|Search', 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/mcp-discovery-gate.sh' }] }
+      { 'matcher': 'Grep|Glob|Search', 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/mcp-discovery-gate.sh' }] },
+      // orchestrator-nudge: advisory-only main-thread doctrine reminder per .claude/rules/main-thread-orchestrator.md. NEVER blocks (exit 0).
+      { 'matcher': 'Edit|Write|MultiEdit|NotebookEdit|Grep|Glob', 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/orchestrator-nudge.sh' }] }
     ],
     'SubagentStop': [
       { 'hooks': [
@@ -992,6 +1038,7 @@ fi
   - SessionStart: env detection + companion auto-import + maintenance + spec cleanup
   - PreToolUse Bash: git guard (blocks force push, push to main, hard reset)
   - PreToolUse Grep|Glob|Search: mcp-discovery-gate (blocks symbol-shaped patterns when codebase-memory-mcp or serena is reachable in any MCP scope — project .mcp.json, user ~/.claude.json, managed settings, or plugin-bundled; fail-open on parse errors)
+  - PreToolUse Edit|Write|MultiEdit|NotebookEdit|Grep|Glob: orchestrator-nudge (advisory-only main-thread doctrine reminder per .claude/rules/main-thread-orchestrator.md — NEVER blocks, exit 0)
   - SubagentStop: agent usage tracking + Max Quality Doctrine Layer 3 literal scan (check-quality.sh)
   - Stop: verification nudge (incl. MAX QUALITY reminder) + companion sync ({if companion})
   - PreCompact: state preservation
