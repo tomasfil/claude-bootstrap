@@ -33,7 +33,7 @@ The split was a minimal surgical patch at the time: `mcp-routing.md` already exi
 
 1. **Semantically, one rule owns both concerns.** Propagation (how tools reach agents) and routing (which tool for which action) are the same policy domain. Splitting them meant every agent had to reference two files in STEP 0 — a fragile two-bullet contract where either bullet could go stale independently.
 
-2. **The Sirius project manually consolidated them** and revealed a concrete failure mode: after consolidation, the agents' STEP 0 force-read blocks still cited `mcp-tool-routing.md` (a file that no longer existed) alongside `mcp-routing.md`, and the override prose used the two-clause form (`If mcp-routing.md is loaded … If mcp-tool-routing.md is loaded …`). The second clause was semantically dead — it referenced a deleted file. Any agent that ran on the Sirius project after consolidation loaded a non-existent rule reference and applied dead override logic. 13 agents were in this state.
+2. **Manual consolidation in the field revealed a concrete failure mode**: when a project merges the two files by hand, the agents' STEP 0 force-read blocks still cite `mcp-tool-routing.md` (a file that no longer exists) alongside `mcp-routing.md`, and the override prose uses the two-clause form (`If mcp-routing.md is loaded … If mcp-tool-routing.md is loaded …`). The second clause is semantically dead — it references a deleted file. Any agent run after consolidation loads a non-existent rule reference and applies dead override logic. 13 agents per bootstrapped project are in this state.
 
 3. **Bootstrap templates have already been updated** (companion batch applied before this migration): all 13 agent templates in `templates/agents/` have had their STEP 0 force-read blocks and override prose patched to the single-clause form; `modules/02-project-config.md` Step 3 item 5 now embeds the full merged `mcp-routing.md` content and Step 6 (conditional `mcp-tool-routing.md` generation) has been deleted. New bootstraps produce only `mcp-routing.md`. This migration is the client-project retrofit path.
 
@@ -43,7 +43,7 @@ Migration 031 reverses the content-level effects of migration 018 in already-boo
 
 ## Changes
 
-1. **Merges** action→tool content (Lead-With Order, Action→Tool table, Gotchas, Decision Shortcuts sections) from `.claude/rules/mcp-tool-routing.md` into `.claude/rules/mcp-routing.md` via Python section parser (append-only; skip if already merged — Sirius case).
+1. **Merges** action→tool content (Lead-With Order, Action→Tool table, Gotchas, Decision Shortcuts sections) from `.claude/rules/mcp-tool-routing.md` into `.claude/rules/mcp-routing.md` via Python section parser (append-only; skip if already merged — pre-merged field case).
 2. **Deletes** `.claude/rules/mcp-tool-routing.md`.
 3. **Strips** `@import .claude/rules/mcp-tool-routing.md` from `CLAUDE.md` via Python regex removal.
 4. **Patches** every `.claude/agents/proj-*.md` (plus sub-specialists via globs for `code-writer-*.md` and `test-writer-*.md`) STEP 0 force-read block: removes the `mcp-tool-routing.md` bullet, rewords the `mcp-routing.md` bullet to mention "action→tool routing table".
@@ -52,7 +52,7 @@ Migration 031 reverses the content-level effects of migration 018 in already-boo
 7. **Fetches** refreshed `techniques/agent-design.md` from the bootstrap repo → `.claude/references/techniques/agent-design.md` (client-project layout per `.claude/rules/general.md`; NOT `techniques/` at project root).
 8. **Advances** `.claude/bootstrap-state.json` → `last_migration: "031"` + appends entry to `applied[]`.
 
-Idempotency: every step detects the already-applied state via sentinel grep and skips with a `SKIP:` log line. Running twice is safe. The Sirius case (already manually consolidated) is explicitly handled — Step 2 detects `## Action → Tool` already present in `mcp-routing.md` and skips content merge while still running Steps 3-8.
+Idempotency: every step detects the already-applied state via sentinel grep and skips with a `SKIP:` log line. Running twice is safe. The pre-merged case (project that already merged the two files by hand) is explicitly handled — Step 2 detects `## Action → Tool` already present in `mcp-routing.md` and skips content merge while still running Steps 3-8.
 
 ---
 
@@ -126,7 +126,7 @@ printf "STATE: HAS_TOOL_ROUTING=%s HAS_ROUTING=%s HAS_MERGED=%s\n" \
 ### Step 2 — Merge content into mcp-routing.md (append-only, idempotent)
 
 Branch on state from Step 1:
-- `HAS_MERGED=yes` → SKIP (Sirius case: already consolidated manually or by prior migration run). Proceed to Step 3.
+- `HAS_MERGED=yes` → SKIP (pre-merged case: already consolidated manually or by prior migration run). Proceed to Step 3.
 - `HAS_TOOL_ROUTING=yes` AND `HAS_ROUTING=yes` AND `HAS_MERGED=no` → extract four sections from `mcp-tool-routing.md` via Python section parser, append to `mcp-routing.md`.
 - `HAS_TOOL_ROUTING=no` AND `HAS_ROUTING=yes` AND `HAS_MERGED=no` → `mcp-tool-routing.md` was never created (non-MCP project that ran 018 body-prose only) or was already deleted. Append canonical action-table content from inline heredoc.
 - `HAS_ROUTING=no` → ERROR (should not happen on a bootstrapped project — `mcp-routing.md` is a Module 02 Step 3 mandatory rule file).

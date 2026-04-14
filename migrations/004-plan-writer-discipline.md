@@ -18,7 +18,7 @@ min_bootstrap_version: "6.0"
 
 ## Problem
 
-`proj-plan-writer` was producing task files containing 90+ lines of full method bodies. Example: Sirius `task-02-base-import-csv-shim.md` included a complete `ReadCsvAsync` C# implementation — `CsvHelper` configuration, `XLWorkbook` loop, exception handling — before any specialist agent saw the task.
+`proj-plan-writer` was producing task files containing 90+ lines of full method bodies. Example observed in the field: a `task-02-base-import-csv-shim.md` task file included a complete `ReadCsvAsync` C# implementation — `CsvHelper` configuration, `XLWorkbook` loop, exception handling — before any specialist agent saw the task.
 
 Downstream failure mode A: `execute-plan` paste path. Specialist `proj-code-writer-csharp` receives a task with pre-written code and pastes it verbatim. This bypasses `.claude/rules/code-standards-csharp.md` and any framework guardrails the specialist would normally apply — plan-writer runs without those rules loaded.
 
