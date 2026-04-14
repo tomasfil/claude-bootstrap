@@ -119,6 +119,9 @@ Create ALWAYS:
    - NOT: conversation output, commits, PRs, user-facing docs
    - Compression rules: strip articles/filler, telegraphic, symbols (→|+~w/), key:value+bullets
    - Why: 30-50% savings, compounds across sessions + subagents
+   - ## Tool Call Hygiene (token waste at call site)
+     `cmm.search_graph(query=…)` BM25 mode — always pass `limit ≤10`; unbounded query= returns 100–500+ hits × 10–15k tokens each. `name_pattern=` exempt (structural, small result sets).
+     Large log / output / fixture files — `wc -l` first → scoped Read (offset/limit) or shell tail/head/sed -n. NEVER full-file Read on unsized logs. Failed oversized Read echoes error payload into context too.
    - ## Output Carve-Out
      Applies to INSTRUCTIONS only (agent bodies, rules, specs, plans, memory files).
      Implementation OUTPUT (code, spec content, plan steps, review findings, task bodies)
