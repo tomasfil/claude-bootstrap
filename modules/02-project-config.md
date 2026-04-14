@@ -249,6 +249,14 @@ Create ALWAYS:
    - `cmm server unreachable (connection refused) → Grep fallback, reduced confidence`
    If the MCP path is genuinely **unsolvable** (server down, project not indexable on this platform, known-broken tool on this repo per Gotchas section) → state it is unsolvable + the specific reason. Never silently degrade. Max-quality discipline still applies to fallback paths — completeness, verification, no elision — but the tool-class disclosure is mandatory.
 
+   ## Deferred MCP Discovery
+   MCP tool schemas are DEFERRED — not listed at top-of-prompt, not directly callable. SessionStart's `Deferred MCPs: ...` line inventories what is reachable in this session. When a task matches a listed server's purpose (semantic code search → serena / cmm, library docs → context7, graph-indexed lookups → cmm, etc.):
+   1. Call `ToolSearch select:mcp__{server}__{primary_tool}` FIRST to load the schema
+   2. THEN invoke the tool
+   3. Grep / Glob / Read fallback ONLY after the schema-load attempt AND only when the MCP returns zero hits or the server is unreachable
+   Permission-seeking ban still applies (max-quality.md §6) — the ToolSearch load is a solvable blocker, not a user-facing question. Never fabricate "it was in the deferred list" to cover a skipped ToolSearch — if the schema was not loaded, say so and load it now. Transparent Fallback rule (above) still governs any MCP → text-search degradation.
+   Dormant when `Deferred MCPs: none` — no reachable servers means nothing to load. Route through text tools directly as before.
+
    ## Decision Shortcuts
    - "Who calls X?" → `serena.find_referencing_symbols`
    - "What does X call?" → `cmm.query_graph` CALLS edges

@@ -177,6 +177,131 @@ Scripts to create:
 
    [[ -n "$COMPANION_STATUS" ]] && printf '%s\n' "$COMPANION_STATUS"
 
+   # Deferred MCP inventory — single-pass multi-scope walk of cmm/serena/context7
+   # registrations across every MCP scope Claude Code reads (project .mcp.json,
+   # user ~/.claude.json top-level, local ~/.claude.json projects.<cwd>,
+   # managed managed-settings.json + managed-mcp.json + managed-settings.d/*.json,
+   # plugin ~/.claude/plugins/*/.mcp.json). Emits a single line on stdout:
+   #   Deferred MCPs: <name1> (<N> tools) <purpose>; <name2> (<N> tools) <purpose>; ...
+   # or 'Deferred MCPs: none' when nothing reachable, or
+   # 'Deferred MCPs: inventory check failed (<short reason>)' on walker error.
+   # Fail-open on every parse error — a broken inventory must never break the
+   # SessionStart hook. Pattern mirrors mcp-discovery-gate.sh (migration 033):
+   # python3 heredoc body, no stdin collision, absolute-path file reads only.
+   DEFERRED_MCP_LINE=$(python3 - <<'PY' 2>/dev/null || printf 'Deferred MCPs: inventory check failed (walker crashed)\n'
+   import json, os, sys, glob
+
+   # Known server lookup — name → (tool_count, short_purpose).
+   # Unknown servers emit "(? tools) purpose unknown — check ToolSearch".
+   KNOWN = {
+       "serena":              ("13", "semantic code/LSP symbols"),
+       "codebase-memory-mcp": ("15", "graph-indexed code search"),
+       "context7":            ("4",  "library docs"),
+   }
+
+   def load_json(path):
+       try:
+           with open(path, "r", encoding="utf-8") as f:
+               return json.load(f)
+       except Exception:
+           return None
+
+   def collect_server_names(mcp_servers, out):
+       if not isinstance(mcp_servers, dict):
+           return
+       for name in mcp_servers.keys():
+           if isinstance(name, str) and name:
+               out.add(name)
+
+   def walk():
+       found = set()
+       cwd = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+       home = os.path.expanduser("~")
+
+       # 1. Project scope — ./.mcp.json
+       d = load_json(os.path.join(cwd, ".mcp.json"))
+       if d:
+           collect_server_names(d.get("mcpServers"), found)
+
+       # 2. User scope + 3. Local scope — ~/.claude.json
+       d = load_json(os.path.join(home, ".claude.json"))
+       if d:
+           collect_server_names(d.get("mcpServers"), found)
+           projects = d.get("projects") or {}
+           if isinstance(projects, dict):
+               candidates = {cwd, os.path.abspath(cwd)}
+               try:
+                   candidates.add(os.path.realpath(cwd))
+               except Exception:
+                   pass
+               for c in list(candidates):
+                   candidates.add(c.replace("\\", "/"))
+               for key, entry in projects.items():
+                   if key in candidates and isinstance(entry, dict):
+                       collect_server_names(entry.get("mcpServers"), found)
+
+       # 4. Managed scope — per-OS system paths + drop-in dir
+       managed_dirs = []
+       if sys.platform == "darwin":
+           managed_dirs.append("/Library/Application Support/ClaudeCode")
+       elif sys.platform.startswith("linux"):
+           managed_dirs.append("/etc/claude-code")
+       if os.name == "nt" or sys.platform == "win32":
+           managed_dirs.append(r"C:\Program Files\ClaudeCode")
+       for mdir in managed_dirs:
+           for fname in ("managed-settings.json", "managed-mcp.json"):
+               d = load_json(os.path.join(mdir, fname))
+               if d:
+                   collect_server_names(d.get("mcpServers"), found)
+           dropin = os.path.join(mdir, "managed-settings.d")
+           if os.path.isdir(dropin):
+               try:
+                   for f in sorted(os.listdir(dropin)):
+                       if f.startswith(".") or not f.endswith(".json"):
+                           continue
+                       d = load_json(os.path.join(dropin, f))
+                       if d:
+                           collect_server_names(d.get("mcpServers"), found)
+               except Exception:
+                   pass
+
+       # 5. Plugin scope — ~/.claude/plugins/*/.mcp.json
+       plugin_root = os.path.join(home, ".claude", "plugins")
+       if os.path.isdir(plugin_root):
+           try:
+               for plugin_mcp in glob.glob(os.path.join(plugin_root, "*", ".mcp.json")):
+                   d = load_json(plugin_mcp)
+                   if d:
+                       collect_server_names(d.get("mcpServers"), found)
+           except Exception:
+               pass
+
+       return found
+
+   try:
+       names = walk()
+   except Exception as e:
+       print("Deferred MCPs: inventory check failed (" + type(e).__name__ + ")")
+       sys.exit(0)
+
+   if not names:
+       print("Deferred MCPs: none")
+       sys.exit(0)
+
+   entries = []
+   for name in sorted(names):
+       if name in KNOWN:
+           count, purpose = KNOWN[name]
+           entries.append(name + " (" + count + " tools) " + purpose)
+       else:
+           entries.append(name + " (? tools) purpose unknown — check ToolSearch")
+   print("Deferred MCPs: " + "; ".join(entries))
+   PY
+   )
+   # Guarantee one line output even on total failure (catch-all: empty string → fallback line)
+   [[ -n "$DEFERRED_MCP_LINE" ]] || DEFERRED_MCP_LINE="Deferred MCPs: inventory check failed (empty walker output)"
+   printf '%s\n' "$DEFERRED_MCP_LINE"
+
    # --- Session maintenance: bulletproof numeric reads ---
    SESSION_COUNT_FILE="$PROJECT_DIR/.learnings/.session-count"
    LAST_DREAM_FILE="$PROJECT_DIR/.learnings/.last-dream"
