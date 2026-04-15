@@ -222,11 +222,12 @@ Create ALWAYS:
 
    ## CMM Freshness (pre-flight when codebase-memory-mcp present)
    Before symbol exploration on an indexed project:
-   1. First cmm tool call this session → `cmm.list_projects` → verify target project exists + read `nodeCount`
-   2. Stale heuristic: `nodeCount < 200` on a non-trivial repo OR `cmm.detect_changes` reports drift → treat as stale
-   3. Stale detected → run `cmm.detect_changes` → `cmm.index_repository` → retry original query. **NO permission-seek** (per `max-quality.md` §6 — solvable blocker, resolve silently)
-   4. Fresh index + 0 hits on a named symbol → THEN serena / Grep fallback is justified
-   Note: cmm server does NOT auto-reindex on MCP startup; it loads the last on-disk graph. Client-side pre-flight is the only freshness guarantee.
+   1. First cmm tool call this session → check if `cmm-index-startup.sh` ran this session (SessionStart stdout shows `CMM_STATE` or `CMM_HOOK_FAILED` line)
+   2. Hook ran + fresh → proceed, no manual check needed
+   3. Hook ran + `CMM_HOOK_FAILED` → run `list_projects` + baseline sentinel probe manually before trusting results
+   4. Hook did NOT run (`CMM_CLI_MISSING`, hook disabled, or non-hook environment) → fall back to `list_projects` + baseline nodes match + sentinel probe
+   5. Baseline file present → check nodes match; if mismatch → reindex silently (permission-seeking ban applies)
+   Note: cmm server does NOT auto-reindex on MCP startup; it loads the last on-disk graph. Hook-enforced pre-flight is the primary freshness guarantee; manual pre-flight is fallback.
 
    ## Grep Ban (indexed projects)
    Grep / Glob on a **named** type / class / function / method / interface in an indexed project = RULE VIOLATION unless BOTH conditions hold:
@@ -261,6 +262,53 @@ Create ALWAYS:
    3. Grep / Glob / Read fallback ONLY after the schema-load attempt AND only when the MCP returns zero hits or the server is unreachable
    Permission-seeking ban still applies (max-quality.md §6) — the ToolSearch load is a solvable blocker, not a user-facing question. Never fabricate "it was in the deferred list" to cover a skipped ToolSearch — if the schema was not loaded, say so and load it now. Transparent Fallback rule (above) still governs any MCP → text-search degradation.
    Dormant when `Deferred MCPs: none` — no reachable servers means nothing to load. Route through text tools directly as before.
+
+   ## Index Timing Expectations
+   Upstream-published benchmarks — calibrate wait-time, investigate if >2x these:
+
+   | Scale | Example | Expected time |
+   |---|---|---|
+   | Tiny (<1k nodes) | markdown-only, tiny scripts | <1s |
+   | Medium (~49k LOC) | typical app service | ~6s |
+   | Large (~10k nodes, ~200k LOC) | mature service repo | ~20-60s |
+   | Giant (75k files, 28M LOC) | monorepo | ~3min |
+
+   Source: upstream README. Operations >2x suggest pathological condition — investigate, don't wait silently.
+
+   ## Known-Broken Tools
+   Generic upstream issues (project-specific broken tools live in `.claude/cmm-baseline.md`):
+
+   - `cmm.search_code` — upstream #250, rg invoked without path, returns 0. Fallback: `serena.search_for_pattern` + `paths_include_glob`
+   - `cmm.trace_path` — empirically broken on large graphs (no upstream issue filed). Fallback: `cmm.query_graph` w/ explicit `CALLS` pattern
+   - `cmm.get_architecture` — stub, returns counts only. Fallback: `cmm.get_graph_schema` for label counts; `cmm.query_graph` for structure
+   - `cmm.query_graph` Cypher features broken upstream #237-242, #252: `DISTINCT`, `labels()`, `WITH DISTINCT`, label alternation `A|B`, `count(DISTINCT x)`, `toInteger()`. Fallback: rewrite without `DISTINCT`, explicit label match, aggregate client-side
+   - Project-specific broken tools: `.claude/cmm-baseline.md` `## Known-broken tools` section
+
+   ## Framework Blind Spots
+   Generic pattern: if project baseline lists a Node type as blind-spot, do NOT query against it — consult baseline routing overrides.
+
+   Examples (generic, no project-specific names):
+   - Attribute/decorator-based routing frameworks → Route Node type unreliable; use `INHERITS` to framework base class
+   - Markup-template files (templating languages, component files) → text-based parsers may error or skip; text search w/ path glob fallback
+   - Source-generated code (`*.g.cs`, protobuf outputs, `*_pb.py`) → excluded by default, never reference
+   - Macro-expanded code → not in pre-expansion AST
+
+   Project-specific entries: `.claude/cmm-baseline.md` `## Framework blind spots` section.
+
+   ## Serena initial_instructions Gate
+   First `serena.*` tool call per session MUST be `mcp__serena__initial_instructions`. Call immediately after receiving task — critically informs available operations. Analogous to cmm `list_projects` pre-flight.
+
+   ## Zero-Drift Policy
+   `cmm-index-startup.sh` hook enforces zero drift at session start. Any git SHA change OR node/edge count mismatch OR missing sentinel → unconditional full reindex. No percentage threshold, no "good enough".
+   Hook emits:
+   - `CMM_STATE: fresh=true` on success (no drift)
+   - `CMM_DRIFT: reason=<trigger>` on reindex-triggered
+   - `CMM_HOOK_FAILED: <reason>` on error (session continues — fail-open)
+
+   Five drift triggers: (a) `current_sha != baseline_sha`; (b) `index_status` nodes|edges != baseline; (c) `index_status.status != "ready"`; (d) any baseline sentinel missing from `search_graph` probe; (e) baseline age > 7 days (slow-moving project staleness probe).
+
+   ## Sentinel Symbol Probe
+   After any `cmm.index_repository` call (hook-triggered or Claude-mediated): verify baseline sentinels via `cmm.search_graph(name_pattern=<sentinel>)` for each listed sentinel. Missing sentinel → fail loudly, log to `.learnings/log.md`, recommend `/cmm-baseline refresh`. All present → proceed.
 
    ## Decision Shortcuts
    - "Who calls X?" → `serena.find_referencing_symbols`
@@ -534,6 +582,7 @@ Based on git_strategy from Module 01:
 CLAUDE.local.md
 .claude/settings.local.json
 .claude/reports/
+# cmm-baseline.md is always committed regardless of git_strategy
 ```
 
 **companion | ephemeral** (work projects):
@@ -541,6 +590,7 @@ CLAUDE.local.md
 CLAUDE.md
 CLAUDE.local.md
 .claude/
+!.claude/cmm-baseline.md
 .learnings/
 ```
 

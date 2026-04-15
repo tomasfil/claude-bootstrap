@@ -894,6 +894,64 @@ Scripts to create:
     - `printf '{"tool_name":"Read","tool_input":{"file_path":"x.md"}}' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stderr empty (Read is Tier 1 allowed; no nudge)
     - `printf 'not json' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stderr empty (fail-open on parse error)
 
+13. .claude/hooks/cmm-index-startup.sh (SessionStart — matcher: startup)
+    Purpose: zero-drift CMM enforcement at session start. Reads `.claude/cmm-baseline.md`,
+    compares git SHA + node/edge counts, triggers full reindex on any mismatch. Fail-open
+    on every error path — a broken hook NEVER blocks session start. Matcher `startup` only
+    (does not fire on resume). Emits structured `CMM_STATE` / `CMM_DRIFT` / `CMM_HOOK_FAILED`
+    / `CMM_FIRST_INDEX` lines to session context. See `.claude/rules/mcp-routing.md`
+    `## Zero-Drift Policy`.
+
+    Design contract:
+    - SessionStart matcher: `startup`. Timeout: `600` (covers Linux-kernel scale ~3min).
+    - Multi-scope MCP registration walk: reuses the same pattern as `mcp-discovery-gate.sh`
+      (project `.mcp.json`, user `~/.claude.json` top-level + `projects.<cwd>.mcpServers`,
+      managed `managed-settings.json` / `managed-mcp.json` / `managed-settings.d/*.json`,
+      plugin-bundled `~/.claude/plugins/*/.mcp.json`).
+    - CLI check: `command -v codebase-memory-mcp` — if not on PATH, emit
+      `CMM_CLI_MISSING=true` and exit 0 (reactive Claude-mediated index still runs at first query).
+    - Baseline presence: `.claude/cmm-baseline.md` missing → FIRST_INDEX mode (full index,
+      write hook-minimal baseline with empty sentinels/blind-spots/broken-tools/routing-overrides
+      — those are skill-managed and will be populated by `/cmm-baseline init` on next manual run).
+    - Baseline present → DRIFT_CHECK mode: zero-drift policy — 5 drift triggers, ANY of
+      which forces unconditional full reindex:
+      1. `current_sha != baseline_last_indexed_ref` (git rev-parse HEAD vs baseline)
+      2. `current_nodes != baseline_nodes` OR `current_edges != baseline_edges`
+      3. `index_status.status != "ready"`
+      4. Any baseline sentinel returns 0 hits from `cmm.search_graph(name_pattern=<sentinel>)`
+      5. Baseline age > 7 days (slow-moving project staleness probe — parses
+         `last_indexed_at` from baseline YAML frontmatter; fail-open on parse errors)
+    - No drift → emit `CMM_STATE: nodes=N edges=E ref=SHA fresh=true` → exit 0.
+    - Drift detected → emit `CMM_DRIFT: reason=<trigger> baseline=<X> current=<Y>`, run
+      `codebase-memory-mcp cli index_repository '{"repo_path":"$PWD","mode":"full"}'`,
+      re-read `index_status` + `get_graph_schema`, update baseline hook-managed fields only
+      (counts, SHA, timestamp), PRESERVE skill-managed sections (sentinels, framework blind
+      spots, known-broken tools, routing overrides), emit `CMM_STATE: reindexed=true ...`.
+    - Fail-open wrapper: `trap 'printf "CMM_HOOK_FAILED: %s\n" "$BASH_COMMAND" >&2; exit 0' ERR`.
+      ALL error paths (CLI missing mid-run, parse failure, git failure, timeout, remote server
+      unreachable) emit a diagnostic line and exit 0. NEVER exit 2. NEVER block session start.
+
+    Reference: the canonical body is inlined in `migrations/038-cmm-proactive-bootstrap.md`
+    Step 2. Runtime clients receive it via migration apply. This module entry documents the
+    contract + registration only; the full bash body lives in the migration file to keep
+    module 03 page length manageable.
+
+    Constraints: `#!/usr/bin/env bash`, `set -euo pipefail`, quote all variables, fail-open
+    via `trap ERR`, stdout = structured `CMM_*` lines shown to Claude, stderr = diagnostics
+    (not shown per hooks spec), dependencies = `bash` + `git` + `python3` (JSON parse) +
+    `codebase-memory-mcp` CLI. MINGW64-safe (forward-slash path normalization for `$PWD`
+    passed to CLI).
+
+    Verification: `chmod +x .claude/hooks/cmm-index-startup.sh`; `bash -n .claude/hooks/cmm-index-startup.sh`.
+    Smoke tests:
+    - CMM not registered: emit `CMM: not registered` → exit 0
+    - CLI missing: emit `CMM_CLI_MISSING=true` → exit 0
+    - Baseline missing + CLI present: FIRST_INDEX path — runs full index, writes minimal baseline, exit 0
+    - Baseline present + SHA match + counts match: emit `CMM_STATE: ... fresh=true` → exit 0
+    - Baseline present + SHA mismatch: emit `CMM_DRIFT: reason=sha_mismatch ...` → reindex → emit `reindexed=true` → exit 0
+    - Malformed baseline: emit `CMM_HOOK_FAILED: parse_error` → exit 0 (fail-open)
+    - Remote cmm server unreachable: emit `CMM_HOOK_FAILED: cli_error` → exit 0 (fail-open)
+
 Write all files. chmod +x each. Return ONLY: all paths + 1-line summary <100 chars."
 )
 ```
@@ -917,7 +975,12 @@ Structure:
 {
   'hooks': {
     'SessionStart': [
-      { 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/detect-env.sh' }] }
+      { 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/detect-env.sh' }] },
+      // cmm-index-startup: zero-drift CMM enforcement at session start. Reads .claude/cmm-baseline.md,
+      // compares git SHA + node/edge counts, triggers full reindex on any mismatch. Fail-open (never blocks
+      // session start). Matcher 'startup' only — does not fire on resume. Timeout 600s covers Linux-kernel
+      // scale (~3min upstream benchmark). See .claude/rules/mcp-routing.md ## Zero-Drift Policy.
+      { 'matcher': 'startup', 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/cmm-index-startup.sh', 'timeout': 600 }] }
     ],
     'PreToolUse': [
       { 'matcher': 'Bash', 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/guard-git.sh' }] },
@@ -1036,6 +1099,7 @@ fi
 ```
 ✅ Module 03 complete — Hooks + settings.json created:
   - SessionStart: env detection + companion auto-import + maintenance + spec cleanup
+  - SessionStart (matcher: startup): cmm-index-startup — zero-drift CMM enforcement (reads .claude/cmm-baseline.md, reindexes on SHA/count mismatch, fail-open; timeout 600s)
   - PreToolUse Bash: git guard (blocks force push, push to main, hard reset)
   - PreToolUse Grep|Glob|Search: mcp-discovery-gate (blocks symbol-shaped patterns when codebase-memory-mcp or serena is reachable in any MCP scope — project .mcp.json, user ~/.claude.json, managed settings, or plugin-bundled; fail-open on parse errors)
   - PreToolUse Edit|Write|MultiEdit|NotebookEdit|Grep|Glob: orchestrator-nudge (advisory-only main-thread doctrine reminder per .claude/rules/main-thread-orchestrator.md — NEVER blocks, exit 0)

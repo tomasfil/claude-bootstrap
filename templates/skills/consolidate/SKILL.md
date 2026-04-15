@@ -74,6 +74,25 @@ Apply approved changes.
 - Reset `.learnings/.session-count` to 0
 - Write entry count → `.learnings/.last-reflect-lines`
 
+### Phase 6: CMM Baseline Correctness Gate (auto — post-dispatch)
+
+Runs only when `codebase-memory-mcp` registered in `.mcp.json` AND `.claude/cmm-baseline.md` exists. Skip entirely otherwise — no output, no user message.
+
+1. Invoke `/cmm-baseline verify-sentinels` via the Skill tool
+2. All sentinels present → silent, no user-facing message, proceed to exit
+3. Missing sentinel(s) → append to `.learnings/log.md`:
+   ```
+   ### {YYYY-MM-DD} — gotcha: sentinel rot detected
+   cmm-baseline sentinel(s) missing from fresh graph: {names}
+   trigger: /consolidate post-dispatch correctness gate
+   action: /cmm-baseline refresh recommended
+   ```
+4. Missing sentinel(s) → tell user: "CMM baseline sentinel rot detected — run `/cmm-baseline refresh` to rebaseline"
+
+Rationale: sentinels are the only reliable post-index completeness signal. `/consolidate` runs at 5+ sessions / 24h elapsed — the right cadence for catching slow structural rot without user intervention.
+
+Gate short-circuits when either precondition missing. Never auto-runs `/cmm-baseline refresh` — proposal only, user approves.
+
 ### Anti-Hallucination
 - Only analyze entries that exist
 - Never invent patterns

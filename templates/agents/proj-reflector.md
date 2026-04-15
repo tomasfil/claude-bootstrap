@@ -83,6 +83,27 @@ REPORT
    actionable proposal count
 7. **Write report** via Bash heredoc
 
+### Pattern 7 — CMM broken-tool detection (only when codebase-memory-mcp registered)
+
+Runs only when both conditions hold:
+- `.claude/cmm-baseline.md` exists
+- `codebase-memory-mcp` registered in `.mcp.json` (or any MCP scope reachable this session)
+
+Skip silently when either condition is absent — no output, no proposal section, no error.
+
+Procedure:
+1. Scan `.learnings/log.md` for lines matching regex `cmm\.(\w+)` inside entries in `failure | gotcha | correction` categories
+2. Cluster matches by tool name. For each tool mentioned ≥2 times w/ similar failure mode, produce a proposal entry
+3. Read `.claude/cmm-baseline.md` `## Known-broken tools` section — skip any tool name already listed there
+4. Format each surviving proposal as:
+   ```
+   - cmm.{tool}: {cluster summary}  # fallback: {if obvious from learnings, else TBD}
+   ```
+5. Include all proposals in agent output under a dedicated `### CMM Broken-Tool Proposals` section (see Output Format below)
+6. Cite the matching `.learnings/log.md` entries as evidence for each proposal (≥2 citations required — matches the recurrence threshold from Anti-Hallucination section)
+
+Proposal-only — agent never edits `.claude/cmm-baseline.md` directly. The `/reflect` skill Step 4b applies approved entries on the main thread.
+
 ## Output Format
 
 ```
@@ -116,6 +137,13 @@ REPORT
 
 5. **Automate**: {recurring command pattern}
    - Suggested: {hook | script | alias}
+
+### CMM Broken-Tool Proposals
+(Omit this section entirely when cmm not registered OR `.claude/cmm-baseline.md` absent.)
+
+- cmm.{tool}: {cluster summary}  # fallback: {suggestion or TBD}
+  - Evidence: {quoted log entries, ≥2 required}
+  - Already listed in baseline? {yes = skip | no = propose}
 
 ### Health
 - Total entries: {N}

@@ -78,6 +78,30 @@ IF `.learnings/instincts/` exists → analyze:
 
 IF missing → skip.
 
+### Step 4b: CMM Broken-Tools Catalog Update (auto — post-dispatch)
+
+Runs only when `.claude/cmm-baseline.md` exists AND `codebase-memory-mcp` registered in `.mcp.json`. Skip entirely otherwise.
+
+1. Scan `.learnings/log.md` entries since last `/reflect` run (delimiter: `.learnings/.last-reflect-lines` byte offset) for lines matching regex `cmm\.\w+` in `failure | gotcha | correction` categories
+2. Extract unique cmm tool names + one-line failure summary per tool
+3. Read existing `.claude/cmm-baseline.md` `## Known-broken tools` section — collect already-listed tool names to avoid duplicates
+4. For each cmm tool NOT already in baseline: present to user as a proposed addition:
+   ```
+   Proposed cmm-baseline broken-tool addition:
+     tool: cmm.{name}
+     summary: {one-line cluster summary}
+     evidence: {N} learnings entries since last reflect
+     proposed line: - cmm.{name}: {summary}  # learned {date}, fallback: {suggest or TBD}
+   [approve / reject / defer]
+   ```
+5. Approved → Edit `.claude/cmm-baseline.md` directly, append line to `## Known-broken tools` section in the proposed format
+6. Rejected → no change, log rejection reason in `.learnings/log.md` as `gotcha: cmm broken-tool proposal rejected — {reason}`
+7. Deferred → no change, no log entry, re-propose next `/reflect` run
+
+Proposal-only workflow — user confirms each addition individually. Never auto-applies. Never auto-deletes existing entries.
+
+Skip silently when baseline file absent OR cmm not registered. No error, no user-facing message.
+
 ### Report
 ```
 Learnings: {N} promoted, {M} dismissed, {P} pending

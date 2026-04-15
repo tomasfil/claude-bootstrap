@@ -460,6 +460,28 @@ Note: fresh bootstrap sets `"last_migration": "000"`. Migration 001 bumps to `"0
 
 ---
 
+### 10. CMM Baseline Seed (if codebase-memory-mcp registered)
+
+If cmm is registered in any MCP scope — project `.mcp.json`, user `~/.claude.json`
+top-level `mcpServers` or `projects.<cwd>.mcpServers`, managed `managed-settings.json`
+(or `managed-settings.d/*.json`), or plugin-bundled `~/.claude/plugins/*/.mcp.json`.
+The simplest user-visible signal: SessionStart emits a `CMM_*` line other than
+`CMM: not registered`. If any of the above hold:
+1. Run `/cmm-baseline init` — seeds `.claude/cmm-baseline.md` with full-index counts, sentinels, framework blind spots
+2. Verify `.claude/cmm-baseline.md` exists and contains non-empty `nodes:` field
+3. Commit `.claude/cmm-baseline.md` to project git (it is exception-listed in `.gitignore` via `!.claude/cmm-baseline.md`)
+4. If CLI unavailable or index fails: log the failure and continue — reactive MCP-mediated index will run at first query
+
+**Fallback — inline seeding when `/cmm-baseline init` cannot be invoked** (skill disabled, forked-context invocation blocked, skill file missing):
+1. `mcp__codebase-memory-mcp__index_repository` with `mode=full` on the current repo path
+2. `mcp__codebase-memory-mcp__index_status` + `mcp__codebase-memory-mcp__get_graph_schema` — capture `nodeCount`, `edgeCount`, `fileCount`, label breakdown
+3. Write `.claude/cmm-baseline.md` manually using the template in `.claude/skills/cmm-baseline/SKILL.md` reference section — populate `project_slug`, `nodes`, `edges`, `file_count`, `last_indexed_ref` (current git SHA), `last_indexed_at` (current UTC timestamp), `last_index_mode: full`. Leave `## Sentinels`, `## Framework blind spots`, `## Known-broken tools`, `## Routing overrides` sections with placeholder comments — user populates incrementally as issues surface.
+
+Expected timing (upstream benchmarks): small repo <1s | typical app service ~6s | mature service repo ~60s | monorepo ~3min.
+This is proactive — full index runs synchronously at module 08 end, NOT at first session.
+
+---
+
 ## Checkpoint
 
 ```
@@ -473,4 +495,5 @@ Note: fresh bootstrap sets `"last_migration": "000"`. Migration 001 bumps to `"0
   Git strategy: {track / companion / ephemeral}
   Compression: {N} clean, {M} violations
   Bootstrap state: last_migration=000
+  CMM baseline: {seeded / not applicable — cmm not registered}
 ```
