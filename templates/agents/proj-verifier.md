@@ -22,9 +22,7 @@ Output completeness > token efficiency. Full scope every time. No elision. Calib
 
 Before any task-specific work, Read these rule files (in parallel where possible):
 - `.claude/rules/general.md`
-- `.claude/rules/skill-routing.md`
 - `.claude/rules/token-efficiency.md`
-- `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
 - `.claude/rules/mcp-routing.md` (if present — MCP propagation rules + action→tool routing table; overrides any Grep/Glob/Read-first examples later in this file)
 - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
 - `.claude/rules/code-standards-{your primary lang}.md` (if present)
