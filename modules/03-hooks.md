@@ -975,45 +975,45 @@ Structure:
 {
   'hooks': {
     'SessionStart': [
-      { 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/detect-env.sh' }] },
+      { 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/detect-env.sh"' }] },
       // cmm-index-startup: zero-drift CMM enforcement at session start. Reads .claude/cmm-baseline.md,
       // compares git SHA + node/edge counts, triggers full reindex on any mismatch. Fail-open (never blocks
       // session start). Matcher 'startup' only — does not fire on resume. Timeout 600s covers Linux-kernel
       // scale (~3min upstream benchmark). See .claude/rules/mcp-routing.md ## Zero-Drift Policy.
-      { 'matcher': 'startup', 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/cmm-index-startup.sh', 'timeout': 600 }] }
+      { 'matcher': 'startup', 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/cmm-index-startup.sh"', 'timeout': 600 }] }
     ],
     'PreToolUse': [
-      { 'matcher': 'Bash', 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/guard-git.sh' }] },
+      { 'matcher': 'Bash', 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/guard-git.sh"' }] },
       // mcp-discovery-gate: mechanically enforces MCP-first discipline per .claude/rules/mcp-routing.md (Grep Ban / First-Tool Contract).
-      { 'matcher': 'Grep|Glob|Search', 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/mcp-discovery-gate.sh' }] },
+      { 'matcher': 'Grep|Glob|Search', 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/mcp-discovery-gate.sh"' }] },
       // orchestrator-nudge: advisory-only main-thread doctrine reminder per .claude/rules/main-thread-orchestrator.md. NEVER blocks (exit 0).
-      { 'matcher': 'Edit|Write|MultiEdit|NotebookEdit|Grep|Glob', 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/orchestrator-nudge.sh' }] }
+      { 'matcher': 'Edit|Write|MultiEdit|NotebookEdit|Grep|Glob', 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/orchestrator-nudge.sh"' }] }
     ],
     'SubagentStop': [
       { 'hooks': [
-        { 'type': 'command', 'command': 'bash .claude/hooks/track-agent.sh' },
-        { 'type': 'command', 'command': 'bash .claude/hooks/check-quality.sh' }
+        { 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/track-agent.sh"' },
+        { 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/check-quality.sh"' }
       ]}
     ],
     'Stop': [
       { 'hooks': [
-        { 'type': 'command', 'command': 'bash .claude/hooks/stop-verify.sh' },
-        { 'type': 'command', 'command': 'bash .claude/hooks/sync-companion.sh' }
+        { 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/stop-verify.sh"' },
+        { 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/sync-companion.sh"' }
       ]}
     ],
     'PreCompact': [
-      { 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/pre-compact.sh' }] }
+      { 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/pre-compact.sh"' }] }
     ],
     'PostToolUse': [
-      { 'matcher': 'Edit|Write|Bash', 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/observe.sh' }] },
-      { 'matcher': 'Bash', 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/log-failures.sh' }] }
-      {if auto_format: , { 'matcher': 'Edit|Write', 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/auto-format.sh' }] } }
+      { 'matcher': 'Edit|Write|Bash', 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/observe.sh"' }] },
+      { 'matcher': 'Bash', 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/log-failures.sh"' }] }
+      {if auto_format: , { 'matcher': 'Edit|Write', 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/auto-format.sh"' }] } }
     ],
     'UserPromptSubmit': [
-      { 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/prompt-nudge.sh' }] }
+      { 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/prompt-nudge.sh"' }] }
     ],
     'TaskCompleted': [
-      { 'hooks': [{ 'type': 'command', 'command': 'bash .claude/hooks/gate-task-complete.sh' }] }
+      { 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/gate-task-complete.sh"' }] }
     ]
   }
 }
@@ -1025,6 +1025,7 @@ Requirements:
 - TaskCompleted: top-level key, NO `matcher` field (TaskCompleted is its own event type, not a PreToolUse matcher). Single hook entry dispatching gate-task-complete.sh. Merge into existing settings.json — do NOT touch the PreToolUse array.
 - If .claude/settings.json already exists: READ it, MERGE hooks (add missing, update changed, preserve custom)
 - Validate JSON after writing: python3 -c 'import json; json.load(open(\".claude/settings.json\"))'
+- **Hook commands MUST use `$CLAUDE_PROJECT_DIR`** — every `command` field resolves the script via `bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/X.sh\"`, never a bare relative `.claude/hooks/X.sh`. Reason: hooks fire with the tool call's CWD, so `cd <subdir> && <cmd>` in a Bash tool invocation breaks any hook using a relative path. The outer shell double-quotes protect paths containing spaces. In JSON the inner quotes render as `\\\"` (e.g. `\"bash \\\"$CLAUDE_PROJECT_DIR/.claude/hooks/observe.sh\\\"\"`).
 
 Write to .claude/settings.json. Return ONLY: path + 1-line summary <100 chars."
 )
