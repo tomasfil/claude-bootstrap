@@ -851,36 +851,99 @@ Scripts to create:
    → exit 2 if cmm/serena is reachable in any MCP scope (project, user, managed, plugin), exit 0 if dormant.
 
 12. .claude/hooks/orchestrator-nudge.sh (PreToolUse — matcher: Edit|Write|MultiEdit|NotebookEdit|Grep|Glob)
-    Purpose: advisory nudge that reminds the main thread to delegate to sub-agents per `.claude/rules/main-thread-orchestrator.md`. NEVER blocks (exit 0). Reads the PreToolUse JSON on stdin, extracts `tool_name`, emits a short stderr reminder matched to the tool class. Sub-agents that see the reminder are told in the text to ignore it — the rule is addressed to the main thread.
+    Purpose: structural JSON `permissionDecision:"deny"` on investigation-shaped Grep/Glob from the main thread (M6 form); advisory stderr reminder on Edit/Write/MultiEdit/NotebookEdit (deny form broken per upstream #37210/#33106 for edit tools). Sub-agent contexts (`agent_id` present in stdin JSON) → skip all enforcement. See `.claude/rules/main-thread-orchestrator.md`.
 
     Design contract:
-    - Advisory only. Hook output goes to stderr and becomes part of the next-turn context; it never returns `decision:block` and never exits non-zero. The orchestrator reads the reminder and decides whether the carve-out applies.
-    - Fail-open on every parse error. A broken nudge hook must not break unrelated tool use. `set -euo pipefail` at top; every parse path has `|| printf ''` fallback.
-    - No persistent state. No counter files, no turn tracking, no session files. Stateless emission — the hook fires on every match, the orchestrator judges context from its own memory.
-    - No project-type carve-out. The hook fires uniformly — the bootstrap repo dogfoods its own doctrine. Main in the bootstrap repo dispatches `proj-code-writer-markdown` for `modules/` / `migrations/` / `templates/` edits beyond the quick-fix carve-out, same as any client project.
+    - Grep|Glob branch: structural deny via JSON `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"..."}}` printed on stdout with `exit 0`. Opus 4.6/4.7 stop-regression (upstream #24327) broke bare `exit 2` as a block signal — JSON `permissionDecision:"deny"` is the only reliable structural deny form that survives the agentic loop. Fires only on **investigation-shaped** patterns (regex metacharacters, CamelCase, alternation, `**` glob) — plain literal extension globs (`*.md`), plain lowercase path literals (`src/foo.ts`), and simple `**/path/*.ext` forms pass through.
+    - Edit|Write|MultiEdit|NotebookEdit branch: advisory stderr nudge only. Hook output goes to stderr and becomes part of the next-turn context; it never returns `decision:block` and never exits non-zero. Structural deny is known-broken for edit-tool PreToolUse per upstream #37210 / #33106 — stderr advisory is the only working channel for the Edit/Write quick-fix carve-out reminder.
+    - Sub-agent exemption: parses `agent_id` field from stdin JSON; if non-empty, exits 0 silently (no deny, no stderr). The main-thread doctrine addresses main only — dispatched sub-agents (researchers, code-writers, reviewers) legitimately use Grep/Glob/Edit/Write within their own scope and must not be gated.
+    - Fail-open on every parse error. Broken hook must not break unrelated tool use. `set -euo pipefail` at top; every python3 parse path has `|| printf '||'` / `2>/dev/null` fallback.
+    - No persistent state. No counter files, no turn tracking, no session files. Stateless emission per call — the investigation-counter.sh hook (entry 14) owns per-turn accumulation.
 
     Content (full spec — write exactly as shown, no elision):
     ```bash
     #!/usr/bin/env bash
-    # orchestrator-nudge.sh — PreToolUse advisory nudge (main-thread orchestrator doctrine)
-    # Reminds main thread to delegate to sub-agents per .claude/rules/main-thread-orchestrator.md.
-    # NEVER blocks. Exit 0 always. Sub-agent contexts: the reminder text says "ignore if sub-agent".
+    # orchestrator-nudge.sh — PreToolUse: advisory nudge + structural JSON deny for investigation-shaped Grep/Glob
+    # Edit/Write/MultiEdit/NotebookEdit: advisory stderr only (deny form broken per #37210/#33106).
+    # Grep/Glob on main thread: deny JSON (exit 0 + JSON stdout) when investigation-shaped pattern.
+    # Subagent contexts: skip all enforcement (agent_id present).
+    # Fail-open: any parse error → exit 0 silently.
     set -euo pipefail
 
     INPUT=$(cat)
-    TOOL_NAME=$(printf '%s' "$INPUT" | python3 -c 'import sys,json
+
+    # Parse all needed fields in one python3 call; output: tool_name|agent_id|pattern
+    PARSED=$(printf '%s' "$INPUT" | python3 -c '
+    import sys, json
     try:
-      d=json.load(sys.stdin); print(d.get("tool_name",""))
+        d = json.load(sys.stdin)
+        tool_name = d.get("tool_name", "") or ""
+        agent_id  = d.get("agent_id", "") or ""
+        ti        = d.get("tool_input", {}) or {}
+        pattern   = ti.get("pattern", "") or ""
+        print(tool_name + "|" + agent_id + "|" + pattern)
     except Exception:
-      print("")
-    ' 2>/dev/null || printf '')
+        print("||")
+    ' 2>/dev/null || printf '||')
+
+    TOOL_NAME="${PARSED%%|*}"
+    REST="${PARSED#*|}"
+    AGENT_ID="${REST%%|*}"
+    PATTERN="${REST#*|}"
+
+    # Subagent check: skip enforcement entirely
+    if [[ -n "$AGENT_ID" ]]; then
+        exit 0
+    fi
+
+    # Investigation-shaped heuristic for Grep/Glob
+    is_investigation_shaped() {
+        local pat="$1"
+        python3 - "$pat" </dev/null 2>/dev/null <<'PYEOF'
+    import sys, re
+    pat = sys.argv[1]
+
+    # Deny heuristics run FIRST: regex metacharacters or CamelCase symbols
+    deny_checks = [
+        (r"\.\*",              ".*"),
+        (r"\\b",               r"\b"),
+        (r"\\w",               r"\w"),
+        (r"\\s",               r"\s"),
+        (r"\|",                "alternation"),
+        (r"[A-Z][a-z]+[A-Z]", "CamelCase"),
+    ]
+    for pattern, _ in deny_checks:
+        if re.search(pattern, pat):
+            sys.exit(0)  # investigation-shaped → deny
+
+    # Allow-list: simple extension globs, path globs, plain lowercase/digit literals (no wildcards)
+    # Plain-literal excludes uppercase to avoid false-allowing CamelCase symbol names
+    allow_patterns = [
+        r"^\*\*?/[\w.*/-]+$",      # **/path/*.ext style
+        r"^\*\.[\w]+$",             # *.ext style
+        r"^[a-z0-9_./-]+$",        # plain literal path/filename: lowercase only, no wildcards
+    ]
+    for ap in allow_patterns:
+        if re.fullmatch(ap, pat):
+            sys.exit(1)  # allow (not investigation-shaped)
+
+    # Default: treat as investigation-shaped (deny)
+    sys.exit(0)
+    PYEOF
+        return $?
+    }
 
     case "$TOOL_NAME" in
-      Edit|Write|MultiEdit|NotebookEdit)
-        printf >&2 '%s\n' "[orchestrator-nudge] Main-thread edit? Quick-fix carve-out applies only when ALL hold: (1) single file, (2) ≤10 lines changed, (3) target + location already known, (4) mechanically obvious (typo/version/config/one-line-swap), (5) zero cross-file impact. Any criterion fails → dispatch proj-code-writer-{lang} via /code-write /tdd /execute-plan. Sub-agents: this nudge targets main, ignore. Rule: .claude/rules/main-thread-orchestrator.md"
-        ;;
       Grep|Glob)
-        printf >&2 '%s\n' "[orchestrator-nudge] Main-thread investigation? Dispatch proj-quick-check (fast haiku, text return) for factual lookups; escalate to proj-researcher (sonnet, findings file) on incomplete / multi-source / cross-file synthesis. Multiple sequential quick-checks OK — orchestrator decides depth. Sub-agents: this nudge targets main, ignore. Rule: .claude/rules/main-thread-orchestrator.md"
+        if is_investigation_shaped "$PATTERN"; then
+            # Structural JSON deny for investigation-shaped patterns on main thread
+            printf '%s' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"STOP. Dispatch proj-quick-check: Agent({description: '\''<your question>'\'', subagent_type: '\''proj-quick-check'\'', prompt: '\''<question>'\''})  Per .claude/rules/main-thread-orchestrator.md Tier 2."}}'
+        else
+            printf >&2 '%s\n' "[orchestrator-nudge] Main-thread investigation? Dispatch proj-quick-check (fast haiku, text return) for factual lookups; escalate to proj-researcher (sonnet, findings file) on incomplete / multi-source / cross-file synthesis. Multiple sequential quick-checks OK — orchestrator decides depth. Sub-agents: this nudge targets main, ignore. Rule: .claude/rules/main-thread-orchestrator.md"
+        fi
+        ;;
+      Edit|Write|MultiEdit|NotebookEdit)
+        printf >&2 '%s\n' "[orchestrator-nudge] Main-thread edit? Quick-fix carve-out applies only when ALL hold: (1) single file, (2) <=10 lines changed, (3) target + location already known, (4) mechanically obvious (typo/version/config/one-line-swap), (5) zero cross-file impact. Any criterion fails -> dispatch proj-code-writer-{lang} via /code-write /tdd /execute-plan. Sub-agents: this nudge targets main, ignore. Rule: .claude/rules/main-thread-orchestrator.md"
         ;;
     esac
 
@@ -889,10 +952,14 @@ Scripts to create:
 
     Verification: `chmod +x .claude/hooks/orchestrator-nudge.sh`; `bash -n .claude/hooks/orchestrator-nudge.sh`.
     Smoke tests:
-    - `printf '{"tool_name":"Edit","tool_input":{"file_path":"x.md"}}' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stderr contains `carve-out`
-    - `printf '{"tool_name":"Grep","tool_input":{"pattern":"foo"}}' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stderr contains `proj-quick-check`
-    - `printf '{"tool_name":"Read","tool_input":{"file_path":"x.md"}}' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stderr empty (Read is Tier 1 allowed; no nudge)
-    - `printf 'not json' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stderr empty (fail-open on parse error)
+    - `printf '{"tool_name":"Grep","tool_input":{"pattern":"FooBarService"}}' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stdout contains `"permissionDecision":"deny"` (investigation-shaped CamelCase → structural deny)
+    - `printf '{"tool_name":"Grep","tool_input":{"pattern":".*foo.*"}}' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stdout contains `"permissionDecision":"deny"` (regex metacharacters → deny)
+    - `printf '{"tool_name":"Glob","tool_input":{"pattern":"*.md"}}' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stdout empty, stderr empty (plain extension glob allowed)
+    - `printf '{"tool_name":"Glob","tool_input":{"pattern":"**/foo.md"}}' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stdout empty, stderr empty (`**/path.ext` is file-discovery-shaped via allow-list)
+    - `printf '{"tool_name":"Edit","tool_input":{"file_path":"x.md"}}' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stderr contains `carve-out`, stdout empty (Edit is advisory-only)
+    - `printf '{"tool_name":"Grep","tool_input":{"pattern":"FooBarService"},"agent_id":"sub-1"}' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stdout empty, stderr empty (sub-agent exempt)
+    - `printf '{"tool_name":"Read","tool_input":{"file_path":"x.md"}}' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stdout empty, stderr empty (Read is Tier 1 allowed; no match)
+    - `printf 'not json' | bash .claude/hooks/orchestrator-nudge.sh` → exit 0, stdout empty, stderr empty (fail-open on parse error)
 
 13. .claude/hooks/cmm-index-startup.sh (SessionStart — matcher: startup)
     Purpose: zero-drift CMM enforcement at session start. Reads `.claude/cmm-baseline.md`,
@@ -952,6 +1019,177 @@ Scripts to create:
     - Malformed baseline: emit `CMM_HOOK_FAILED: parse_error` → exit 0 (fail-open)
     - Remote cmm server unreachable: emit `CMM_HOOK_FAILED: cli_error` → exit 0 (fail-open)
 
+14. .claude/hooks/orchestrator-rule-reminder.sh (UserPromptSubmit)
+    Purpose: per-turn compact orchestrator rule reminder injected into each turn context. Defeats CLAUDE.md context decay on long sessions where the `@import .claude/rules/main-thread-orchestrator.md` directive drops out of effective attention as conversation history grows. Advisory only — always exits 0, never blocks. This is the M3 enforcement layer in the rule-adherence stack (M6 structural deny = hook 12; M2 counter = hook 15; M3 rule reminder = this hook).
+
+    Design contract:
+    - UserPromptSubmit event fires before Claude processes each user turn. Hook stdout is appended to the system context for that turn.
+    - Emission is unconditional: one reminder line per turn, every turn. Low-token (< 300 bytes). Compresses the main-thread orchestrator rule into a single-line directive.
+    - Parses and consumes `session_id` from stdin JSON (currently unused, reserved for future per-session behavior). Fail-open on parse error — any failure → empty session_id → proceed with emission.
+    - `set -euo pipefail` at top; stdin read via `cat`; session_id parsed via python3 with `2>/dev/null || printf ''` fallback.
+    - No persistent state. No counter files. Stateless per-call.
+    - Exit 0 always — UserPromptSubmit nudges never block.
+
+    Content (full spec — write exactly as shown, no elision):
+    ```bash
+    #!/usr/bin/env bash
+    # orchestrator-rule-reminder.sh — UserPromptSubmit per-turn rule reminder
+    # Injects compact orchestrator rule reminder into each turn context.
+    # Defeats CLAUDE.md context decay on long sessions.
+    # Exit 0 always. Advisory only — never blocks.
+    set -euo pipefail
+
+    INPUT=$(cat)
+
+    # Consume session_id (for future use); fail-open on parse error
+    SESSION_ID=$(printf '%s' "$INPUT" | python3 -c '
+    import sys, json
+    try:
+        d = json.load(sys.stdin)
+        print(d.get("session_id", ""))
+    except Exception:
+        print("")
+    ' 2>/dev/null || printf '')
+
+    printf '%s\n' "ORCHESTRATOR RULE: Investigation → dispatch Agent(proj-quick-check) FIRST. No Grep|Glob on main. Quick-fix carve-out: single known file, ≤10 lines, mechanically obvious, user-supplied path THIS message only."
+
+    exit 0
+    ```
+
+    Verification: `chmod +x .claude/hooks/orchestrator-rule-reminder.sh`; `bash -n .claude/hooks/orchestrator-rule-reminder.sh`.
+    Smoke tests:
+    - `printf '{"session_id":"abc123","prompt":"do X"}' | bash .claude/hooks/orchestrator-rule-reminder.sh` → exit 0, stdout starts with `ORCHESTRATOR RULE:`
+    - `printf 'not json' | bash .claude/hooks/orchestrator-rule-reminder.sh` → exit 0, stdout still contains the reminder line (fail-open on parse error)
+    - `printf '{}' | bash .claude/hooks/orchestrator-rule-reminder.sh` → exit 0, stdout contains the reminder (empty session_id tolerated)
+
+15. .claude/hooks/investigation-counter.sh (PostToolUse — matcher: Grep|Glob)
+    Purpose: per-session, per-turn main-thread Grep/Glob counter. At N=2 hits, emits `decision:"block"` + `hookSpecificOutput.additionalContext` dispatch directive telling Claude to dispatch `Agent(proj-quick-check)` instead of running more investigation tools. This is the M2 enforcement layer — structural block via PostToolUse `decision:block` when the main thread has exceeded the investigation-on-main budget for this turn. Paired with entry 16 (`investigation-counter-reset.sh`) which clears the counter at each turn boundary.
+
+    Design contract:
+    - Per-session state: counter file at `/tmp/cc-inv-count-${SESSION_ID}`. Session ID parsed from stdin JSON `session_id` field. Fallback to literal string `default` on parse error or missing field (fail-open — never break unrelated tool use).
+    - Per-turn reset: entry 16 (`investigation-counter-reset.sh`) on UserPromptSubmit removes the counter file at the start of each turn. Without the reset hook, the counter accumulates across turns; with it, each turn starts fresh at 0.
+    - Subagent exemption: parses `agent_id` field from stdin JSON; if non-empty, exits 0 without touching the counter. Sub-agents legitimately use Grep/Glob in their own scope — the counter addresses main only.
+    - Threshold: N=2. First Grep/Glob on main → counter becomes 1, no block emitted. Second Grep/Glob on main → counter becomes 2, block directive emitted. Third+ (if reached despite block) would continue incrementing and emitting.
+    - Block payload: JSON on stdout `{"decision":"block","reason":"...","hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"..."}}`. The `additionalContext` field is appended to the system context, instructing Claude in concrete tool-call syntax to stop and dispatch an Agent instead. Exit 0 (PostToolUse blocking via decision:"block" JSON; bare exit 2 is the PreToolUse pattern).
+    - Counter file validation: reads raw content, strips whitespace, regex-validates `^[0-9]+$`. Non-numeric or missing → reset to 0 before increment.
+    - Session ID sanitization: strip whitespace characters from session_id before use (filesystem path safety). Empty after strip → fallback `default`.
+    - `set -euo pipefail`; stdin via `cat`; all parse paths have `|| printf 'default|'` / `2>/dev/null` fallback.
+
+    Content (full spec — write exactly as shown, no elision):
+    ```bash
+    #!/usr/bin/env bash
+    # investigation-counter.sh — PostToolUse Grep/Glob counter + N=2 block directive
+    # Counts main-thread Grep/Glob calls per session turn via /tmp counter file.
+    # At N=2: emit decision:block directive telling Claude to dispatch Agent instead.
+    # Subagent exemption: agent_id present → skip counter entirely.
+    # Fail-open: parse error → attempt increment with fallback session, continue.
+    set -euo pipefail
+
+    INPUT=$(cat)
+
+    # Parse session_id and agent_id in one python3 call; output: session_id|agent_id
+    PARSED=$(printf '%s' "$INPUT" | python3 -c '
+    import sys, json
+    try:
+        d = json.load(sys.stdin)
+        session_id = d.get("session_id", "") or "default"
+        agent_id   = d.get("agent_id", "") or ""
+        print(session_id + "|" + agent_id)
+    except Exception:
+        print("default|")
+    ' 2>/dev/null || printf 'default|')
+
+    SESSION_ID="${PARSED%%|*}"
+    AGENT_ID="${PARSED#*|}"
+
+    # Sanitize SESSION_ID: strip whitespace, default if empty
+    SESSION_ID="${SESSION_ID//[[:space:]]/}"
+    [[ -z "$SESSION_ID" ]] && SESSION_ID="default"
+
+    # Subagent check: skip counter for subagents
+    if [[ -n "$AGENT_ID" ]]; then
+        exit 0
+    fi
+
+    COUNTER_FILE="/tmp/cc-inv-count-${SESSION_ID}"
+
+    # Read current count (default 0 if file absent)
+    CURRENT=0
+    if [[ -f "$COUNTER_FILE" ]]; then
+        RAW=$(cat "$COUNTER_FILE" 2>/dev/null || printf '0')
+        RAW="${RAW//[[:space:]]/}"
+        # Validate: only digits; default 0 if not
+        if [[ "$RAW" =~ ^[0-9]+$ ]]; then
+            CURRENT="$RAW"
+        fi
+    fi
+
+    NEW_COUNT=$(( CURRENT + 1 ))
+    printf '%s' "$NEW_COUNT" > "$COUNTER_FILE"
+
+    if [[ "$NEW_COUNT" -ge 2 ]]; then
+        printf '%s' '{"decision":"block","reason":"2 Grep/Glob calls on main thread this turn.","hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"STOP. 2 Grep/Glob calls on main thread this turn. Per .claude/rules/main-thread-orchestrator.md Tier 2: dispatch Agent({description: '\''<question>'\'', subagent_type: '\''proj-quick-check'\'', prompt: '\''<question>'\''}) now. Do NOT run another Grep|Glob."}}'
+    fi
+
+    exit 0
+    ```
+
+    Verification: `chmod +x .claude/hooks/investigation-counter.sh`; `bash -n .claude/hooks/investigation-counter.sh`.
+    Smoke tests (run in sequence — each assumes prior counter state from previous test):
+    - `rm -f /tmp/cc-inv-count-test1; printf '{"tool_name":"Grep","session_id":"test1"}' | bash .claude/hooks/investigation-counter.sh` → exit 0, stdout empty, `/tmp/cc-inv-count-test1` contains `1` (first hit — no block)
+    - `printf '{"tool_name":"Grep","session_id":"test1"}' | bash .claude/hooks/investigation-counter.sh` → exit 0, stdout contains `"decision":"block"`, counter file contains `2` (second hit — block emitted)
+    - `printf '{"tool_name":"Grep","session_id":"test1","agent_id":"sub-1"}' | bash .claude/hooks/investigation-counter.sh` → exit 0, stdout empty, counter file still `2` (sub-agent exempt — no increment, no block)
+    - `printf 'not json' | bash .claude/hooks/investigation-counter.sh` → exit 0 (fail-open: parses to session `default`, increments `/tmp/cc-inv-count-default`)
+    - `rm -f /tmp/cc-inv-count-test1 /tmp/cc-inv-count-default` to clean up smoke-test state.
+
+16. .claude/hooks/investigation-counter-reset.sh (UserPromptSubmit)
+    Purpose: turn-boundary reset for the investigation counter (entry 15). Without this hook, `investigation-counter.sh` accumulates Grep/Glob calls across turns and emits block directives on the 2nd Grep of a fresh turn if the prior turn already hit 1. Deletes `/tmp/cc-inv-count-${SESSION_ID}` at each UserPromptSubmit so each turn starts at 0.
+
+    Design contract:
+    - UserPromptSubmit event fires at turn start, before Claude processes the prompt.
+    - Single action: `rm -f "/tmp/cc-inv-count-${SESSION_ID}"`. `-f` swallows absent-file errors (first turn of session, no counter yet).
+    - Session ID: parsed from stdin JSON `session_id` field. Fallback `default` on parse error or missing field. Whitespace-stripped before use.
+    - Exit 0 always. Advisory only — never blocks.
+    - Fail-open on every parse error. Any failure → fall back to removing `/tmp/cc-inv-count-default`.
+    - `set -euo pipefail`; stdin via `cat`; parse via python3 with `2>/dev/null || printf 'default'` fallback.
+
+    Content (full spec — write exactly as shown, no elision):
+    ```bash
+    #!/usr/bin/env bash
+    # investigation-counter-reset.sh — UserPromptSubmit turn-boundary counter reset
+    # Resets the per-session investigation counter at each turn start.
+    # Without this, investigation-counter.sh accumulates across turns.
+    # Exit 0 always. Fail-open on parse error.
+    set -euo pipefail
+
+    INPUT=$(cat)
+
+    # Parse session_id from stdin JSON; fallback to "default"
+    SESSION_ID=$(printf '%s' "$INPUT" | python3 -c '
+    import sys, json
+    try:
+        d = json.load(sys.stdin)
+        v = d.get("session_id", "") or "default"
+        print(v)
+    except Exception:
+        print("default")
+    ' 2>/dev/null || printf 'default')
+
+    # Strip whitespace; default if empty
+    SESSION_ID="${SESSION_ID//[[:space:]]/}"
+    [[ -z "$SESSION_ID" ]] && SESSION_ID="default"
+
+    rm -f "/tmp/cc-inv-count-${SESSION_ID}"
+
+    exit 0
+    ```
+
+    Verification: `chmod +x .claude/hooks/investigation-counter-reset.sh`; `bash -n .claude/hooks/investigation-counter-reset.sh`.
+    Smoke tests:
+    - `printf '2' > /tmp/cc-inv-count-test2; printf '{"session_id":"test2","prompt":"x"}' | bash .claude/hooks/investigation-counter-reset.sh; [[ ! -f /tmp/cc-inv-count-test2 ]] && echo OK` → exit 0, counter file deleted
+    - `printf '{"session_id":"never-existed-xyz"}' | bash .claude/hooks/investigation-counter-reset.sh` → exit 0 (absent file tolerated via `rm -f`)
+    - `printf 'not json' | bash .claude/hooks/investigation-counter-reset.sh` → exit 0 (fail-open: removes `/tmp/cc-inv-count-default`)
+
 Write all files. chmod +x each. Return ONLY: all paths + 1-line summary <100 chars."
 )
 ```
@@ -986,7 +1224,7 @@ Structure:
       { 'matcher': 'Bash', 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/guard-git.sh"' }] },
       // mcp-discovery-gate: mechanically enforces MCP-first discipline per .claude/rules/mcp-routing.md (Grep Ban / First-Tool Contract).
       { 'matcher': 'Grep|Glob|Search', 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/mcp-discovery-gate.sh"' }] },
-      // orchestrator-nudge: advisory-only main-thread doctrine reminder per .claude/rules/main-thread-orchestrator.md. NEVER blocks (exit 0).
+      // orchestrator-nudge: structural JSON permissionDecision:"deny" on investigation-shaped Grep/Glob (M6); advisory stderr on Edit/Write/MultiEdit/NotebookEdit. Sub-agent exempt via agent_id. Per .claude/rules/main-thread-orchestrator.md.
       { 'matcher': 'Edit|Write|MultiEdit|NotebookEdit|Grep|Glob', 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/orchestrator-nudge.sh"' }] }
     ],
     'SubagentStop': [
@@ -1006,11 +1244,17 @@ Structure:
     ],
     'PostToolUse': [
       { 'matcher': 'Edit|Write|Bash', 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/observe.sh"' }] },
-      { 'matcher': 'Bash', 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/log-failures.sh"' }] }
+      { 'matcher': 'Bash', 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/log-failures.sh"' }] },
+      // investigation-counter: M2 enforcement — per-session Grep/Glob counter, emits decision:block at N=2. See .claude/rules/main-thread-orchestrator.md ## Enforcement.
+      { 'matcher': 'Grep|Glob', 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/investigation-counter.sh"' }] }
       {if auto_format: , { 'matcher': 'Edit|Write', 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/auto-format.sh"' }] } }
     ],
     'UserPromptSubmit': [
-      { 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/prompt-nudge.sh"' }] }
+      { 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/prompt-nudge.sh"' }] },
+      // orchestrator-rule-reminder: M3 enforcement — per-turn compact rule reminder; defeats CLAUDE.md context decay on long sessions. Exit 0 always.
+      { 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/orchestrator-rule-reminder.sh"' }] },
+      // investigation-counter-reset: turn-boundary reset for entry 15's counter; without this the counter accumulates across turns.
+      { 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/investigation-counter-reset.sh"' }] }
     ],
     'TaskCompleted': [
       { 'hooks': [{ 'type': 'command', 'command': 'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/gate-task-complete.sh"' }] }
@@ -1093,6 +1337,131 @@ else
   echo "FAIL: smoke with-marker (risk:high + verified) → expected exit 0, got $EC" >&2
   exit 1
 fi
+
+# M3/M2/M6 rule-adherence stack — wiring + smoke tests for the 3 new hooks.
+# Hook bodies are in the module (entries 12 upgraded, 14/15/16 new) — these checks
+# verify they are (a) on disk + executable, (b) registered in settings.json in the
+# correct events, (c) behave per their smoke-test contracts.
+
+# Wiring assertions: orchestrator-rule-reminder + investigation-counter (both variants)
+python3 - <<'PY'
+import json
+s = json.load(open('.claude/settings.json'))
+
+# investigation-counter: PostToolUse matcher Grep|Glob
+post = s['hooks'].get('PostToolUse', [])
+counter_wired = any(
+    entry.get('matcher', '') == 'Grep|Glob' and any(
+        'investigation-counter.sh' in h.get('command', '') for h in entry.get('hooks', [])
+    )
+    for entry in post
+)
+assert counter_wired, 'investigation-counter.sh must be wired under PostToolUse matcher Grep|Glob'
+
+# orchestrator-rule-reminder + investigation-counter-reset: UserPromptSubmit
+ups = s['hooks'].get('UserPromptSubmit', [])
+ups_cmds = [h.get('command', '') for entry in ups for h in entry.get('hooks', [])]
+assert any('orchestrator-rule-reminder.sh' in c for c in ups_cmds), \
+    'orchestrator-rule-reminder.sh must be wired under UserPromptSubmit'
+assert any('investigation-counter-reset.sh' in c for c in ups_cmds), \
+    'investigation-counter-reset.sh must be wired under UserPromptSubmit'
+
+print('Rule-adherence hooks (M6/M3/M2) wired — OK')
+PY
+
+# M6 orchestrator-nudge: structural JSON deny on investigation-shaped Grep patterns
+bash -n .claude/hooks/orchestrator-nudge.sh
+set +e
+OUT=$(printf '%s' '{"tool_name":"Grep","tool_input":{"pattern":"FooBarService"}}' | bash .claude/hooks/orchestrator-nudge.sh 2>/dev/null)
+EC=$?
+set -e
+if [[ $EC -eq 0 ]] && printf '%s' "$OUT" | grep -q '"permissionDecision":"deny"'; then
+  echo "smoke: orchestrator-nudge CamelCase Grep → JSON deny OK"
+else
+  echo "FAIL: orchestrator-nudge CamelCase Grep → expected exit 0 + JSON deny, got exit=$EC out=$OUT" >&2
+  exit 1
+fi
+
+# M6 subagent exemption: same pattern with agent_id present → no deny, no stderr
+set +e
+OUT=$(printf '%s' '{"tool_name":"Grep","tool_input":{"pattern":"FooBarService"},"agent_id":"sub-1"}' | bash .claude/hooks/orchestrator-nudge.sh 2>/dev/null)
+EC=$?
+set -e
+if [[ $EC -eq 0 ]] && [[ -z "$OUT" ]]; then
+  echo "smoke: orchestrator-nudge subagent exemption → no deny OK"
+else
+  echo "FAIL: orchestrator-nudge subagent exemption → expected exit 0 + empty stdout, got exit=$EC out=$OUT" >&2
+  exit 1
+fi
+
+# M3 orchestrator-rule-reminder: always emits reminder on stdout
+bash -n .claude/hooks/orchestrator-rule-reminder.sh
+set +e
+OUT=$(printf '%s' '{"session_id":"smoke","prompt":"x"}' | bash .claude/hooks/orchestrator-rule-reminder.sh 2>/dev/null)
+EC=$?
+set -e
+if [[ $EC -eq 0 ]] && printf '%s' "$OUT" | grep -q '^ORCHESTRATOR RULE:'; then
+  echo "smoke: orchestrator-rule-reminder → reminder emitted OK"
+else
+  echo "FAIL: orchestrator-rule-reminder → expected exit 0 + ORCHESTRATOR RULE prefix, got exit=$EC out=$OUT" >&2
+  exit 1
+fi
+
+# M2 investigation-counter: N=2 block directive + subagent exemption
+bash -n .claude/hooks/investigation-counter.sh
+bash -n .claude/hooks/investigation-counter-reset.sh
+rm -f /tmp/cc-inv-count-smoke-m2
+
+# First hit: no block, counter=1
+set +e
+OUT1=$(printf '%s' '{"tool_name":"Grep","session_id":"smoke-m2"}' | bash .claude/hooks/investigation-counter.sh 2>/dev/null)
+EC1=$?
+set -e
+if [[ $EC1 -eq 0 ]] && [[ -z "$OUT1" ]] && [[ -f /tmp/cc-inv-count-smoke-m2 ]] && [[ "$(cat /tmp/cc-inv-count-smoke-m2)" == "1" ]]; then
+  echo "smoke: investigation-counter first hit → no block, counter=1 OK"
+else
+  echo "FAIL: investigation-counter first hit → expected exit 0 + empty out + counter=1, got exit=$EC1 out=$OUT1 counter=$(cat /tmp/cc-inv-count-smoke-m2 2>/dev/null)" >&2
+  exit 1
+fi
+
+# Second hit: block directive emitted, counter=2
+set +e
+OUT2=$(printf '%s' '{"tool_name":"Grep","session_id":"smoke-m2"}' | bash .claude/hooks/investigation-counter.sh 2>/dev/null)
+EC2=$?
+set -e
+if [[ $EC2 -eq 0 ]] && printf '%s' "$OUT2" | grep -q '"decision":"block"' && [[ "$(cat /tmp/cc-inv-count-smoke-m2)" == "2" ]]; then
+  echo "smoke: investigation-counter second hit → decision:block + counter=2 OK"
+else
+  echo "FAIL: investigation-counter second hit → expected exit 0 + decision:block + counter=2, got exit=$EC2 out=$OUT2 counter=$(cat /tmp/cc-inv-count-smoke-m2 2>/dev/null)" >&2
+  exit 1
+fi
+
+# Subagent with agent_id: counter not incremented, no block
+set +e
+OUT3=$(printf '%s' '{"tool_name":"Grep","session_id":"smoke-m2","agent_id":"sub-1"}' | bash .claude/hooks/investigation-counter.sh 2>/dev/null)
+EC3=$?
+set -e
+if [[ $EC3 -eq 0 ]] && [[ -z "$OUT3" ]] && [[ "$(cat /tmp/cc-inv-count-smoke-m2)" == "2" ]]; then
+  echo "smoke: investigation-counter subagent exemption → no increment, no block OK"
+else
+  echo "FAIL: investigation-counter subagent exemption → expected exit 0 + empty out + counter=2, got exit=$EC3 out=$OUT3 counter=$(cat /tmp/cc-inv-count-smoke-m2 2>/dev/null)" >&2
+  exit 1
+fi
+
+# Reset hook: counter file removed
+set +e
+printf '%s' '{"session_id":"smoke-m2","prompt":"x"}' | bash .claude/hooks/investigation-counter-reset.sh >/dev/null 2>&1
+EC4=$?
+set -e
+if [[ $EC4 -eq 0 ]] && [[ ! -f /tmp/cc-inv-count-smoke-m2 ]]; then
+  echo "smoke: investigation-counter-reset → counter file removed OK"
+else
+  echo "FAIL: investigation-counter-reset → expected exit 0 + counter file gone, got exit=$EC4 counter_exists=$(test -f /tmp/cc-inv-count-smoke-m2 && echo yes || echo no)" >&2
+  exit 1
+fi
+
+# Cleanup any residual smoke-test state
+rm -f /tmp/cc-inv-count-smoke-m2 /tmp/cc-inv-count-default
 ```
 
 ## Checkpoint
@@ -1103,14 +1472,15 @@ fi
   - SessionStart (matcher: startup): cmm-index-startup — zero-drift CMM enforcement (reads .claude/cmm-baseline.md, reindexes on SHA/count mismatch, fail-open; timeout 600s)
   - PreToolUse Bash: git guard (blocks force push, push to main, hard reset)
   - PreToolUse Grep|Glob|Search: mcp-discovery-gate (blocks symbol-shaped patterns when codebase-memory-mcp or serena is reachable in any MCP scope — project .mcp.json, user ~/.claude.json, managed settings, or plugin-bundled; fail-open on parse errors)
-  - PreToolUse Edit|Write|MultiEdit|NotebookEdit|Grep|Glob: orchestrator-nudge (advisory-only main-thread doctrine reminder per .claude/rules/main-thread-orchestrator.md — NEVER blocks, exit 0)
+  - PreToolUse Edit|Write|MultiEdit|NotebookEdit|Grep|Glob: orchestrator-nudge (M6 — structural JSON `permissionDecision:"deny"` on investigation-shaped Grep/Glob from main thread; advisory stderr on Edit/Write; sub-agent exemption via `agent_id`; fail-open)
   - SubagentStop: agent usage tracking + Max Quality Doctrine Layer 3 literal scan (check-quality.sh)
   - Stop: verification nudge (incl. MAX QUALITY reminder) + companion sync ({if companion})
   - PreCompact: state preservation
   - PostToolUse Bash: failure logging → .learnings/log.md
   - PostToolUse Edit|Write|Bash: observation capture
+  - PostToolUse Grep|Glob: investigation-counter (M2 — per-session per-turn counter; at N=2 emits `decision:"block"` + dispatch directive; sub-agent exemption via `agent_id`)
   {- PostToolUse Edit|Write: auto-format (if enabled)}
-  - UserPromptSubmit: prompt-nudge.sh — skill-check always + MAX QUALITY on write/impl verbs
+  - UserPromptSubmit: prompt-nudge.sh (skill-check always + MAX QUALITY on write/impl verbs) + orchestrator-rule-reminder.sh (M3 — per-turn compact rule reminder; defeats CLAUDE.md context decay) + investigation-counter-reset.sh (turn-boundary reset for M2 counter)
   - TaskCompleted: risk-aware completion gate (blocks medium+ tasks without verification evidence; bypass: TASKCOMPLETED_GATE_BYPASS=1)
   - settings.json: all hooks wired, valid JSON
 ```
