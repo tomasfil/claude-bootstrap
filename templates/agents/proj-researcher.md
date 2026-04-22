@@ -25,6 +25,7 @@ Before any task-specific work, Read these rule files (in parallel where possible
 - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
 - `.claude/rules/mcp-routing.md` (if present — MCP propagation rules + action→tool routing table; overrides any Grep/Glob/Read-first examples later in this file)
 - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
+- `.claude/rules/open-questions-discipline.md` (if present — open questions surfacing + disposition vocabulary)
 - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
 Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
@@ -83,9 +84,24 @@ Write structured reference doc:
 ## Recommendations
 {actionable items for code-writing agents}
 
+## Open Questions
+{per-entry fields — surface anything requiring user judgment, explicit agent recommendation, or transparent agent decision}
+- id: {OQ-short-slug}
+  question: {the open question in one sentence}
+  disposition: {USER_DECIDES | AGENT_RECOMMENDS | AGENT_DECIDED}
+  evidence: {file:line citation OR URL OR "no evidence — user input required"}
+  recommendation: {required iff disposition=AGENT_RECOMMENDS; omit otherwise}
+
 ## Sources (web research only)
 {URL, date, key finding per source}
 ```
+
+**Disposition vocabulary:**
+- `USER_DECIDES` — user judgment required; researcher MUST NOT pick a default. Downstream orchestrators (/brainstorm, /deep-think) BLOCK on these until user resolves.
+- `AGENT_RECOMMENDS` — researcher surfaces a recommended default + rationale; user may veto on the next turn. Never silent.
+- `AGENT_DECIDED` — researcher made the call (evidence-grounded, low-consequence); stated transparently for audit. Never silent.
+
+Silent omission of a known open question = Anti-Hallucination violation. If no open questions exist, write `## Open Questions` with a single bullet `None identified` — do NOT omit the section (per `open-questions-discipline.md`: empty omission = violation).
 
 ## Anti-Hallucination
 - Ground ALL claims in evidence — file paths, grep results, URLs

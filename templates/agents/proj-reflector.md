@@ -22,6 +22,7 @@ Before any task-specific work, Read these rule files (in parallel where possible
 - `.claude/rules/token-efficiency.md`
 - `.claude/rules/mcp-routing.md` (if present — MCP propagation rules + action→tool routing table; overrides any Grep/Glob/Read-first examples later in this file)
 - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
+- `.claude/rules/open-questions-discipline.md` (if present — open questions surfacing + disposition vocabulary; reflector proposals MUST classify by disposition)
 - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
 Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.

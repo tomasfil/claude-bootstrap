@@ -736,6 +736,14 @@ If any checklist item fails → fix before Phase 7. If uncheckable → note expl
 
 (TASK_TRACKING=true) **TaskCreate closeout** — call `TaskUpdate(taskId=<id>, status="completed")`. This is the successful-completion closeout call for the deep-think run. After this call, the harness task list closes the entry. If the run is aborting mid-Phase-7 for any reason (user cancels handoff, artifacts missing, verification checklist failure deferred from Phase 6), call `TaskUpdate(taskId=<id>, status="in_progress", description=<original-description> + "\n\nBLOCKED: {reason}")` instead — never mark the task completed on abort.
 
+**Open Questions triage (before handoff — reads `open_questions` field from researcher handoffs + `## Open Questions` section from `spec.md`):**
+- Read `spec.md` `## Open Questions` section (Proposal 1 remaining gaps from Phase 6)
+- Present each with disposition (USER_DECIDES / AGENT_RECOMMENDS / AGENT_DECIDED)
+- USER_DECIDES items: surface explicitly; do not suggest /write-plan until addressed
+- AGENT_RECOMMENDS items: state default + rationale; user may veto
+- AGENT_DECIDED items: state transparently in handoff message
+- If none: state "No open questions — ready for /write-plan."
+
 Suggest `/write-plan`, do NOT auto-invoke. Print to user:
 
 ```

@@ -51,6 +51,7 @@ Requirements:
   - `@import .claude/rules/mcp-routing.md` (ONLY if `.mcp.json` exists at project root)
   - `@import .claude/rules/max-quality.md` (MANDATORY — doctrine rule; see Step 3 item 10)
   - `@import .claude/rules/main-thread-orchestrator.md` (MANDATORY — orchestrator doctrine; see Step 3 item 11)
+  - `@import .claude/rules/open-questions-discipline.md` (MANDATORY — open questions discipline; see Step 3 item 12)
   These are required for /audit-agents A5 check — adding custom imports is fine, removing these is not.
 - Compressed telegraphic notation throughout (Claude-facing, not human-facing)
 - Language-agnostic — use {placeholders} filled from discovery, ZERO hardcoded examples
@@ -409,6 +410,13 @@ Create ALWAYS:
     report the blocker precisely and stop. Permission-seeking in the middle of a solvable
     task is a hedge, not collaboration.
 
+    Clarification: "No hedging" ≠ "never ask". Silent disposition of a user-decidable
+    question is a worse failure mode than asking. Rule: solvable without user input →
+    solve; needs user decision → ask explicitly with disposition classification (see
+    `open-questions-discipline.md`). Permission-seeking mid-task ≠ asking a classified
+    open question; the former hedges on work you could do, the latter surfaces a judgment
+    call only the user can make.
+
     ## §7 Token Efficiency = INSTRUCTIONS only
     `token-efficiency.md` applies to INSTRUCTIONS (agent bodies, rules, specs, plans,
     memory files). It NEVER applies to OUTPUT (generated code, spec content, plan task
@@ -493,6 +501,55 @@ Create ALWAYS:
     - `@import .claude/rules/main-thread-orchestrator.md` in `CLAUDE.md` (always loaded on main thread).
     - Review-time catch: `/review` flags turns violating tier discipline.
     - `.learnings/log.md` logs every observed violation under `correction` category → feeds `/reflect` for doctrine tightening.
+
+12. .claude/rules/open-questions-discipline.md (embed verbatim — DO NOT paraphrase)
+    Content:
+    # Open Questions Discipline
+
+    ## Rule
+    Surface every unresolved user-decidable question between research output and next step (design proposal, approach selection, spec, plan). Silent disposition = contract violation. Orchestrator MUST classify + state each question before advancing; deciding unilaterally without transparent classification is worse failure mode than asking.
+
+    ## Disposition Vocabulary
+    - `USER_DECIDES` — blocking; no sane default; orchestrator MUST ask; forward progress halts until resolved
+    - `AGENT_RECOMMENDS` — default + rationale stated; user can veto in next turn; proceed if no veto
+    - `AGENT_DECIDED` — mechanical / previously-settled / constrained by other rules; stated transparently, never hidden
+
+    ## Research Output Contract
+    `proj-researcher` findings MUST include `## Open Questions` section. Per-entry fields:
+    - `id` — stable identifier (OQ1, OQ2, ...)
+    - `question` — one-line statement of the judgment call
+    - `disposition` — one of USER_DECIDES | AGENT_RECOMMENDS | AGENT_DECIDED
+    - `evidence` — file:line citations OR "no prior art" if novel
+    - `recommendation?` — required if AGENT_RECOMMENDS; optional otherwise
+
+    No Open Questions identified → write `## Open Questions` section w/ "None identified" explicitly; empty omission = violation.
+
+    ## Orchestrator Obligation
+    Before next step (Step 4 in /brainstorm, final-handoff in /deep-think, spec emission, plan write):
+    1. Read `## Open Questions` from research findings
+    2. Surface each verbatim w/ disposition classification
+    3. USER_DECIDES → BLOCK; ask user; no forward progress until resolved
+    4. AGENT_RECOMMENDS → state default + rationale; user vetoes in next turn or confirms by silence
+    5. AGENT_DECIDED → state transparently w/ reason; never omit
+    6. Legacy findings (no Open Questions section) → extract candidates yourself + classify per vocab; do NOT proceed w/ hidden triage
+
+    ## Relationship to max-quality.md §6
+    "No hedging" ≠ "never ask". Silent disposition of user-decidable question is worse failure than asking. Heuristic:
+    - Solvable without user input → solve (no permission-seeking; §6 applies)
+    - Needs user judgment → ask explicitly w/ disposition classification (this rule applies)
+    Permission-seeking mid-task on solvable work = hedge. Surfacing a classified open question = healthy escalation.
+
+    ## Relationship to techniques/agent-design.md
+    Inter-Agent Handoff Format carries `open_questions` field alongside existing `unresolved` — different semantics:
+    - `unresolved` — research-side failure (could not find answer; research-gap signal)
+    - `open_questions` — user-judgment required (healthy artefact; feeds orchestrator triage)
+    Both coexist. Writer agents consume `open_questions` post-triage; researchers originate it.
+
+    ## Enforcement
+    - Force-read: STEP 0 of `proj-researcher`, `/brainstorm`, `/deep-think` (originators of research findings + orchestrators that consume them)
+    - Review-time catch: `/review` flags forward-progress (spec emission, plan write, code dispatch) after research findings without a preceding triage turn
+    - `.learnings/log.md`: violations logged as `correction` category → `/reflect` promotes recurring patterns into rule tightening
+    - No hook enforcement — too hard to detect mechanically; doctrine + force-read + review catch cover the failure mode
 
 Create CONDITIONALLY:
 7. .claude/rules/shell-standards.md — only if .sh files exist

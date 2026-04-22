@@ -39,6 +39,21 @@ See `techniques/agent-design.md § Agent Dispatch Policy`.
    - Return path + summary
 4. Read review report
 5. Files in `.claude/` (agents/skills/rules): flag full-sentence prose, missing RCCF, articles/filler → severity WARNING
+5.5 Open Questions Discipline check (main-thread structural grep — `.claude/rules/open-questions-discipline.md` line 44)
+
+Main thread performs this check after reviewer returns, before presenting results to user.
+
+Glob — find recent research + spec files in current branch's spec dir:
+  recent=$(find .claude/specs/{branch}/ -maxdepth 2 -name "*-research.md" -o -name "*-spec.md" -mtime -7 2>/dev/null)
+
+For each {file}:
+  (a) research findings (`*-research.md`): check `grep -q "## Open Questions" {file}`. Absent → WARNING: "research findings {file} missing `## Open Questions` section (contract violation — open-questions-discipline.md Research Output Contract)".
+  (b) spec files (`*-spec.md`): check `grep -q "## Open Questions" {file}`. Absent → WARNING: "spec {file} missing `## Open Questions` section — orchestrator may have bypassed triage (open-questions-discipline.md Orchestrator Obligation)".
+  (c) spec files WITH section: check `grep -qE "USER_DECIDES|AGENT_RECOMMENDS|AGENT_DECIDED" {file}`. Zero disposition labels → WARNING: "spec {file} has `## Open Questions` section but entries lack disposition classification (USER_DECIDES|AGENT_RECOMMENDS|AGENT_DECIDED)".
+
+Append findings to review report under heading `### Open Questions Discipline`. Zero findings → report "Open Questions discipline: no issues detected across {N} recent research/spec files". If no recent files exist (greenfield work, no research phase) → skip silently.
+
+Rationale: structural grep — not LLM judgment. Catches the drift pattern where orchestrator writes spec/plan without surfacing open questions. Does NOT catch subtle judgment calls (those are inherent to the problem class and caught by orchestrator discipline, not review).
 6. Present review results to user
 7. Issues found → fix → re-review
 

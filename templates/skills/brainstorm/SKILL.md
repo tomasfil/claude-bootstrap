@@ -45,6 +45,14 @@ See `techniques/agent-design.md § Agent Dispatch Policy`.
    - Write findings to `.claude/specs/{branch}/{date}-{topic}-research.md`
    - Return path + summary
 3. Read research findings
+3.5 Triage open questions (force, before approaches):
+   - Read `## Open Questions` section from research findings
+   - Present each question verbatim w/ disposition classification
+   - `USER_DECIDES` → BLOCK on Step 4 until user resolves; no approach proposal until cleared
+   - `AGENT_RECOMMENDS` → state recommended default + rationale; user vetoes next turn if wanted
+   - `AGENT_DECIDED` → state transparently in handoff message (evidence-grounded, low-consequence)
+   - Silent disposition (skipping an item, collapsing to a hidden default) = rule violation
+   - If research findings have no `## Open Questions` section (legacy researcher output) → extract candidate questions from Summary / Patterns / Recommendations prose + classify manually
 4. Propose 2-3 approaches w/ trade-offs + recommendation. Present section by section — get approval after each
 5. Save spec → `.claude/specs/{branch}/{date}-{topic}-spec.md`. Specs use compressed telegraphic notation
 6. Transition → invoke `/write-plan`
@@ -64,6 +72,13 @@ Read `.claude/references/techniques/INDEX.md` (if exists) → pick relevant tech
 ## Approach (approved)
 ## Components (files, interfaces, data flow)
 ## Open Questions
+{triaged items w/ disposition: USER_DECIDES | AGENT_RECOMMENDS | AGENT_DECIDED; resolved items preserved for traceability}
+- id: {OQ-short-slug}
+  question: {one sentence}
+  disposition: {USER_DECIDES | AGENT_RECOMMENDS | AGENT_DECIDED}
+  evidence: {file:line OR URL OR "no evidence — user input required"}
+  recommendation: {required iff AGENT_RECOMMENDS}
+  resolution: {filled when resolved — e.g., "user chose option B" | "agent decision confirmed" | "deferred to /write-plan"}
 ```
 
 ### Anti-Hallucination

@@ -696,7 +696,11 @@ handoff:
     findings: <role-shaped payload>
     evidence:                      # pattern 9, REQUIRED for research roles
       - {claim, source_url, confidence: h|m|l, corroborated: bool}
-    unresolved: [trail-lost items] # explicit gaps prevent fabrication
+    unresolved: [trail-lost items] # research-gap: things researcher could not confirm; explicit gaps prevent fabrication
+    open_questions:                # user-judgment required (disposition: USER_DECIDES|AGENT_RECOMMENDS|AGENT_DECIDED)
+      - {id, question, disposition, evidence, recommendation?}
+    # unresolved = research-gap (things researcher could not confirm)
+    # open_questions = user-judgment required — downstream orchestrators (/brainstorm, /deep-think) run triage before approach proposal; USER_DECIDES blocks handoff, AGENT_RECOMMENDS states default + rationale (user vetoes), AGENT_DECIDED stated transparently
     confidence: h|m|l
   budget: {tokens, tools: {web: int}}
   meta: {profile: code|research|review|route, tokens_in_out, created}
