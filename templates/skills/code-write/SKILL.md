@@ -53,6 +53,11 @@ See `techniques/agent-design.md § Agent Dispatch Policy`.
 - Read `scope:` from each → build routing table at dispatch time
 - New specialists auto-discovered w/o skill changes
 
+### Post-Code-Write (advisory — Post-Module-07 only)
+- Non-trivial | cross-module changes → consider `/review` via Skill tool pre-commit
+- Judgment-based, NOT mandatory — trivial edits skip review
+- Contrast w/ /tdd: /tdd enforces /review on STATUS: GREEN; /code-write is soft recommendation only
+
 ### Anti-Hallucination
 - NEVER dispatch to agent that doesn't exist — glob first
 - NEVER assume language from file content alone — check extension + project manifests

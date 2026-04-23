@@ -794,6 +794,15 @@ agents:
 
 ---
 
+## GENERATES_CODE vs MULTI_STEP_SYNTHESIS — Classification Criterion
+
+When an agent produces **novel structured artifacts** (batch files, plans, code), it is GENERATES_CODE regardless of whether it "reasons" about requirements. When an agent **synthesizes existing knowledge** from multiple sources into a finding or recommendation, it is MULTI_STEP_SYNTHESIS.
+
+**Orchestrator-shape criterion:** If the agent's output directly populates another agent's dispatch brief (plan-writer → execute-plan workers), it is GENERATES_CODE — output errors cascade. If the agent's output is consumed as reference (researcher → code-writer context), it is MULTI_STEP_SYNTHESIS.
+
+**proj-plan-writer:** GENERATES_CODE (batch files drive downstream dispatches — wrong plan = cascading errors; opus correct).
+**proj-researcher:** MULTI_STEP_SYNTHESIS (produces findings as reference, not direct dispatch input; orchestrator-workers pattern — worker role; sonnet correct per benchmark evidence: Sonnet leads Opus by 5.5pt on knowledge-synthesis tasks).
+
 ## Sources
 - Claude Code Docs: sub-agents, agent-teams, tools-reference
 - claudefa.st: sub-agent best practices

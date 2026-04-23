@@ -47,6 +47,10 @@ Write **ALL files via Bash heredoc** (`cat > file <<'EOF' ... EOF`) — test fil
 Write TDD report via Bash heredoc to `.claude/reports/tdd-{timestamp}.md`.
 Return ONLY: `{report path} — {summary}` (summary <100 chars).
 
+Return summary MUST start with: `STATUS: GREEN` (all tests pass, refactor clean) OR `STATUS: RED` (tests failing or skipped).
+First line of summary is machine-readable. /tdd Phase 3 routes on this value — STATUS: GREEN invokes /review; STATUS: RED skips review.
+Never fabricate STATUS: GREEN — if tests fail after 3 fix attempts, emit STATUS: RED with failure detail in the report.
+
 ## CRITICAL — Bash Heredoc for ALL File Writes (GitHub #9458)
 Write/Edit tools are NOT reliable in subagents. They may appear to succeed but not persist.
 **Do NOT use Write or Edit tools — use Bash exclusively for file creation/modification.**

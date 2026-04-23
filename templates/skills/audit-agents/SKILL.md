@@ -73,6 +73,40 @@ For each `.claude/skills/*/SKILL.md`:
 
 Output: append A7 section to the audit report markdown.
 
+### A8: Skill Audit — Canonical Label Compliance
+Scope extension: this check walks `.claude/skills/*/SKILL.md` (not agents) and verifies that every retry / convergence / resource-cap statement carries one of the 4 canonical labels defined in `.claude/rules/loopback-budget.md`.
+
+Canonical labels:
+- `LOOPBACK-AUDIT` — write-plan Post-Dispatch Audit loopback cap (attempts = 2, HARD-FAIL on 3rd)
+- `SINGLE-RETRY` — execute-plan per-batch failed-task retry (1 solo retry, STOP on 2nd fail)
+- `CONVERGENCE-QUALITY` — deep-think critic iteration cap (0 HIGH-gap convergence criterion)
+- `RESOURCE-BUDGET` — deep-think Phase 1 pass cap + Phase 5 parallel/total gap-resolution caps
+
+For each `.claude/skills/*/SKILL.md`:
+  Grep for retry/convergence trigger phrases (case-insensitive): `loopback`, `retry`, `iteration cap`, `convergence`, `MAX_`, `hard-fail after`, `attempts`, `re-dispatch.*fail`, `max .* passes`, `total .* dispatches`.
+  For each match line:
+    IF line OR immediately-adjacent line (±2) contains one of the 4 canonical labels → PASS for this statement.
+    ELSE → FAIL w/ `file:line` evidence + snippet + suggested label.
+  Skip matches inside fenced code blocks whose language tag is NOT markdown (e.g. `bash`, `python`, `json`) — those are illustrative, not policy.
+  Skip matches inside the `loopback-budget.md` reference itself (it defines the labels; it does not need to self-annotate).
+
+Report format (append to audit markdown):
+```yaml
+A8_canonical_label_compliance: {PASS|FAIL|SKIP}
+findings:
+  - check: A8
+    severity: FAIL
+    file: .claude/skills/{name}/SKILL.md
+    line: {N}
+    snippet: "{matched line, trimmed}"
+    suggested_label: "{one of 4 canonical labels}"
+    detail: "retry/convergence statement missing canonical label — annotate via inline `# {LABEL}` comment"
+```
+
+Rationale: new loopback logic added to skills post-bootstrap drifts away from the canonical vocabulary unless a mechanical check enforces it. A8 closes the drift vector — `/audit-agents` flags any new retry/convergence cap that lacks a canonical label, `/reflect` gets to cluster loopback events by label, and new skill authors see the 4-label palette on first audit failure instead of inventing a 5th.
+
+Dispatch brief update: when dispatching `proj-consistency-checker`, extend scope from agent files to include `.claude/skills/*/SKILL.md` for A8 specifically. A1-A7 scope remains unchanged.
+
 ### Output
 
 Agent writes YAML-ish report to `.claude/reports/audit-agents-{timestamp}.md`
@@ -89,6 +123,7 @@ checks:
   A5_claude_md:    {PASS|FAIL|SKIP}
   A6_cmm_index:    {PASS|WARN|SKIP}
   A7_effort_high_justified: {PASS|FAIL|WARN|SKIP}
+  A8_canonical_label_compliance: {PASS|FAIL|SKIP}
 findings:
   - check: A1
     severity: FAIL
@@ -111,6 +146,7 @@ and a one-line fix recommendation per category:
 - A6 WARN → index the repo (cmm/serena) or ignore if MCP unused
 - A7 FAIL → add `# xhigh: <TOKEN>` justification comment immediately after `effort: xhigh` in agent frontmatter, or add it after `effort: xhigh` in skill frontmatter when `# Skill Class:` lacks "dispatch"/"orchestrat"/"synthesis" keywords; run `/migrate-bootstrap` if migration 029 is pending
 - A7 WARN → `INHERITED_DEFAULT` is tracked debt; revisit classification per `techniques/agent-design.md` Skill Class → Model Binding
+- A8 FAIL → annotate the cited retry/convergence statement w/ one of the 4 canonical labels (`LOOPBACK-AUDIT` | `SINGLE-RETRY` | `CONVERGENCE-QUALITY` | `RESOURCE-BUDGET`) via inline HTML comment `<!-- {LABEL}: canonical label — see .claude/rules/loopback-budget.md -->` at end of line or on preceding line; see `.claude/rules/loopback-budget.md` for the full label semantics + where-applied pointers
 
 Do NOT auto-patch. User approves fixes.
 

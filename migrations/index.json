@@ -264,6 +264,42 @@
       "file": "044-xhigh-effort-adoption.md",
       "description": "Replace effort:high with effort:xhigh across all agents and skills — Opus 4.7 introduces xhigh effort level; silent fallback on other models means blanket replace is safe. Updates agent frontmatter, skill frontmatter, and syncs techniques/agent-design.md.",
       "breaking": false
+    },
+    {
+      "id": "045",
+      "file": "045-review-find-paren-fix.md",
+      "description": "Fix operator-precedence bug in /review skill open-questions discipline check — adds \\( ... \\) grouping around -name alternation in find command so -mtime -7 applies to both research and spec filename patterns, eliminating false-positive OQ findings on every /review run.",
+      "breaking": false
+    },
+    {
+      "id": "046",
+      "file": "046-drift-fixes.md",
+      "description": "Fix model selection drift — add model: sonnet to proj-code-reviewer frontmatter and update classification comment from # high: to # xhigh: in proj-code-writer-bash, resolving UNKNOWN reports from /audit-model-usage.",
+      "breaking": false
+    },
+    {
+      "id": "047",
+      "file": "047-tdd-triage-and-review.md",
+      "description": "Add Phase 1 triage (proj-quick-check, binary TEST_FILE_EXISTS+FEATURE_IN_TESTS stop) and Phase 3 review (/review via Skill tool on STATUS: GREEN) to /tdd skill. Mandate STATUS: GREEN|RED first line in proj-tdd-runner return summary. Add advisory post-code-write review recommendation to /code-write.",
+      "breaking": false
+    },
+    {
+      "id": "048",
+      "file": "048-spec-schema-gate.md",
+      "description": "Add spec schema gate to /write-plan (Step 1.5): validates spec file has 5 required sections (Problem/Goal, Constraints, Approach, Components, Open Questions) before dispatching plan-writer. Escape hatch: --skip-schema-gate. Creates .claude/rules/spec-schema.md. Adds spec-schema reference to /brainstorm.",
+      "breaking": false
+    },
+    {
+      "id": "049",
+      "file": "049-plan-writer-opus.md",
+      "description": "Reclassify proj-plan-writer from sonnet+MULTI_STEP_SYNTHESIS to opus+GENERATES_CODE — plan-writer generates novel structured batch files that drive all downstream dispatches, making it the highest-leverage accuracy target. Sync GENERATES_CODE classification criterion to techniques/agent-design.md. Add plan-quality logging to /write-plan Post-Dispatch Audit, /execute-plan batch-fail path, and /review scope-violation findings.",
+      "breaking": false
+    },
+    {
+      "id": "050",
+      "file": "050-loopback-budget-rule.md",
+      "description": "Canonical retry/convergence vocabulary via .claude/rules/loopback-budget.md — 4 labels: LOOPBACK-AUDIT (/write-plan), SINGLE-RETRY (/execute-plan), CONVERGENCE-QUALITY (/deep-think critic), RESOURCE-BUDGET (/deep-think caps). Annotate skill caps with labels. Extend /audit-agents to check skill files for label compliance.",
+      "breaking": false
     }
   ]
 }

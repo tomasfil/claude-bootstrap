@@ -4,9 +4,9 @@ description: >
   Use when breaking a design or spec into concrete, ordered, verifiable
   implementation tasks. Takes spec + codebase context, produces dependency-ordered
   task list packed into dispatch-unit batch files for focused agent dispatch.
-model: sonnet
+model: opus
 effort: xhigh
-# xhigh: MULTI_STEP_SYNTHESIS
+# xhigh: GENERATES_CODE
 maxTurns: 100
 color: blue
 ---

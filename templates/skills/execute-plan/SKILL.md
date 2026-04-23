@@ -88,8 +88,19 @@ Rationale: defense-in-depth w/ `/write-plan` Post-Dispatch Audit — catches pla
 - Agent partial-success map identifies failed + not-run sub-tasks
 - Main thread re-dispatches each FAILED task SOLO (one Agent call per failed task, no re-batching on retry). Prevents retry amplification; gives each retry clean context.
 - NOT_RUN tasks: re-dispatch SOLO in dep order after failed-task retries succeed
-- Solo retry also fails → STOP, report to user, ask how to proceed (do NOT silently skip or continue past failing tasks)
+- Solo retry also fails → STOP, report to user, ask how to proceed (do NOT silently skip or continue past failing tasks) <!-- SINGLE-RETRY: canonical label — see .claude/rules/loopback-budget.md -->
 - NEVER collapse multiple failed tasks back into one retry batch
+
+<!-- plan-quality-log -->
+**plan-quality logging on batch fail:** every batch that returns a partial-success map with one or more FAIL entries → append a structured entry to `.learnings/log.md` under the `plan-quality` category:
+```
+### {date} — plan-quality: BATCH-FAIL
+Batch: {batch-NN-{summary}.md}
+Task: {NN.M — first failing task ID in the partial-success map}
+Verification: {exact command from batch header Verification: field}
+Agent: {agent from batch header Agent: field}
+```
+One entry per failing batch (not per failing task) — if two tasks in the same batch fail, one log entry covers the batch with `Task:` pointing at the first failure. Solo-retry failures ALSO log an entry (use the solo-retry batch identifier `batch-NN-{summary}-retry-{M}`). Category `plan-quality` is shared with `/write-plan` post-dispatch-audit loopback entries and `/review` scope-violation entries (see those skills for sibling entry formats). This creates end-to-end plan-quality signal from planning (Post-Dispatch Audit loopbacks) through execution (batch fails) through review (scope violations) — all feeding the `/reflect` + `/consolidate` pipeline under one category.
 
 ### Plan Changes Mid-Execution
 STOP → explain change + why → update plan file → get approval before continuing

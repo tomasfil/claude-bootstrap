@@ -520,6 +520,7 @@ Return ONLY: {path} — {N HIGH, M MEDIUM, K LOW gaps; verdict: {...}}
 
 Increment `critic_iteration += 1`. Store return path as `gap_register_path`.
 
+<!-- CONVERGENCE-QUALITY: canonical label — see .claude/rules/loopback-budget.md -->
 **Convergence check (read the new gap register):**
 - `HIGH == 0` → **CONVERGED**. Convergence signal for this skill: 0 HIGH gaps from critic for 1 consecutive round. Advance to Phase 6.
 - `HIGH > 0` AND verdict == `continue_to_gap_resolution` → enter Phase 5.
@@ -605,12 +606,15 @@ Return ONLY: {path} — {verdict: RESOLVED/PARTIAL/UNRESOLVABLE, summary}
 
 **Convergence caps (observable units — NOT time):**
 
+<!-- RESOURCE-BUDGET: canonical label — Phase 1 pass cap + Phase 5 parallel/total gap-resolution caps — see .claude/rules/loopback-budget.md -->
+<!-- CONVERGENCE-QUALITY: canonical label — Phase 4 critic iteration cap — see .claude/rules/loopback-budget.md -->
+
 | Cap | Value | Enforced where |
 |---|---|---|
-| Phase 1 auto-retries (T1/T2/T3) | max 2 extra passes, 3 total | `MAX_PHASE1_PASSES = 3` |
-| Phase 4 critic iterations | max 5 (override via `--max-critic`, hard ceiling 10) | `MAX_CRITIC` |
-| Phase 5 parallel gap-resolution per round | max 3 | `MAX_GAP_PARALLEL = 3` |
-| Phase 5 total gap-resolution dispatches per run | max 15 (warn at 10) | `MAX_GAP_TOTAL = 15` |
+| Phase 1 auto-retries (T1/T2/T3) | max 2 extra passes, 3 total | `MAX_PHASE1_PASSES = 3` <!-- RESOURCE-BUDGET --> |
+| Phase 4 critic iterations | max 5 (override via `--max-critic`, hard ceiling 10) | `MAX_CRITIC` <!-- CONVERGENCE-QUALITY --> |
+| Phase 5 parallel gap-resolution per round | max 3 | `MAX_GAP_PARALLEL = 3` <!-- RESOURCE-BUDGET --> |
+| Phase 5 total gap-resolution dispatches per run | max 15 (warn at 10) | `MAX_GAP_TOTAL = 15` <!-- RESOURCE-BUDGET --> |
 
 **Hard-fail conditions (all → STOP + partial artifact):**
 - Critic iteration 5 reached with HIGH > 0 → `BELOW-THRESHOLD — critic cap reached`.

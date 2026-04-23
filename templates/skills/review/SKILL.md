@@ -44,7 +44,7 @@ See `techniques/agent-design.md § Agent Dispatch Policy`.
 Main thread performs this check after reviewer returns, before presenting results to user.
 
 Glob — find recent research + spec files in current branch's spec dir:
-  recent=$(find .claude/specs/{branch}/ -maxdepth 2 -name "*-research.md" -o -name "*-spec.md" -mtime -7 2>/dev/null)
+  recent=$(find .claude/specs/{branch}/ -maxdepth 2 \( -name "*-research.md" -o -name "*-spec.md" \) -mtime -7 2>/dev/null)
 
 For each {file}:
   (a) research findings (`*-research.md`): check `grep -q "## Open Questions" {file}`. Absent → WARNING: "research findings {file} missing `## Open Questions` section (contract violation — open-questions-discipline.md Research Output Contract)".
@@ -54,6 +54,17 @@ For each {file}:
 Append findings to review report under heading `### Open Questions Discipline`. Zero findings → report "Open Questions discipline: no issues detected across {N} recent research/spec files". If no recent files exist (greenfield work, no research phase) → skip silently.
 
 Rationale: structural grep — not LLM judgment. Catches the drift pattern where orchestrator writes spec/plan without surfacing open questions. Does NOT catch subtle judgment calls (those are inherent to the problem class and caught by orchestrator discipline, not review).
+
+<!-- plan-quality-log -->
+5.6 **plan-quality logging on scope findings:** if the review report contains any finding about files changed OUTSIDE the listed batch scope (scope-lock violation per `.claude/rules/agent-scope-lock.md`) OR any missing-from-plan edit (file touched that no task listed in its `#### Files` section) — append a structured entry to `.learnings/log.md` under the `plan-quality` category, one per distinct offending file:
+```
+### {date} — plan-quality: SCOPE-VIOLATION
+File: {absolute or project-relative file path}
+Finding: {scope-lock-violation | missing-from-plan}
+Review: {.claude/reports/review-{timestamp}.md path}
+```
+Detection: grep the review report for the phrases `scope-lock violation`, `outside listed scope`, `not listed in batch`, or `missing from plan`. Each match → one log entry keyed on the file path cited in the finding. Zero matches → skip this substep silently. Category `plan-quality` is shared with `/write-plan` post-dispatch-audit entries and `/execute-plan` batch-fail entries (see those skills for sibling entry formats). This means `/review` auto-logs scope-creep incidents during post-execution review, closing the planning → execution → review loop so the `/reflect` + `/consolidate` pipeline has ground-truth signal on scope discipline without manual triage.
+
 6. Present review results to user
 7. Issues found → fix → re-review
 

@@ -54,7 +54,7 @@ See `techniques/agent-design.md § Agent Dispatch Policy`.
    - Silent disposition (skipping an item, collapsing to a hidden default) = rule violation
    - If research findings have no `## Open Questions` section (legacy researcher output) → extract candidate questions from Summary / Patterns / Recommendations prose + classify manually
 4. Propose 2-3 approaches w/ trade-offs + recommendation. Present section by section — get approval after each
-5. Save spec → `.claude/specs/{branch}/{date}-{topic}-spec.md`. Specs use compressed telegraphic notation
+5. Save spec → `.claude/specs/{branch}/{date}-{topic}-spec.md`. Specs use compressed telegraphic notation. Spec output MUST use the 5-section schema from `templates/rules/spec-schema.md` (or `.claude/rules/spec-schema.md` in client projects): Problem/Goal, Constraints, Approach, Components, Open Questions. `/write-plan` Step 1.5 Spec Schema Gate enforces this at plan-write time
 6. Transition → invoke `/write-plan`
 
 ### Knowledge Base

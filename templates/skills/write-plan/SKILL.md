@@ -4,7 +4,7 @@ description: >
   Use when you have requirements or a spec and need to break them into
   concrete implementation steps. Creates plan with dispatch batching.
   Use after /brainstorm or when starting from a clear spec. Dispatches proj-plan-writer.
-argument-hint: "[spec-file-path]"
+argument-hint: "[spec-file-path] [--skip-schema-gate]"
 allowed-tools: Agent Read Write
 model: opus
 effort: xhigh
@@ -32,6 +32,14 @@ See `.claude/references/techniques/agent-design.md § Agent Dispatch Policy`.
 
 ### Steps
 1. Read spec from `.claude/specs/{branch}/` | conversation context
+1.5 **Spec Schema Gate** (runs on main thread before dispatching plan-writer):
+    Parse `--skip-schema-gate` from args → if present, skip this step entirely and log "Spec schema gate bypassed by --skip-schema-gate flag".
+    Otherwise, check spec file `##` section headers (word-boundary prefix match within first 40 chars of each `##` line).
+    Required prefixes: `## Problem`, `## Constraints`, `## Approach`, `## Components`, `## Open Questions`
+    Shell equivalent — per required prefix: `grep -m1 "^## <prefix>" <spec-file>` (non-zero exit = missing).
+    All 5 found → PASS, continue to Step 2.
+    Any missing → BLOCK with: "Spec schema validation failed. Missing sections: {comma-separated list of missing prefixes}. Fix the spec to include the missing section headers, or pass `--skip-schema-gate` as a separate arg to bypass. See `.claude/rules/spec-schema.md` (or `templates/rules/spec-schema.md` in the bootstrap repo) for the full schema definition and examples."
+    Do NOT dispatch `proj-plan-writer` when blocked — return the block message to the user and stop.
 2. Read `.claude/skills/code-write/references/pipeline-traces.md` (if exists)
 3. Dispatch agent via `subagent_type="proj-plan-writer"` w/:
    - Spec content (file path reference)
@@ -81,8 +89,18 @@ Size caps: batch file body ≤200 lines total; individual task sub-section ≤60
    `same agent AND same layer AND disjoint dep_sets AND combined_tasks ≤5 AND combined_context <60K AND combined_files ≤10`
    (merge criteria live in `proj-plan-writer` spec — single source of truth)
 4. No violations → pass plan to user, done
-5. Violation found → re-dispatch `proj-plan-writer` w/ corrective prompt containing: (a) the specific violation list (which batches could merge + why); (b) pointer to the agent's Self-Audit process step (NOT raw merge list, NOT heavy-hand merge instructions — trust the agent to apply its own audit given the violation context). **Loopback cap: 2 attempts.**
+5. Violation found → re-dispatch `proj-plan-writer` w/ corrective prompt containing: (a) the specific violation list (which batches could merge + why); (b) pointer to the agent's Self-Audit process step (NOT raw merge list, NOT heavy-hand merge instructions — trust the agent to apply its own audit given the violation context). **Loopback cap: 2 attempts.** <!-- LOOPBACK-AUDIT: canonical label — see .claude/rules/loopback-budget.md -->
 6. After 2 failed loopbacks → **HARD-FAIL** w/ user-visible error listing every unmerged batch pair + merge criteria that matched + instruction to re-run `/write-plan` or inspect plan manually. Do NOT pass broken plan to user.
+
+<!-- plan-quality-log -->
+**Plan-quality logging:** After any loopback (attempt 1, attempt 2) OR HARD-FAIL, append a structured entry to `.learnings/log.md` under the `plan-quality` category:
+```
+### {date} — plan-quality: {LOOPBACK-1|LOOPBACK-2|HARD-FAIL}
+Batch: {batch file name(s) that violated merge criteria}
+Violation: {which merge criteria failed — same-agent+same-layer / disjoint-deps / combined-tasks-cap / context-budget / files-cap}
+Agent: proj-plan-writer
+```
+One entry per loopback event — attempt 1 + attempt 2 + HARD-FAIL produce 3 separate entries if the audit escalates through all tiers. This surfaces plan-quality signal to the `/reflect` + `/consolidate` pipeline automatically, feeding longitudinal trend detection without manual log discipline. Category `plan-quality` is shared with `/execute-plan` batch-fail entries and `/review` scope-violation entries (see those skills for sibling entry formats).
 
 Rationale: defense-in-depth. Agent Self-Audit (Layer A, `proj-plan-writer` spec) trains cognition; this gate mechanically verifies. Both exist deliberately — see packing enforcement spec (`.claude/specs/main/2026-04-11-plan-writer-packing-enforcement-spec.md` in the bootstrap repo). Regression context: 2026-04-11 mcp-routing-audit plan emitted 5 batch files for packable micro tasks; this gate blocks that failure mode structurally.
 
