@@ -6,7 +6,7 @@ description: >
   promotes/prunes instincts. Dispatches proj-reflector.
 allowed-tools: Agent Read Write
 model: opus
-effort: high
+effort: xhigh
 # Skill Class: main-thread — dispatches proj-reflector, interactive consolidation approval
 ---
 

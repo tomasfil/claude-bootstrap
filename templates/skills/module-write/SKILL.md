@@ -7,7 +7,7 @@ description: >
 argument-hint: "[module-or-file-path]"
 allowed-tools: Agent Read Write
 model: opus
-effort: high
+effort: xhigh
 paths: "modules/**,techniques/**,.claude/skills/**,.claude/agents/**"
 # Skill Class: main-thread — dispatches proj-code-writer-markdown, verifies cross-refs
 ---

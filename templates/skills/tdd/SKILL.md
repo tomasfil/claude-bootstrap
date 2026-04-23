@@ -5,7 +5,7 @@ description: >
   confidence. Red-green-refactor cycle with test-driven development.
 allowed-tools: Agent Read Write
 model: opus
-effort: high
+effort: xhigh
 # Skill Class: main-thread — dispatches proj-tdd-runner, synthesizes results
 ---
 

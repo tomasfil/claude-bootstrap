@@ -6,7 +6,7 @@ description: >
   discovery — globs .claude/agents/proj-code-writer-*.md for available specialists.
 allowed-tools: Agent Read
 model: opus
-effort: high
+effort: xhigh
 paths: "modules/**,techniques/**,.claude/skills/**,.claude/agents/**,.claude/hooks/**"
 # Skill Class: main-thread — dispatches proj-code-writer-{lang}, no inline code work
 ---

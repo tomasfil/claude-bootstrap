@@ -5,8 +5,8 @@ description: >
   implementation tasks. Takes spec + codebase context, produces dependency-ordered
   task list packed into dispatch-unit batch files for focused agent dispatch.
 model: sonnet
-effort: high
-# high: MULTI_STEP_SYNTHESIS
+effort: xhigh
+# xhigh: MULTI_STEP_SYNTHESIS
 maxTurns: 100
 color: blue
 ---

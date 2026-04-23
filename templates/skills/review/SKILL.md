@@ -5,7 +5,7 @@ description: >
   Dispatches proj-code-reviewer agent for thorough review.
 allowed-tools: Agent Read Write
 model: opus
-effort: high
+effort: xhigh
 # Skill Class: main-thread — dispatches proj-code-reviewer, interactive fix loop
 ---
 

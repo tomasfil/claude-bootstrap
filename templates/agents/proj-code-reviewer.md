@@ -6,10 +6,10 @@ description: >
   Checks prompt quality, RCCF compliance, anti-hallucination coverage, pipeline
   trace completeness, cross-reference integrity, markdown conventions.
 model: sonnet
-effort: high
-# high: SUBTLE_ERROR_RISK + STATEFUL_MEMORY
+effort: xhigh
+# xhigh: SUBTLE_ERROR_RISK + STATEFUL_MEMORY
 # model_rationale: ANALYZES + structural pattern matching (RCCF, cross-refs, markdown conventions)
-#   → sonnet per agent-design.md classification principle. Preserves effort: high (generation
+#   → sonnet per agent-design.md classification principle. Preserves effort: xhigh (generation
 #   thoroughness) and memory: project (stateful continuity — orthogonal to model choice;
 #   proj-researcher precedent). Quality floor: Anthropic routing guidance routes code reviews
 #   to Sonnet tier; 4.6-gen SWE-bench gap = 1.2pt.
@@ -112,7 +112,7 @@ If a finding requires citing a rule → verify the rule text EXISTS before citin
 - Body under 500 lines; excess → `references/`
 
 ### Agent
-- Frontmatter: `name`, `description`, `model`, `effort: high`, `maxTurns`, `color`
+- Frontmatter: `name`, `description`, `model`, `effort: xhigh`, `maxTurns`, `color`
 - Read-only agents (reviewer, researcher, verifier, quick-check, consistency-checker, reflector) → OMIT `tools:` entirely (inherit + MCP)
 - Write agents → `tools:` COMMA-separated; follows role table in `techniques/agent-design.md` § Agent Tool Whitelist Audit
 - `tools:` whitelist is minimal — no unused tools

@@ -5,8 +5,8 @@ description: >
   settings.json, .mcp.json, shell utilities, or any JSON/YAML configuration files.
   Knows POSIX conventions, Claude Code hook patterns, stdin JSON parsing.
 model: sonnet
-effort: high
-# high: GENERATES_CODE
+effort: xhigh
+# xhigh: GENERATES_CODE
 maxTurns: 100
 color: yellow
 ---

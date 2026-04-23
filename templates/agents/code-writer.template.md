@@ -5,8 +5,8 @@ description: >
   this project. Knows project conventions, architecture patterns, DI patterns,
   error handling, and framework-specific gotchas.
 model: opus
-effort: high
-# high: GENERATES_CODE
+effort: xhigh
+# xhigh: GENERATES_CODE
 maxTurns: 100
 color: blue
 scope: "{lang}"

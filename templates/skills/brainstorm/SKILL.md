@@ -10,7 +10,7 @@ description: >
   no HIGH-severity critiques remain) → use /deep-think instead.
 allowed-tools: Agent Read Write
 model: opus
-effort: high
+effort: xhigh
 # Skill Class: main-thread — interactive clarification + research dispatch + spec write
 ---
 

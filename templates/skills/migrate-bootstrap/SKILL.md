@@ -7,7 +7,7 @@ description: >
 argument-hint: "[migration-id]"
 allowed-tools: Read Write Edit Bash Grep Glob WebFetch
 model: sonnet
-effort: high
+effort: xhigh
 # Skill Class: main-thread — inline migration executor, no custom agent dispatch (exempt from pre-flight gate)
 ---
 

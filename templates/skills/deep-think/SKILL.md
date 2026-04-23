@@ -11,7 +11,7 @@ description: >
 argument-hint: "[topic] [--passes=N] [--max-critic=N] [--sequential] [--no-critic] [--quick]"
 allowed-tools: Agent Read Write
 model: opus
-effort: high
+effort: xhigh
 # Skill Class: main-thread — multi-dispatch iterative orchestrator w/ interactive user-gate
 ---
 

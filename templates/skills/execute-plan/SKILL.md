@@ -6,7 +6,7 @@ description: >
 argument-hint: "[plan-file-path]"
 allowed-tools: Agent Read Write
 model: opus
-effort: high
+effort: xhigh
 # Skill Class: main-thread — batch dispatch orchestrator, interactive checkpoints
 ---
 

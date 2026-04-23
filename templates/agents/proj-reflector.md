@@ -6,8 +6,8 @@ description: >
   high-confidence patterns to rules, suggests new agents, prunes stale entries.
   Produces actionable proposals — does not auto-apply changes.
 model: opus
-effort: high
-# high: STATEFUL_MEMORY
+effort: xhigh
+# xhigh: STATEFUL_MEMORY
 maxTurns: 100
 memory: project
 color: magenta

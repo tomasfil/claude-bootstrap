@@ -6,8 +6,8 @@ description: >
   for speed over depth. Returns answer as text — no file output. For deep
   multi-source synthesis use proj-researcher instead.
 model: haiku
-effort: high
-# high: INHERITED_DEFAULT
+effort: xhigh
+# xhigh: INHERITED_DEFAULT
 maxTurns: 25
 color: gray
 ---

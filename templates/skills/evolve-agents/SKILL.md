@@ -7,7 +7,7 @@ description: >
   Dispatches proj-researcher and proj-code-writer-markdown.
 allowed-tools: Agent Read Write
 model: opus
-effort: high
+effort: xhigh
 # Skill Class: main-thread — multi-dispatch research + creation pipeline
 ---
 

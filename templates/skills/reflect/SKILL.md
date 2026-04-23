@@ -6,7 +6,7 @@ description: >
   Run when SessionStart reports REFLECT_DUE=true. Dispatches proj-reflector.
 allowed-tools: Agent Read Write
 model: opus
-effort: high
+effort: xhigh
 # Skill Class: main-thread — dispatches proj-reflector, interactive proposal approval
 ---
 

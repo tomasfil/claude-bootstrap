@@ -5,8 +5,8 @@ description: >
   or tracing bugs. Reads code, traces execution paths, identifies root cause.
   Returns diagnosis with proposed fix.
 model: sonnet
-effort: high
-# high: SUBTLE_ERROR_RISK
+effort: xhigh
+# xhigh: SUBTLE_ERROR_RISK
 # model_rationale: ANALYZES + traces execution paths → diagnosis text only; no code generation → sonnet
 #   per agent-design.md classification principle. Self-Fix Protocol = diagnosis-refinement loop
 #   only; all Bash calls are read-only (grep/build/test). Fix application is caller-side.

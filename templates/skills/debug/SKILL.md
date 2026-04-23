@@ -5,7 +5,7 @@ description: >
   Dispatches proj-quick-check for triage, then proj-debugger for root cause analysis.
 allowed-tools: Agent Read Write
 model: opus
-effort: high
+effort: xhigh
 # Skill Class: main-thread — multi-dispatch orchestrator, interactive synthesis
 ---
 

@@ -245,7 +245,7 @@ description: >
   anti-hallucination patterns, component classification.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: opus
-effort: high
+effort: xhigh
 maxTurns: 100
 color: blue
 ---
@@ -300,7 +300,7 @@ YAML frontmatter w/ `name`, `description` (start "Use when..."). Directory per s
 Optional `references/` subdirectory for progressive disclosure. Keep under 500 lines.
 
 ### Agent (`.claude/agents/{name}.md`)
-YAML frontmatter w/ `name`, `description`, `tools`, `model`, `effort: high`, `maxTurns`, `color`.
+YAML frontmatter w/ `name`, `description`, `tools`, `model`, `effort: xhigh`, `maxTurns`, `color`.
 `tools:` is COMMA-separated (`tools: Read, Write, Edit`) — DIFFERENT from skill `allowed-tools:` which is SPACE-separated, per Claude Code spec.
 Single file per agent. Tools whitelist: only what's needed. All agents need Write (or Bash for heredoc).
 
@@ -383,7 +383,7 @@ description: >
   Explore: evidence[] tracking, source URLs, confidence levels, findings files.
   For simple file lookups use proj-quick-check instead.
 model: sonnet
-effort: high
+effort: xhigh
 maxTurns: 100
 memory: project
 color: cyan
@@ -501,7 +501,7 @@ description: >
   Knows POSIX conventions, Claude Code hook patterns, stdin JSON parsing.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
-effort: high
+effort: xhigh
 maxTurns: 100
 color: yellow
 ---

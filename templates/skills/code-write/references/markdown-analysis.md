@@ -129,7 +129,7 @@ frontmatter:
   description: ">" block, pushy trigger words (required)
   tools: COMMA-separated (`tools: Read, Write, Edit`)  # CRITICAL: differs from skill allowed-tools:
   model: opus | sonnet | haiku (required)
-  effort: high (mandatory per project convention — medium worse)
+  effort: xhigh (mandatory per project convention — medium worse)
   maxTurns: 25-150 per role table (agent-design.md)
   color: CLI output color
   memory: project (stateful agents only)

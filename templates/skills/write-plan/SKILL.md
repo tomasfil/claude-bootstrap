@@ -7,7 +7,7 @@ description: >
 argument-hint: "[spec-file-path]"
 allowed-tools: Agent Read Write
 model: opus
-effort: high
+effort: xhigh
 # Skill Class: main-thread — dispatches proj-plan-writer, writes plan files
 ---
 

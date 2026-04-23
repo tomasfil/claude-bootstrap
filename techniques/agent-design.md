@@ -218,7 +218,7 @@ description: >
   generation task.
 allowed-tools: Agent Read Write
 model: opus
-effort: high
+effort: xhigh
 paths: "src/**"
 ---
 ```
@@ -258,7 +258,7 @@ Decision rule: needs `AskUserQuestion` | multi-turn user clarification | multi-s
 ```yaml
 allowed-tools: Agent Read Write    # Write only if skill outputs a file
 model: opus
-effort: high
+effort: xhigh
 # NO context: fork
 # NO agent: field
 # NO Edit / Bash / Grep / Glob / mcp__* — those belong to dispatched agents
@@ -318,7 +318,7 @@ description: >
   .cs file. Knows project conventions, DI patterns, error handling.
 tools: Read, Write, Edit, Bash, Grep, Glob, LSP, WebSearch
 model: sonnet
-effort: high
+effort: xhigh
 ---
 ```
 
@@ -328,7 +328,7 @@ effort: high
 | `description` | Y | Pushy — trigger words for when to use |
 | `tools` / `disallowedTools` | N | Allow/denylist; default: inherit |
 | `model` | N | `haiku` `sonnet` `opus`; default: inherit |
-| `effort` | N | `low` `medium` `high` `max`; default: inherit |
+| `effort` | N | `low` `medium` `high` `xhigh` `max`; default: inherit |
 | `maxTurns` | N | Limit iterations |
 | `color` | N | CLI output color |
 | `memory` | N | `user` `project` `local` |
@@ -342,7 +342,7 @@ effort: high
 
 ### maxTurns Configuration
 maxTurns = zero-cost safety cap. Set high enough no legitimate task ever hits it.
-effort: high (mandatory for all agents) consumes more turns per step.
+effort: xhigh (mandatory for all agents) consumes more turns per step.
 
 | Role | minTurns | Rationale |
 |------|----------|-----------|
@@ -377,10 +377,10 @@ All agents MUST have Write tool (or Bash for heredoc writers). Without it, pass-
 
 | Skill class | model | effort† | Key signal |
 |---|---|---|---|
-| main-thread — multi-dispatch orchestrator | opus | high | dispatches 2+ agents or has interactive synthesis loop |
-| main-thread — single-dispatch (thin shell) | opus | high | dispatches 1 agent; pre-dispatch classification is complex |
+| main-thread — multi-dispatch orchestrator | opus | xhigh | dispatches 2+ agents or has interactive synthesis loop |
+| main-thread — single-dispatch (thin shell) | opus | xhigh | dispatches 1 agent; pre-dispatch classification is complex |
 | main-thread — inline generator (consequential) | sonnet | medium | no dispatch; outputs artifact that drives downstream work |
-| main-thread — inline executor (irreversible) | sonnet | high | no dispatch; bash mutations; hard to undo |
+| main-thread — inline executor (irreversible) | sonnet | xhigh | no dispatch; bash mutations; hard to undo |
 | main-thread — inline reads (low consequence) | sonnet | low | no dispatch; read-only; health-check/audit output |
 | forkable — bounded autonomous task | sonnet | medium | context: fork; single terminal artifact |
 | forkable — diagnostic probe | haiku | low | context: fork; binary or trivial output; disable-model-invocation typical |
@@ -418,7 +418,7 @@ Primary classification: `GENERATES / ANALYZES / CHECKS` (model tier per `.claude
 | broad-scan | N > ~15 items, recall-critical | **ANALYZES (sonnet+) MANDATORY** |
 | multi-step-synthesis | web + local w/ confidence | ANALYZES (sonnet) |
 | code-generation | writes production code | GENERATES (opus) |
-| subtle-error-detection | review, security, diagnosis | SUBTLE_ERROR_RISK (sonnet, effort=high) |
+| subtle-error-detection | review, security, diagnosis | SUBTLE_ERROR_RISK (sonnet, effort=xhigh) |
 
 **Rationale**: 2025 research confirms smaller models suffer systematic RLHF-induced overconfidence on structured extraction — they pattern-complete field values from filenames when evidence commands don't directly produce the field. Confident-wrong is worse than refusal. Per-field evidence provenance + task-shape self-refusal gate are the required mitigations (not achievable by instruction tightening alone, as the calibration bias is training-side).
 

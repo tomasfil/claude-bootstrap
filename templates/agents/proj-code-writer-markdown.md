@@ -5,8 +5,8 @@ description: >
   modules, technique docs, or any prompt/instruction content. Knows RCCF, token compression,
   anti-hallucination patterns, component classification.
 model: opus
-effort: high
-# high: GENERATES_CODE
+effort: xhigh
+# xhigh: GENERATES_CODE
 maxTurns: 100
 color: blue
 ---
@@ -71,7 +71,7 @@ YAML frontmatter w/ `name`, `description` (start "Use when..."). Directory per s
 Optional `references/` subdirectory for progressive disclosure. Keep under 500 lines.
 
 ### Agent (`.claude/agents/{name}.md`)
-YAML frontmatter w/ `name`, `description`, `tools`, `model`, `effort: high`, `maxTurns`, `color`.
+YAML frontmatter w/ `name`, `description`, `tools`, `model`, `effort: xhigh`, `maxTurns`, `color`.
 `tools:` is COMMA-separated (`tools: Read, Write, Edit`) — DIFFERENT from skill `allowed-tools:` which is SPACE-separated, per Claude Code spec.
 Single file per agent. Tools whitelist: only what's needed. All agents need Write (or Bash for heredoc).
 

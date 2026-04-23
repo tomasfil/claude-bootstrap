@@ -5,7 +5,7 @@ description: >
   automated test/build failures. Reads CI output, identifies root cause via proj-debugger.
 allowed-tools: Agent Read Write Bash
 model: opus
-effort: high
+effort: xhigh
 # Skill Class: main-thread — needs Bash for `gh run view`, dispatches proj-debugger
 ---
 

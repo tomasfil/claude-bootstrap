@@ -6,8 +6,8 @@ description: >
   Covers structure, anti-hallucination, RCCF framework, and testing.
 allowed-tools: Read Write Edit Grep Glob
 model: sonnet
-effort: high
-# high: MULTI_STEP_SYNTHESIS
+effort: xhigh
+# xhigh: MULTI_STEP_SYNTHESIS
 paths: ".claude/skills/**,.claude/agents/**"
 ---
 # Skill Class: main-thread — inline generator (consequential) [latency: interactive]

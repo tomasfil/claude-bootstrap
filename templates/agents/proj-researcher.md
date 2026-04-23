@@ -8,8 +8,8 @@ description: >
   Explore: evidence[] tracking, source URLs, confidence levels, findings files.
   For simple file lookups use proj-quick-check instead.
 model: sonnet
-effort: high
-# high: MULTI_STEP_SYNTHESIS
+effort: xhigh
+# xhigh: MULTI_STEP_SYNTHESIS
 maxTurns: 200
 memory: project
 color: cyan
