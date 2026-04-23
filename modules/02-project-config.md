@@ -107,6 +107,7 @@ Create ALWAYS:
    - Process: READ_BEFORE_WRITE, test after change, 2-fail→web, log corrections,
      dispatch agents when specified, no built-in Explore/general-purpose/plugin agents (use proj-quick-check | proj-researcher), never background agents
    - Templates: post-P2 bootstrap repo's `templates/` is source of truth for skill + agent body content. Edit skills/agents via `templates/skills/{name}/SKILL.md` / `templates/agents/{name}.md` in the bootstrap repo, NOT the client project's `.claude/` (that's generated output). `modules/05` + `modules/06` are fetch-loop orchestration only — not skill/agent content.
+   - Migration Preservation Discipline: every migration step that REPLACES a section/block/line/frontmatter field in a client-project file MUST implement three-tier detection — (1) idempotency sentinel present → SKIP already patched; (2) baseline sentinel present (pre-migration stock content) → PATCHED; (3) neither → SKIP_HAND_EDITED + write `.bak-<id>` backup + point to `## Manual-Apply-Guide` section in migration, never overwrite. Applies to section/block/line replaces + frontmatter overwrites; does NOT apply to additive ops (append, insert after anchor, new-file create, counter advance, idempotent-append-once). Every destructive migration MUST include a `## Manual-Apply-Guide` with verbatim new-content + merge instructions for any step that can emit SKIP_HAND_EDITED. Rationale: blind replace loses project-specific customizations without warning; three-tier detection + backup + manual guide = zero-loss. Precedent: migrations 031, 039, 043.
 
 2. .claude/rules/code-standards-{lang}.md (one per detected language)
    - Naming conventions (from codebase analysis)
@@ -442,10 +443,21 @@ Create ALWAYS:
 
     ### Tier 2 — Dispatch (investigation)
     Any "where / how / find / which / what calls / trace / understand / map" question → dispatch, do not investigate on main.
-    - Default: `proj-quick-check` (haiku, fast, cheap, text return — no findings file). Use for factual lookups, symbol existence checks, single-point answers.
-    - Escalate to `proj-researcher` (sonnet, evidence-tracked, writes findings file) when the quick-check return is incomplete | needs multi-source synthesis | needs cross-file reasoning | needs external web research | will be consumed by a downstream code-writer dispatch.
-    - Multiple sequential `proj-quick-check` calls on related-but-separate sub-questions are fine. Parallel: multiple `Agent` calls in one message = parallel foreground dispatch.
-    - No hard dispatch-count limit. Orchestrator weighs dispatch latency (~5–15s per call) vs main-context bloat from direct reads. Anything involving search, correlation, or pattern recognition across files → dispatch always wins. A single Read of one unrelated file on a known path → Tier 1, direct.
+
+    **Agent selection by task shape** (classify BEFORE dispatch — not post-hoc escalation):
+
+    - **Single-fact lookups → `proj-quick-check` (haiku)**: symbol existence, single definition location, single-file targeted section read, "does X call Y" (single-direction, single question), file-count existence probe. Text return. NEVER for multi-field enumeration.
+    - **Multi-field enumeration / mapping / call-graph tracing → `proj-researcher` (sonnet) ALWAYS**: any per-item rows w/ ≥2 fields beyond `file:line`, route inventories, endpoint catalogs, handler/consumer enumerations, end-to-end flow mapping, framework-idiom decoding (FastEndpoints Configure, decorator routing, route DSL), cross-subsystem/cross-project tracing, recall-critical lists where N > ~15. Findings-file return.
+
+    Rationale: haiku (200k context, RLHF-calibrated) pattern-completes plausible field values from filenames when evidence commands don't directly surface fields — produces confident-but-partially-fabricated output on composition-heavy tasks (field-value confabulation, not truncation). Published: arxiv 2502.11028 "Mind the Confidence Gap", arxiv 2410.09724 RLHF overconfidence. Sonnet (1M context) grounds each field in source reads. Haiku's speed advantage evaporates on multi-field tasks (observed 13+ min on large enumeration runs in session benchmarks). **Default-to-haiku is a trap for mapping tasks.**
+
+    **Escalation paths:**
+    - `proj-quick-check` returns structured `TASK_SHAPE_MISMATCH` (its self-refusal gate) → orchestrator re-dispatches to `proj-researcher` with same prompt; do NOT Read on main
+    - `proj-quick-check` return incomplete | cross-file reasoning needed | external web research needed | downstream code-writer will consume → escalate to `proj-researcher`
+
+    Multiple sequential `proj-quick-check` calls on related-but-separate sub-questions are fine (in-shape questions only). Parallel: multiple `Agent` calls in one message = parallel foreground dispatch.
+
+    No hard dispatch-count limit. Orchestrator weighs dispatch latency (~5–15s per call) vs main-context bloat. Anything involving search, correlation, or pattern recognition across files → dispatch always wins. A single Read of one unrelated file on a known path → Tier 1, direct.
 
     ### Tier 3 — Dispatch (code change)
     Any Edit | Write | MultiEdit | NotebookEdit beyond the carve-out → route through `/code-write` | `/tdd` | `/execute-plan` | direct `proj-code-writer-{lang}` dispatch. Main does NOT write production code.
@@ -461,13 +473,17 @@ Create ALWAYS:
     Any ONE criterion fails → Tier 3 dispatch, no exceptions. "Feels quick" is not a criterion. If you find yourself reasoning "it's just one more file" or "it's only slightly cross-file" → dispatch.
 
     ## Investigation Escalation Ladder
-    1. Start every investigation with `proj-quick-check` — it is the cheapest option with structured file:line evidence return.
-    2. Evaluate the return:
-       - Complete answer + grounded in file:line evidence → done, synthesize for user.
-       - Partial answer, needs deeper synthesis, cross-file reasoning, multi-source correlation, or a structured findings doc for a downstream dispatch → dispatch `proj-researcher` (do NOT Read the files yourself).
-       - One sub-question answered, more sub-questions remain → dispatch more `proj-quick-check` calls (sequential OR parallel — multiple `Agent` calls in one message = parallel foreground, safe concurrency).
-       - Completely wrong domain / missed the question → re-dispatch with a corrected brief. Never fall back to "I'll just Read it myself".
-    3. No hard dispatch-count limit. The orchestrator is trusted to judge depth vs. cost.
+    1. **Classify task shape FIRST** (per Tier 2 `Agent selection by task shape` above):
+       - Multi-field (composition / cross-subsystem / framework-idiom / N>15) → dispatch `proj-researcher` directly — do NOT try quick-check first
+       - Small-simple multi-field (≤15 items, no composition/framework-idiom) → `proj-quick-check` with Per-Field Evidence Contract
+       - Single-fact lookup → `proj-quick-check`
+    2. **Evaluate the return:**
+       - Complete answer + grounded in file:line evidence → synthesize for user
+       - `TASK_SHAPE_MISMATCH` from quick-check (its self-refusal gate fired) → re-dispatch to `proj-researcher` with the same prompt; do NOT Read on main
+       - Partial answer, needs deeper synthesis, cross-file reasoning, multi-source correlation, or structured findings doc for downstream dispatch → dispatch `proj-researcher`
+       - One sub-question answered, more sub-questions remain → dispatch more `proj-quick-check` calls (sequential OR parallel — multiple `Agent` calls in one message = parallel foreground, safe concurrency)
+       - Completely wrong domain / missed the question → re-dispatch with a corrected brief. Never fall back to "I'll just Read it myself"
+    3. No hard dispatch-count limit. Orchestrator trusted to judge depth vs cost.
 
     ## Dispatch Prompt Quality (when you do dispatch)
     Every dispatch prompt MUST include:

@@ -10,7 +10,7 @@ description: >
 model: sonnet
 effort: high
 # high: MULTI_STEP_SYNTHESIS
-maxTurns: 100
+maxTurns: 200
 memory: project
 color: cyan
 ---
@@ -54,18 +54,26 @@ Main reads file only if: needed for next dispatch | error in summary | verificat
 ## Process
 
 ### Local Codebase Analysis
-1. Glob for file patterns → understand project structure
-2. Read representative files per layer/component type
-3. Grep for patterns: naming conventions, error handling, DI, test patterns
-4. Map architecture: layers, dependencies, data flow
-5. Identify conventions: file naming, code style, framework idioms
+1. Route code discovery through `.claude/rules/mcp-routing.md` action→tool table FIRST (cmm/serena when available); Glob/Grep/Read are fallback
+2. Read representative files per layer — at least ONE example per detected layer; depth governed by task, not by round-cap
+3. Map architecture: layers, dependencies, data flow — trace until endpoint / DB / storage / external-call boundary
+4. Identify conventions: file naming, code style, framework idioms — cite `file:line` per convention
+5. **Framework-idiom guard**: for codebases using convention-over-configuration frameworks (FastEndpoints, Rails, Django, Spring, NestJS, Hono decorators, Azure Functions attributes, etc.) — BEFORE enumerating entities, locate the framework's resolution mechanism (`Configure()` bodies, route-table builder, DI registration, middleware pipeline). Read THAT mechanism's source. Never infer entity properties (routes, handlers, topics) from filenames or base-path constants. Filename-inference = fabrication (arxiv 2504.17550 HalluLens intrinsic-hallucination taxonomy)
+6. No hard cap on tool calls — `.claude/rules/max-quality.md` §1 governs. Run as many Reads/Greps/MCP queries as coverage requires. Parallel-batch per `<use_parallel_tool_calls>` for efficiency
 
 ### Web Research
-1. Plan ALL searches before executing — identify gaps first
-2. Batch all WebSearch calls in ONE message (parallel)
-3. After results, identify specific gaps → at most ONE follow-up batch
-4. Maximum 2 search rounds total
-5. Record: source URL, date, key findings, confidence level
+1. Plan all searches before executing — identify gaps first
+2. Batch WebSearch calls in ONE message (parallel — no artificial round cap)
+3. After each batch, identify remaining gaps → continue batching until coverage complete OR gaps are irreducibly uncertain (training-cutoff, source-unavailable, task-ambiguous)
+4. **Dedup rule** (prevents runaway cost — fountaincity Nov 2025 $47k precedent): do NOT re-issue a WebSearch whose core terms appeared in a prior query THIS session. Rephrase for a new angle OR accept source exhausted and move on
+5. **Diminishing-returns check**: if the last search batch yielded zero new grounded claims → stop. Do not probe the same gap from a different query shape indefinitely
+6. **Stop criteria** (any fires → stop; otherwise continue):
+   (a) every output-template field has a grounded source
+   (b) Open Questions list is complete with disposition per entry
+   (c) diminishing-returns fired (step 5)
+   (d) `token_budget` passed in dispatch prompt is exhausted
+7. Record per source: URL, date, key finding, confidence level. Document abandoned branches explicitly: "tried query X — 0 relevant hits, moved on"
+8. **No hard cap on rounds** — `.claude/rules/max-quality.md` §1 Full Scope + §6 No Hedging govern. If the Nth batch is what coverage requires, RUN IT. Do NOT return partial w/ "more research needed" as a dodge — that's §6 violation
 
 ### Output Format
 Write structured reference doc:
@@ -109,6 +117,34 @@ Silent omission of a known open question = Anti-Hallucination violation. If no o
 - Web research: "no results found" over fabrication; document exact queries tried
 - If confidence < 60% → mark as "UNVERIFIED" in output
 - NEVER fill gaps from training data — document gap explicitly
+
+## Token Budget + Coverage Tracking
+
+Dispatch prompt MAY specify `token_budget: <N>` (default: 200_000 when unspecified). Track consumption: `tokens_used = prompt_tokens + completion_tokens + tool_result_tokens`. When used ≥ 80% of budget → wind down: complete current batch, synthesize, write findings. When used ≥ 95% → stop immediately, document gaps, write partial findings w/ explicit coverage report.
+
+Report at top of findings file:
+```
+token_budget: <N>
+tokens_used: <N>
+rounds: <N search batches>
+file_reads: <N>
+web_searches: <N>
+open_questions: <N>
+```
+
+Published rationale: fountaincity Nov 2025 incident — 4 agents in unbounded research loop = $47,000 before kill. Budget is infrastructure-level safety cap, independent of round count.
+
+## Max-Quality Alignment (per `.claude/rules/max-quality.md`)
+
+This agent produces FULL grounded research. Specific applications:
+
+- **§1 Full Scope** — every requested angle covered. Output template sections (Summary / Patterns Detected / Conventions / Recommendations / Open Questions / Sources) are MANDATORY. Empty section → explicit "None identified" bullet, never silent omit. Per `open-questions-discipline.md` if present (migration 042+); otherwise inline rule: empty section omission = Anti-Hallucination violation
+- **§2 Full Implementation** — every claim grounded in evidence (`file:line` OR URL). No `TODO: research later` in delivered findings. `UNVERIFIED` label is acceptable; silent gaps are not
+- **§4 Calibrated Effort** — report coverage in observable units (`tokens_used`, `file_reads`, `web_searches`, `rounds`, `open_questions`). Never "more research would be needed" as a dodge for not running it
+- **§6 No Hedging** — if you CAN run another batch to close a gap: RUN IT. Don't ask user "want me to continue?" mid-solvable-task. Permission-seeking during coverage = §6 violation. Exception: genuinely `USER_DECIDES` open questions — surface via `## Open Questions` with disposition, don't block on them
+- **§7 Output ≠ Instruction token rules** — findings files are OUTPUT. Completeness > token economy. Never compress OUTPUT to save tokens; compress only your own reasoning scratch
+
+**Stopping criterion**: all task questions answered w/ evidence OR surfaced as `USER_DECIDES` in Open Questions. NOT: hit N rounds. NOT: "enough for now". The ONLY acceptable stops are (a)-(d) in Web Research step 6.
 
 ## Scope Lock
 Research ONLY what's asked. Do not expand scope.

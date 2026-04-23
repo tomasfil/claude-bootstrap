@@ -348,8 +348,9 @@ effort: high (mandatory for all agents) consumes more turns per step.
 |------|----------|-----------|
 | proj-quick-check | 25 | Fast lookups, text return |
 | proj-verifier, proj-consistency-checker | 75 | Read + validate + write report |
-| proj-researcher, proj-code-writer-*, proj-plan-writer, proj-debugger, proj-reflector | 100 | Complex multi-phase work |
+| proj-code-writer-*, proj-plan-writer, proj-debugger, proj-reflector | 100 | Complex multi-phase work |
 | proj-tdd-runner | 150 | Multiple red-green-refactor cycles |
+| proj-researcher | 200 | Uncapped research — goal-completion stop + token_budget safety net (per .claude/rules/max-quality.md §1 Full Scope + §6 No Hedging) |
 
 All agents MUST have Write tool (or Bash for heredoc writers). Without it, pass-by-reference breaks.
 
@@ -397,6 +398,42 @@ Optional latency qualifier (recommended for new skills): extend `# Skill Class:`
 `[latency: interactive|background]`. Example:
 `# Skill Class: main-thread — multi-dispatch orchestrator, interactive synthesis [latency: interactive]`
 This is documentation only — no harness effect. (Salvage from retracted proposal 3.4.)
+
+## Task-Shape Classification (secondary dimension)
+
+Primary classification: `GENERATES / ANALYZES / CHECKS` (model tier per `.claude/rules/model-selection.md`). Secondary classification: task shape — affects agent-within-tier selection + self-refusal gates.
+
+**Task shapes:**
+
+| Shape | Description | Preferred agent class |
+|---|---|---|
+| single-fact | single answer w/ `file:line` | CHECKS (haiku ok) |
+| existence-probe | does X exist | CHECKS (haiku ok) |
+| targeted-section-read | read lines N-M of known path | CHECKS (haiku ok) |
+| single-direction-callers | who calls X (one list) | CHECKS or ANALYZES |
+| multi-field-enumeration | per-item rows w/ ≥2 fields | **ANALYZES (sonnet+) MANDATORY** |
+| composition | fields compose from ≥2 files | **ANALYZES (sonnet+) MANDATORY** |
+| cross-subsystem-mapping | multiple projects/layers | **ANALYZES (sonnet+) MANDATORY** |
+| framework-idiom-decoding | convention-over-config stacks | **ANALYZES (sonnet+) MANDATORY** |
+| broad-scan | N > ~15 items, recall-critical | **ANALYZES (sonnet+) MANDATORY** |
+| multi-step-synthesis | web + local w/ confidence | ANALYZES (sonnet) |
+| code-generation | writes production code | GENERATES (opus) |
+| subtle-error-detection | review, security, diagnosis | SUBTLE_ERROR_RISK (sonnet, effort=high) |
+
+**Rationale**: 2025 research confirms smaller models suffer systematic RLHF-induced overconfidence on structured extraction — they pattern-complete field values from filenames when evidence commands don't directly produce the field. Confident-wrong is worse than refusal. Per-field evidence provenance + task-shape self-refusal gate are the required mitigations (not achievable by instruction tightening alone, as the calibration bias is training-side).
+
+**Self-refusal gate requirement**: any haiku-tier agent accepting Tier 2 dispatch (e.g., `proj-quick-check`) MUST pre-check task shape against the MANDATORY rows above. If match → return structured `TASK_SHAPE_MISMATCH` JSON without attempting the task. Orchestrator re-dispatches to sonnet-tier agent.
+
+**Research uncap requirement**: sonnet-tier research agents (e.g., `proj-researcher`) MUST NOT carry hard round caps on search batches. Use goal-completion stop criteria: (a) every output field grounded; (b) Open Questions disposed; (c) diminishing-returns detected; (d) token_budget exhausted. Paired with dedup rule + token budget as runaway-cost guardrails.
+
+**Sources**:
+- arxiv 2502.11028 "Mind the Confidence Gap" (Feb 2025)
+- arxiv 2410.09724 "Taming Overconfidence in LLMs" (RLHF analysis)
+- arxiv 2504.17550 "HalluLens" (intrinsic vs extrinsic hallucination taxonomy)
+- arxiv 2510.26995 "FermiEval" (systematic overconfidence, amplified in smaller models)
+- Anthropic multi-agent research system (orchestrator-workers pattern; goal-completion stop)
+- LangGraph routing node + CrewAI `@router` + OpenAI Agents SDK declared handoffs (industry-standard task-shape classification in orchestrator)
+- fountaincity Nov 2025 — $47k unbounded-agent-loop incident (budget-cap precedent)
 
 ## Foreground-Only Dispatch
 
