@@ -366,7 +366,7 @@ All agents MUST have Write tool (or Bash for heredoc writers). Without it, pass-
 | proj-tdd-runner | opus | proj-verifier | sonnet |
 | proj-reflector | opus | proj-code-reviewer | sonnet |
 | | | proj-debugger | sonnet |
-| | | proj-quick-check | haiku |
+| | | proj-quick-check | sonnet |
 
 > Evidence note: `ANALYZES → sonnet` is a prior-based convention aligned with Anthropic's
 > routing guidance (code reviews, debugging → Sonnet tier) and the 4.6-generation SWE-bench
@@ -422,7 +422,7 @@ Primary classification: `GENERATES / ANALYZES / CHECKS` (model tier per `.claude
 
 **Rationale**: 2025 research confirms smaller models suffer systematic RLHF-induced overconfidence on structured extraction — they pattern-complete field values from filenames when evidence commands don't directly produce the field. Confident-wrong is worse than refusal. Per-field evidence provenance + task-shape self-refusal gate are the required mitigations (not achievable by instruction tightening alone, as the calibration bias is training-side).
 
-**Self-refusal gate requirement**: any haiku-tier agent accepting Tier 2 dispatch (e.g., `proj-quick-check`) MUST pre-check task shape against the MANDATORY rows above. If match → return structured `TASK_SHAPE_MISMATCH` JSON without attempting the task. Orchestrator re-dispatches to sonnet-tier agent.
+**Self-refusal gate requirement**: any bounded single-pass lookup agent accepting Tier 2 dispatch (haiku-tier, or sonnet-tier with medium effort scoped to single-question returns — e.g., `proj-quick-check`) MUST pre-check task shape against the MANDATORY rows above. If match → return structured `TASK_SHAPE_MISMATCH` JSON without attempting the task. Orchestrator re-dispatches to a full-synthesis agent (e.g., `proj-researcher`).
 
 **Research uncap requirement**: sonnet-tier research agents (e.g., `proj-researcher`) MUST NOT carry hard round caps on search batches. Use goal-completion stop criteria: (a) every output field grounded; (b) Open Questions disposed; (c) diminishing-returns detected; (d) token_budget exhausted. Paired with dedup rule + token budget as runaway-cost guardrails.
 

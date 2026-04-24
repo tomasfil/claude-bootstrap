@@ -300,6 +300,12 @@
       "file": "050-loopback-budget-rule.md",
       "description": "Canonical retry/convergence vocabulary via .claude/rules/loopback-budget.md — 4 labels: LOOPBACK-AUDIT (/write-plan), SINGLE-RETRY (/execute-plan), CONVERGENCE-QUALITY (/deep-think critic), RESOURCE-BUDGET (/deep-think caps). Annotate skill caps with labels. Extend /audit-agents to check skill files for label compliance.",
       "breaking": false
+    },
+    {
+      "id": "051",
+      "file": "051-quick-check-sonnet-upgrade.md",
+      "description": "Upgrade proj-quick-check from haiku+xhigh INHERITED_DEFAULT to sonnet+medium SUBTLE_ERROR_RISK — field-observed self-contradictory findings on synthesis-shaped tasks motivated moving the load-bearing first-dispatch agent off the haiku reasoning tier while keeping its bounded single-question role (no findings file, no WebSearch, no multi-source synthesis). Medium effort matches peer SUBTLE_ERROR_RISK agents (proj-verifier, proj-consistency-checker). Patches agent frontmatter (model + effort + justification comment), rules row in .claude/rules/model-selection.md Agent Classification Table, and the two proj-quick-check references in .claude/references/techniques/agent-design.md (model table row + self-refusal gate rule). Three-tier detection with SKIP_ALREADY_APPLIED / safe-patch / SKIP_HAND_EDITED branches per step; Manual-Apply-Guide for each destructive step.",
+      "breaking": false
     }
   ]
 }

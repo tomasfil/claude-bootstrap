@@ -18,7 +18,7 @@ techniques/agent-design.md.
 | proj-plan-writer | sonnet | high | MULTI_STEP_SYNTHESIS |
 | proj-consistency-checker | sonnet | medium | SUBTLE_ERROR_RISK |
 | proj-verifier | sonnet | medium | SUBTLE_ERROR_RISK |
-| proj-quick-check | haiku | high | INHERITED_DEFAULT |
+| proj-quick-check | sonnet | medium | SUBTLE_ERROR_RISK |
 
 Note: proj-reflector is currently classified as STATEFUL_MEMORY at opus+high. A follow-up deep-think session (proposal 2.3-R) is planned to reassess whether proj-reflector should be reclassified as ANALYZES (sonnet). That follow-up is tracked separately and does not affect the current COMPLIANT state of the agent against this table.
 

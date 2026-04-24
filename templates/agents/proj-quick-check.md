@@ -5,9 +5,14 @@ description: >
   specific section, or answering factual questions about the codebase. Optimized
   for speed over depth. Returns answer as text — no file output. For deep
   multi-source synthesis use proj-researcher instead.
-model: haiku
-effort: xhigh
-# xhigh: INHERITED_DEFAULT
+model: sonnet
+effort: medium
+# medium: SUBTLE_ERROR_RISK — first-dispatch reliability floor for Tier 2 investigation returns.
+#   Bounded single-question scope, not multi-source synthesis → medium effort sufficient.
+#   Peers: proj-verifier, proj-consistency-checker (both sonnet+medium SUBTLE_ERROR_RISK).
+#   Predecessor model was haiku+xhigh; field use surfaced self-contradictory findings on
+#   synthesis-shaped tasks (see migration 051). Self-refusal gate below retained as defensive
+#   check — bounded single-pass reasoning still hits composition / cross-subsystem / idiom limits.
 maxTurns: 25
 color: gray
 ---
