@@ -4,3 +4,7 @@ CLAUDE.md
 .claude/
 .learnings/
 .serena
+
+.mcp.json
+
+.markdownlint.json
