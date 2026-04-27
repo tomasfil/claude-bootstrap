@@ -48,13 +48,14 @@ Main reads file only if: needed for next dispatch | error in summary | verificat
 ## Before Writing (MANDATORY)
 1. If `.claude/rules/mcp-routing.md` action→tool table populated (MCP project): use MCP tools per routing table for code discovery BEFORE Grep/Read (see that rule's Lead-With Order)
 2. Read target file (if modifying) | 2-3 similar files (if creating)
-2. Read `.claude/rules/code-standards-markdown.md` — follow conventions exactly
-3. Read applicable technique refs:
+3. Read `.claude/rules/code-standards-markdown.md` — follow conventions exactly
+4. Read applicable technique refs:
    - `techniques/prompt-engineering.md` → RCCF framework, token optimization
    - `techniques/anti-hallucination.md` → verification patterns, false-claims mitigation
    - `techniques/agent-design.md` → subagent constraints, orchestrator patterns
-4. Verify all cross-references — every file path mentioned must exist
-5. Check module numbering — read `claude-bootstrap.md` for current module list
+5. If dispatch prompt contains a `#### Reference Files` block or `Read these before writing:` directive: Read ALL listed paths before proceeding. No exceptions — reference files are part of the mandatory pre-write context.
+6. Verify all cross-references — every file path mentioned must exist
+7. Check module numbering — read `claude-bootstrap.md` for current module list
 
 ## Component Classification
 Determine what you're building BEFORE writing:

@@ -132,6 +132,59 @@ Fix-guidance additions (append to "After the agent returns" list):
 - A8_wave_force_read FAIL → add `.claude/rules/wave-iterated-parallelism.md` to the agent's STEP 0 force-read bullet list; see `.claude/rules/wave-iterated-parallelism.md` § Enforcement
 <!-- audit-agents-A8-installed -->
 
+### A9: evolve-agents Phase 3 gate presence
+
+Scope: `.claude/skills/evolve-agents/SKILL.md` only (skill-specific check).
+
+Per `.claude/rules/evolve-agents-gate.md` § A9 Audit Behavior:
+
+For `.claude/skills/evolve-agents/SKILL.md`:
+1. Sentinel check: `grep -q "<!-- evolve-agents-gate-installed -->" .claude/skills/evolve-agents/SKILL.md` → PASS if hit; FAIL with file:line of frontmatter close if absent.
+2. Gate text patterns: verify ALL of `evolve-agents-audit-latest`, `^## Gate Complete`, `find .claude/agents/` appear in body → PASS if all present; FAIL with first missing pattern + file:line evidence if any absent. All patterns are regex (use plain `grep`, NOT `grep -F`); `^` anchors line start.
+3. Phase 1 Write call: verify `evolve-agents-audit-latest.md` appears within the Phase 1 section body (between `### Phase 1:` heading and `### Phase 2:` heading) → PASS if hit; FAIL otherwise.
+
+Skip if `.claude/skills/evolve-agents/SKILL.md` does not exist (project doesn't deploy /evolve-agents) → SKIP with INFO message.
+
+Output (append to YAML report block):
+```yaml
+A9_evolve_agents_gate: {PASS|FAIL|SKIP}
+findings:
+  - check: A9
+    severity: FAIL
+    file: .claude/skills/evolve-agents/SKILL.md
+    line: {N}
+    detail: "{which check failed; missing pattern; remediation pointer}"
+```
+
+### A10: covers-skill spec-fidelity
+
+Scope: all `.claude/specs/**/*.md` files.
+
+Per `.claude/rules/spec-fidelity.md` § A10 Audit Behavior:
+
+For each spec file under `.claude/specs/`:
+1. Extract `covers-skill:` value via canonical awk (counter-based, terminates at 2nd `---`):
+   ```bash
+   skill_name=$(awk 'NR==1&&/^---/{d=1;next} NR==1{exit} d==1&&/^---/{d=2;next} d==2{exit} d==1&&/^covers-skill:/{print $2;exit}' "$spec_file")
+   ```
+2. If `$skill_name` empty → spec has no `covers-skill:` declaration → SKIP this spec (no fidelity contract).
+3. If `$skill_name` non-empty: locate `.claude/skills/{skill_name}/SKILL.md`. If absent → INFO (spec references undeployed skill).
+4. If SKILL.md present: `grep -q "^## Deviations from spec" .claude/skills/{skill_name}/SKILL.md` → PASS if hit; WARN otherwise (or FAIL after graduation per `spec-fidelity.md` § WARN→FAIL Graduation: WARN until 5 migrations after the rule's introducing migration ships, FAIL thereafter).
+
+Multi-value `covers-skill: [a, b]` extraction returns malformed `[a,` — log INFO ("multi-value form deferred per spec-fidelity.md") and skip. Single-value form is v1 canonical.
+
+Output (append to YAML report block):
+```yaml
+A10_covers_skill_fidelity: {PASS|WARN|FAIL|SKIP}
+findings:
+  - check: A10
+    severity: WARN
+    spec: .claude/specs/{path}.md
+    skill: {extracted skill name}
+    detail: "Skill body missing '## Deviations from spec' block — see .claude/rules/spec-fidelity.md for convention"
+```
+<!-- audit-agents-A9-A10-installed -->
+
 ### Output
 
 Agent writes YAML-ish report to `.claude/reports/audit-agents-{timestamp}.md`
@@ -151,6 +204,8 @@ checks:
   A8_canonical_label_compliance: {PASS|FAIL|SKIP}
   A8_wave_annotation_token: {PASS|FAIL|SKIP}
   A8_wave_force_read:       {PASS|FAIL|SKIP}
+  A9_evolve_agents_gate:    {PASS|FAIL|SKIP}
+  A10_covers_skill_fidelity: {PASS|WARN|FAIL|SKIP}
 findings:
   - check: A1
     severity: FAIL
@@ -176,6 +231,9 @@ and a one-line fix recommendation per category:
 - A8 FAIL → annotate the cited retry/convergence statement w/ one of the 4 canonical labels (`LOOPBACK-AUDIT` | `SINGLE-RETRY` | `CONVERGENCE-QUALITY` | `RESOURCE-BUDGET`) via inline HTML comment `<!-- {LABEL}: canonical label — see .claude/rules/loopback-budget.md -->` at end of line or on preceding line; see `.claude/rules/loopback-budget.md` for the full label semantics + where-applied pointers
 - A8_wave_annotation_token FAIL → add canonical loopback annotation comment within 30 lines of `### Wave Protocol` heading (composed `<!-- RESOURCE-BUDGET: ... + CONVERGENCE-QUALITY: ... -->` for END_TO_END_FLOW shapes; plain `<!-- RESOURCE-BUDGET: ... -->` for fixed-pass shapes); see `.claude/rules/wave-iterated-parallelism.md` § Composed Loopback Annotation
 - A8_wave_force_read FAIL → add `.claude/rules/wave-iterated-parallelism.md` to the agent's STEP 0 force-read bullet list; see `.claude/rules/wave-iterated-parallelism.md` § Enforcement
+- A9 FAIL → check `.claude/rules/evolve-agents-gate.md` § A9 Audit Behavior for the missing pattern; re-apply migration 055 if the gate snippet was lost (sentinel `evolve-agents-gate-installed` was removed)
+- A10 WARN → add `## Deviations from spec` block to the skill body listing intentional divergences from the cited spec (or write `## Deviations from spec\n\nNone — implementation matches spec.\n` if no divergences); see `.claude/rules/spec-fidelity.md`
+- A10 FAIL → same as WARN remediation; FAIL severity indicates graduation criterion has been crossed (5 migrations after 055)
 
 Do NOT auto-patch. User approves fixes.
 

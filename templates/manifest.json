@@ -136,7 +136,7 @@
       "name": "audit-agents",
       "source": "templates/skills/audit-agents/SKILL.md",
       "target": ".claude/skills/audit-agents/SKILL.md",
-      "sha256": "ada908ec25ea3c825cdc138d70c8170c13021ac86f524b4fb8908572966e634d",
+      "sha256": "06b8b9783c756c176ee5bb186dcb57fb8325a2229743ced9f59d57e35bdb64a8",
       "references": []
     },
     {
@@ -177,8 +177,14 @@
       "name": "evolve-agents",
       "source": "templates/skills/evolve-agents/SKILL.md",
       "target": ".claude/skills/evolve-agents/SKILL.md",
-      "sha256": "499db0ed75c18bef1c6ae6dd3d62de1b01fe2f9135ab25a7e3272404442aec03",
-      "references": []
+      "sha256": "23119986e6899fb6f43501e628ba4cf7ecf21e4ddec3513dd420ab977c914dea",
+      "references": [
+        {
+          "source": "templates/skills/evolve-agents/references/agent-creation-brief.md",
+          "target": ".claude/skills/evolve-agents/references/agent-creation-brief.md",
+          "sha256": "bfbb491cdc70027dcfbf696e58e7a310953e1698651f2f650709d84f8f9de86c"
+        }
+      ]
     },
     {
       "name": "migrate-bootstrap",
@@ -316,7 +322,7 @@
       "name": "proj-code-writer-markdown",
       "source": "templates/agents/proj-code-writer-markdown.md",
       "target": ".claude/agents/proj-code-writer-markdown.md",
-      "sha256": "d6d65c4f491719e3c18faf26eac0a483b435fd9f0bf51772556e307ed518e942"
+      "sha256": "d60c6bdde7fcade36054ffee40ea2d534c2eb7b2cba9b3be0689a7ac2f406350"
     },
     {
       "name": "proj-code-writer-bash",
