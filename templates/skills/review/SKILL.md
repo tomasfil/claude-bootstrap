@@ -13,13 +13,21 @@ effort: xhigh
 
 ## Pre-flight (REQUIRED — before any other step)
 
-For each agent name this skill dispatches (see Dispatch Map below):
-  If `.claude/agents/<agent-name>.md` does NOT exist → STOP.
-  Tell user: "Required agent <name> missing. Run /migrate-bootstrap or /module-write."
+**Blocking agents** (STOP if missing — review cannot proceed without these):
+- `proj-code-reviewer` — If `.claude/agents/proj-code-reviewer.md` does NOT exist → STOP.
+  Tell user: "Required agent proj-code-reviewer missing. Run /migrate-bootstrap or /module-write."
   Do NOT proceed. Do NOT fall back to inline work. Do NOT substitute another agent.
+
+**Optional agents** (WARN if missing — review proceeds; eval-opt fix loop degrades gracefully):
+- `proj-code-writer-{lang}` — If no `.claude/agents/proj-code-writer-*.md` exists →
+  WARN: "No code-writer specialist found. /review will run but the eval-opt fix loop
+  (Step 7) will skip automatic fix dispatch. Run /evolve-agents to create a specialist."
+  Continue with Step 1.
 
 ## Dispatch Map
 - Code review: `proj-code-reviewer`
+- Fix dispatch (eval-opt loop): `proj-code-writer-{lang}` (OPTIONAL — dynamic glob;
+  non-blocking; gracefully absent)
 
 **Agent Dispatch Policy**: Use `subagent_type="proj-<name>"` explicitly.
 NEVER substitute built-in `Explore` / `general-purpose` / plugin agents — not during skill execution, not as a fallback, not for "quick" lookups.
@@ -81,8 +89,97 @@ Rationale: structural grep — not LLM judgment. Catches the drift pattern where
 <!-- Wave 1 shows multiple reads -->
 
 6. Present review results to user
-7. Issues found → fix → re-review
+7. Evaluator-optimizer loop <!-- CONVERGENCE-QUALITY: cap=3, signal=APPROVE -->
+
+   **Pre-flight gate (before loop):**
+   - `proj-code-reviewer` absent → STOP (blocking — already enforced by pre-flight gate above)
+   - `proj-code-writer-{lang}` absent → WARN only (non-blocking — loop degrades to manual path below)
+   - `loopback-budget.md` absent → WARN: "migration 050 required for CONVERGENCE-QUALITY annotation"
+
+   **Loop state:** `iter=0`
+
+   **Loop body** (repeat while `verdict == FIX_REQUIRED` AND `iter < 3`):
+   a. Increment: `iter=$((iter + 1))`
+   b. Parse `flagged_files:` from the reviewer's handoff block at end of report:
+      ```bash
+      REPORT_FILE=".claude/reports/review-{timestamp}.md"  # path returned by reviewer
+      # Extract handoff block (HTML comment sentinels)
+      HANDOFF=$(sed -n '/<!-- handoff-v1-start -->/,/<!-- handoff-v1-end -->/p' "$REPORT_FILE" | grep -v '<!--')
+      # Extract verdict (single line: "verdict: FIX_REQUIRED" or "verdict: APPROVE")
+      VERDICT=$(printf '%s\n' "$HANDOFF" | grep '^verdict:' | awk '{print $2}')
+      # Extract severity class
+      SEVERITY=$(printf '%s\n' "$HANDOFF" | grep '^severity_class:' | awk '{print $2}')
+      # Extract flagged files list (YAML list items: "  - path/to/file.md")
+      FLAGGED=$(printf '%s\n' "$HANDOFF" | grep '^\s*-\s' | sed 's/^\s*-\s*//')
+      ```
+      If handoff block is absent (model error, instruction drift): fall through to manual path;
+      do NOT attempt prose fallback extraction (absent handoff = no scope-locked file list;
+      dispatching writer without scope = scope-lock violation per agent-scope-lock.md).
+   c. If `VERDICT == APPROVE` → exit loop (done)
+   d. If `VERDICT == FIX_REQUIRED` AND `SEVERITY == MUST_FIX`:
+      - If no `proj-code-writer-{lang}` specialist exists → **manual path**: present findings to user;
+        offer to re-review after manual fix; EXIT loop
+      - If specialist(s) exist:
+        - Detect `{lang}` from flagged file extensions using filename-suffix primary detection:
+          ```bash
+          # Build extension → specialist mapping from available agents (filename-suffix primary)
+          # No scope: field is present on any proj-code-writer-*.md agent — do NOT read frontmatter
+          declare -A EXT_TO_WRITER
+          for agent in .claude/agents/proj-code-writer-*.md; do
+            lang=$(basename "$agent" .md | sed 's/proj-code-writer-//')
+            case "$lang" in
+              bash)       EXT_TO_WRITER[sh]="$lang"; EXT_TO_WRITER[bash]="$lang" ;;
+              markdown)   EXT_TO_WRITER[md]="$lang" ;;
+              python)     EXT_TO_WRITER[py]="$lang" ;;
+              typescript) EXT_TO_WRITER[ts]="$lang" ;;
+              csharp)     EXT_TO_WRITER[cs]="$lang" ;;
+              *)          EXT_TO_WRITER["$lang"]="$lang" ;;
+            esac
+          done
+
+          # Collect distinct writer names needed for flagged files
+          declare -A DISPATCH_LANGS
+          while IFS= read -r fpath; do
+            [[ -z "$fpath" ]] && continue
+            ext="${fpath##*.}"
+            writer="${EXT_TO_WRITER[$ext]:-}"
+            [[ -n "$writer" ]] && DISPATCH_LANGS["$writer"]="1"
+          done <<< "$FLAGGED"
+          ```
+        - For each detected `{lang}` in `DISPATCH_LANGS` (sequential — one writer per language):
+          <!-- LOOP_INTERACTION_EXCLUSIVE: writer dispatched from /review eval-opt loop is Tier-B.
+               Multi-rollout (Tier-C) MUST NOT activate for this dispatch regardless of batch header.
+               Rationale: targeted correction, not explorative diversity.
+               See multi-rollout.md Invariant 8. -->
+          - Confirm `.claude/agents/proj-code-writer-{lang}.md` exists (skip if absent)
+          - Dispatch `proj-code-writer-{lang}` via `subagent_type="proj-code-writer-{lang}"` with:
+            - Scope: ONLY files in `$FLAGGED` matching this lang's extensions
+              (treat as `#### Files` equivalent — scope-lock contract)
+            - Context: full review report path + MUST FIX findings extracted from report
+            - Tier: B (override — Invariant 8 of multi-rollout.md; do NOT pass Tier: C)
+            - If writer returns `SCOPE EXPANSION NEEDED` → surface to user immediately;
+              EXIT loop; do NOT re-dispatch reviewer
+          - If `DISPATCH_LANGS` is empty (no specialist matches any flagged extension) →
+            **manual path**: present review findings to user; offer to re-review after
+            manual fix; EXIT loop
+        - Re-dispatch `proj-code-reviewer` with same inputs as Step 3 + loop_turn injected:
+          `"This is review iteration {iter} of 3. loop_turn: {iter}."`
+        - Read new review report; update `VERDICT` + `SEVERITY` from new handoff block
+   e. If `VERDICT == FIX_REQUIRED` AND `SEVERITY != MUST_FIX` (SHOULD_FIX or STYLE only) →
+      present findings to user; EXIT loop (loop only fires on MUST_FIX)
+
+   **Loop exit — iter == 3 AND verdict still `FIX_REQUIRED`:**
+   Present final state to user: "3 review iterations reached without APPROVE — manual
+   intervention required. Final review: {report_path}. Remaining issues: {FLAGGED files}."
+
+<!-- review-eval-opt-loop-installed -->
 
 ### Anti-Hallucination
 - Only reference rules that exist
 - Only cite lines that exist
+- Per `multi-rollout.md` Invariant 8, any code-writer dispatched from this skill's eval-opt
+  loop (Step 7) is Tier-B regardless of the original task's tier. Multi-rollout (Tier-C)
+  MUST NOT activate for eval-opt loop writer dispatches. The `<!-- LOOP_INTERACTION_EXCLUSIVE -->`
+  comment in Step 7 is the machine-readable marker of this constraint. If `multi-rollout.md`
+  exists in `.claude/rules/`, it is authoritative. If absent (migration 057 not yet applied),
+  the inline comment governs.

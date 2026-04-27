@@ -23,6 +23,7 @@ Before any task-specific work, Read these rule files (in parallel where possible
 - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
 - `.claude/rules/wave-iterated-parallelism.md` (if present — wave protocol + shape detection + GAP dedup)
 - `.claude/rules/open-questions-discipline.md` (if present — open questions surfacing + disposition vocabulary)
+- `.claude/rules/multi-rollout.md` (if present — multi-rollout invariants for tier classification + selection precedence + LOOP_INTERACTION_EXCLUSIVE classification rule)
 - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
 Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.

@@ -258,6 +258,94 @@ CONSIDER
 ### Verdict: {APPROVE | REQUEST CHANGES}
 ```
 
+### Structured Handoff Block (machine-parseable — append at END of every report)
+
+After the `### Verdict:` line, append the following block verbatim to the report file.
+This block is the machine interface consumed by the `/review` skill's eval-opt loop.
+Schema version: v1. Schema changes require a new migration + sentinel bump.
+
+```
+<!-- handoff-v1-start -->
+verdict: {APPROVE | FIX_REQUIRED}
+severity_class: {MUST_FIX | SHOULD_FIX | STYLE | NONE}
+flagged_files:
+  - {file path from first MUST FIX finding, relative to project root}
+  - {file path from second MUST FIX finding — repeat for each distinct file in MUST FIX}
+top_reason: "{copy verbatim the first MUST FIX bullet text, truncated to 120 chars}"
+loop_turn: {value from dispatch prompt — default 0 if not provided}
+type: review-finding
+<!-- handoff-v1-end -->
+```
+
+**Field population rules (follow exactly — every field required):**
+
+1. `verdict:`
+   - `APPROVE` if zero `MUST FIX` items
+   - `FIX_REQUIRED` if one or more `MUST FIX` items present
+   - Never: `REQUEST CHANGES` (that is prose — use `FIX_REQUIRED`)
+
+2. `severity_class:`
+   - `MUST_FIX` if one or more `MUST FIX` bullets exist in `### Issues`
+   - `SHOULD_FIX` if no `MUST FIX` but one or more `SHOULD FIX` bullets exist
+   - `STYLE` if only `CONSIDER` bullets exist
+   - `NONE` if `### Issues` is empty and verdict is `APPROVE`
+
+3. `flagged_files:` (YAML list — one item per line, each prefixed `  - `)
+   - Include ONLY files mentioned in `MUST FIX` bullets (format: `- {issue} — {file}:{line}`)
+   - Extract the `{file}` portion from each `MUST FIX` bullet (`{file}` is everything before the last colon)
+   - If MUST FIX bullets reference a file multiple times → include the file ONCE (deduplicate)
+   - If verdict is `APPROVE` → write `flagged_files: []` (empty YAML list, single line)
+   - Include all dependency files if the MUST FIX finding explicitly says "requires change in {other-file}"
+
+4. `top_reason:` (quoted string — double quotes required)
+   - Copy the first `MUST FIX` bullet text verbatim
+   - Truncate to 120 characters if longer; append `...` if truncated
+   - If verdict is `APPROVE` → `top_reason: ""`
+
+5. `loop_turn:` (integer)
+   - Read from dispatch prompt field `loop_turn: N` if present
+   - If not provided in dispatch prompt → use `0`
+   - Do not increment — copy the value as-is; the orchestrator tracks iteration count
+
+6. `type:`
+   - Always `review-finding` for `proj-code-reviewer` reports
+
+**Example — FIX_REQUIRED report (MUST FIX present):**
+
+```
+<!-- handoff-v1-start -->
+verdict: FIX_REQUIRED
+severity_class: MUST_FIX
+flagged_files:
+  - .claude/agents/proj-code-reviewer.md
+  - .claude/skills/review/SKILL.md
+top_reason: "Missing CONVERGENCE-QUALITY annotation on loop control at .claude/agents/proj-code-reviewer.md:47"
+loop_turn: 1
+type: review-finding
+<!-- handoff-v1-end -->
+```
+
+**Example — APPROVE report (no MUST FIX):**
+
+```
+<!-- handoff-v1-start -->
+verdict: APPROVE
+severity_class: NONE
+flagged_files: []
+top_reason: ""
+loop_turn: 0
+type: review-finding
+<!-- handoff-v1-end -->
+```
+
+**Coupling note:** This block is consumed by `/review` skill Step 7 eval-opt loop via
+`sed -n '/<!-- handoff-v1-start -->/,/<!-- handoff-v1-end -->/p'` extraction.
+Any format change to this block requires a new migration + sentinel bump to `v2`.
+The sentinel `<!-- structured-handoff-v1-installed -->` in this file marks that
+this section has been applied.
+
+<!-- structured-handoff-v1-installed -->
+
 ### Log-Ready Finding Schema
 
 For systematic findings worth capturing in `.learnings/log.md`:
