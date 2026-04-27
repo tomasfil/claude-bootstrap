@@ -107,6 +107,31 @@ Rationale: new loopback logic added to skills post-bootstrap drifts away from th
 
 Dispatch brief update: when dispatching `proj-consistency-checker`, extend scope from agent files to include `.claude/skills/*/SKILL.md` for A8 specifically. A1-A7 scope remains unchanged.
 
+#### A8 extension — Wave-protocol annotation + force-read scans
+
+Scope extension: in addition to skill-side canonical-label scan above, A8 walks `.claude/agents/*.md` for wave-protocol annotation compliance and STEP 0 force-read presence.
+
+**Wave-annotation token scan:** For each `.claude/agents/*.md` body containing `### Wave Protocol`:
+  Scan the next 30 lines after the marker for at least one canonical loopback label token:
+  `RESOURCE-BUDGET` | `CONVERGENCE-QUALITY` | `LOOPBACK-AUDIT` | `SINGLE-RETRY`.
+  Independent substring scan — composed annotations (`RESOURCE-BUDGET + CONVERGENCE-QUALITY`) match both tokens; either one satisfies presence.
+  PASS if ≥1 canonical token present. FAIL with `file:line` evidence + heading line if none present.
+
+**Wave force-read scan:** For each `.claude/agents/*.md` body containing `### Wave Protocol (`:
+  Verify the agent's STEP 0 force-read list contains `wave-iterated-parallelism.md`.
+  PASS if the rule path appears in any STEP 0 bullet. FAIL with `file:line` of frontmatter close + missing-rule note if absent.
+
+Output schema additions (append to YAML report block below A8_canonical_label_compliance):
+```yaml
+A8_wave_annotation_token: {PASS|FAIL|SKIP}
+A8_wave_force_read:       {PASS|FAIL|SKIP}
+```
+
+Fix-guidance additions (append to "After the agent returns" list):
+- A8_wave_annotation_token FAIL → add canonical loopback annotation comment (e.g. `<!-- RESOURCE-BUDGET: ceiling=10 + CONVERGENCE-QUALITY: signal=new-layer-discovered -->` for END_TO_END_FLOW shapes; pure `<!-- RESOURCE-BUDGET: cap=N -->` for fixed-pass shapes) within 30 lines of `### Wave Protocol`; see `.claude/rules/wave-iterated-parallelism.md` § Composed Loopback Annotation
+- A8_wave_force_read FAIL → add `.claude/rules/wave-iterated-parallelism.md` to the agent's STEP 0 force-read bullet list; see `.claude/rules/wave-iterated-parallelism.md` § Enforcement
+<!-- audit-agents-A8-installed -->
+
 ### Output
 
 Agent writes YAML-ish report to `.claude/reports/audit-agents-{timestamp}.md`
@@ -124,6 +149,8 @@ checks:
   A6_cmm_index:    {PASS|WARN|SKIP}
   A7_effort_high_justified: {PASS|FAIL|WARN|SKIP}
   A8_canonical_label_compliance: {PASS|FAIL|SKIP}
+  A8_wave_annotation_token: {PASS|FAIL|SKIP}
+  A8_wave_force_read:       {PASS|FAIL|SKIP}
 findings:
   - check: A1
     severity: FAIL
@@ -147,6 +174,8 @@ and a one-line fix recommendation per category:
 - A7 FAIL → add `# xhigh: <TOKEN>` justification comment immediately after `effort: xhigh` in agent frontmatter, or add it after `effort: xhigh` in skill frontmatter when `# Skill Class:` lacks "dispatch"/"orchestrat"/"synthesis" keywords; run `/migrate-bootstrap` if migration 029 is pending
 - A7 WARN → `INHERITED_DEFAULT` is tracked debt; revisit classification per `techniques/agent-design.md` Skill Class → Model Binding
 - A8 FAIL → annotate the cited retry/convergence statement w/ one of the 4 canonical labels (`LOOPBACK-AUDIT` | `SINGLE-RETRY` | `CONVERGENCE-QUALITY` | `RESOURCE-BUDGET`) via inline HTML comment `<!-- {LABEL}: canonical label — see .claude/rules/loopback-budget.md -->` at end of line or on preceding line; see `.claude/rules/loopback-budget.md` for the full label semantics + where-applied pointers
+- A8_wave_annotation_token FAIL → add canonical loopback annotation comment within 30 lines of `### Wave Protocol` heading (composed `<!-- RESOURCE-BUDGET: ... + CONVERGENCE-QUALITY: ... -->` for END_TO_END_FLOW shapes; plain `<!-- RESOURCE-BUDGET: ... -->` for fixed-pass shapes); see `.claude/rules/wave-iterated-parallelism.md` § Composed Loopback Annotation
+- A8_wave_force_read FAIL → add `.claude/rules/wave-iterated-parallelism.md` to the agent's STEP 0 force-read bullet list; see `.claude/rules/wave-iterated-parallelism.md` § Enforcement
 
 Do NOT auto-patch. User approves fixes.
 

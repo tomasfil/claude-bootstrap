@@ -24,6 +24,7 @@ Before any task-specific work, Read these rule files (in parallel where possible
 - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
 - `.claude/rules/mcp-routing.md` (if present — MCP propagation rules + action→tool routing table; overrides any Grep/Glob/Read-first examples later in this file)
 - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
+- `.claude/rules/wave-iterated-parallelism.md` (if present — wave protocol + shape detection + GAP dedup)
 - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
 Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
@@ -54,6 +55,47 @@ Main reads file only if: needed for next dispatch | error in summary | verificat
 1. Read error/symptom description provided in prompt
 2. Read failing code + immediate dependencies
 3. Grep for related patterns, trace type relationships + call chains
+
+### Wave Protocol (root-cause hunt)
+
+**Step 1 — Classify task shape:** debug tasks = CALL_GRAPH by default (cap=3). If error spans architectural layers (UI→service→DB) → classify END_TO_END_FLOW upfront (adaptive, min=5).
+Record: `TASK_SHAPE: {shape} | WAVE_CAP: {cap}`
+
+**Step 2 — Wave 1** — batch in one parallel message:
+- Failing code file + immediate caller
+- Error output / stack trace files (if available)
+- Test file that surfaces the failure
+
+MCP routing (3-state):
+- State 1 (Full MCP — cmm+serena reachable): Lead-With cmm.search_graph → cmm.get_code_snippet
+  → serena.find_referencing_symbols → serena.find_symbol (per mcp-routing.md Lead-With Order).
+- State 2 (No MCP): Read failing file + Grep for error pattern in known directories.
+- State 3 (Partial MCP — other servers present, no cmm/serena): text tools same as State 2.
+Transparent fallback disclosure required if MCP attempted + 0 hits.
+
+**Step 3 — Gap Enumeration** after Wave 1 (GAP Dedup Requirement applies):
+- YES root cause identified → skip Wave N, proceed to diagnosis
+- NO → emit gaps:
+  `GAP: {call-chain node|shared dependency|config file} (target: {file_path | symbol_qname}) — not yet read, blocks root cause`
+  Each `target:` must be unique across all prior waves' targets. Dedup before emitting.
+
+Shape Escalation check (per wave-iterated-parallelism.md §Shape Escalation):
+- CALL_GRAPH gaps cross subsystem boundary → upgrade to END_TO_END_FLOW (adaptive min=5).
+  Log: `Shape upgraded CALL_GRAPH→END_TO_END_FLOW after Wave 1 revealed {trigger: cross-subsystem refs} at {evidence: file:line | symbol-qname | file1:line + file2:line (cross-subsystem)}`
+- END_TO_END_FLOW is terminal.
+
+If END_TO_END_FLOW: new layers discovered → update `WAVE_CAP: max(cap, waves_completed + 2)`.
+
+**Step 4 — Wave N** (repeat until root cause identified or cap reached):
+- Files in GAP list; shared utilities in failing call path; config files if misconfiguration indicated
+
+After cap reached without root cause → apply SOLVABLE-GATE LSEC steps 4–5.
+If still unresolved → return `UNRESOLVED: {read list, unknown gaps}`.
+
+<!-- RESOURCE-BUDGET: ceiling=10 + CONVERGENCE-QUALITY: signal=new-layer-discovered -->
+<!-- For END_TO_END_FLOW shape. CALL_GRAPH (cap=3) uses pure RESOURCE-BUDGET.
+     See wave-iterated-parallelism.md and loopback-budget.md. -->
+
 4. Identify root cause (not just symptom)
 5. Propose fix w/ exact file paths + code changes (old → new)
 6. Write diagnosis report via Bash heredoc
@@ -110,6 +152,42 @@ Multiple Reads → batch. Multiple Greps → batch.
 Read-only tools (Glob, Grep, Read) → ALWAYS parallel.
 NEVER: Read A → respond → Read B. INSTEAD: Read A + B → respond.
 </use_parallel_tool_calls>
+
+## SOLVABLE-GATE
+Before returning any blocker to the caller, classify it using the Local Source Exhaustion
+Checklist (LSEC). Applies to root-cause diagnosis, not fix application (this agent is
+diagnosis-only — fix application is the caller's responsibility). "SOLVABLE" = root cause
+is DIAGNOSABLE, not fixable.
+
+**DIAGNOSABLE (continue hypothesis-elimination):** root cause is reachable from local sources.
+Local sources — exhaust ALL in order before classifying as USER_DECIDES:
+1. Failing file + its direct imports/callers (Process steps 2–3)
+   MCP routing (3-state):
+   - State 1 (Full MCP — cmm+serena reachable): Lead-With cmm.search_graph → cmm.get_code_snippet
+     → serena.find_referencing_symbols → serena.find_symbol.
+     Full routing policy in mcp-routing.md Lead-With Order (loaded in STEP 0).
+   - State 2 (No MCP): Read failing file + Grep for related patterns in known directories.
+   - State 3 (Partial MCP — other servers present, no cmm/serena): text tools same as State 2
+     for code discovery; other MCP servers may be used per their own purpose.
+   Transparent fallback disclosure required if MCP attempted + 0 hits on Step 1 discovery.
+2. `CLAUDE.md` Gotchas section — known project-specific traps
+3. `.learnings/log.md` — prior logged instances of this error class
+4. Relevant rule file (e.g., `mcp-routing.md` for MCP errors, `general.md` for build errors)
+5. Web search (mandatory after 2 failed hypothesis passes per `general.md`: "2 failed fix
+   attempts → search web"; in diagnosis context: 2 failed hypothesis-elimination passes)
+
+**USER_DECIDES (escalate):** root cause requires a value or decision only the user can provide.
+Escalate IMMEDIATELY (skip LSEC, do not attempt hypothesis-elimination):
+- Root cause requires credentials, API keys, or user-specific env vars to surface
+- Conflicting spec requirements — two authoritative sources disagree; cannot pick without user
+- External service down (HTTP 429/503, network unreachable)
+- Architectural decision required (two contradicting implementation approaches, no evidence favors either)
+
+Return: `disposition=USER_DECIDES` + evidence of why diagnosis is externally blocked.
+
+NEVER classify as USER_DECIDES to avoid a second or third hypothesis-elimination pass.
+Classification requires evidence that the diagnosis is externally blocked, not merely that
+you have not yet identified the root cause.
 
 ## Self-Fix Protocol
 After proposing fix, verify via Bash (build/test/grep only — NO mutation commands).

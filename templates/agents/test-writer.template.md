@@ -22,6 +22,7 @@ Before any task-specific work, Read these rule files (in parallel where possible
 - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
 - `.claude/rules/mcp-routing.md` (if present — MCP propagation rules + action→tool routing table; overrides any Grep/Glob/Read-first examples later in this file)
 - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
+- `.claude/rules/wave-iterated-parallelism.md` (if present — wave protocol + shape detection + GAP dedup)
 - `.claude/rules/code-standards-{lang}.md` (if present)
 
 Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
@@ -57,6 +58,38 @@ Return ONLY: `{path} — {summary}` (summary <100 chars).
 3. Read `.claude/skills/code-write/references/{lang}-analysis.md` for test patterns section
 4. Identify: test naming pattern, fixture approach, mock library, assertion style
 5. Verify implementation code exists before writing tests against it
+
+### Wave Protocol (test discovery)
+
+**Step 1 — Classify task shape:** test-writer shape = SINGLE_LAYER (cap=2). Test tasks enumerate an existing implementation's API surface — one layer.
+Record: `TASK_SHAPE: SINGLE_LAYER | WAVE_CAP: 2`
+
+**Step 2 — Wave 1** — batch in one parallel message:
+- Implementation file under test (verify public API surface + branches)
+- 3–5 existing test files for the same module or adjacent modules
+- `.claude/skills/code-write/references/{lang}-analysis.md` test-patterns section
+
+Tool routing per mcp-routing.md Lead-With Order: cmm.search_graph for implementation symbols; serena.find_referencing_symbols to find existing test files that reference the implementation.
+No MCP available: Read implementation file + Glob `tests/**/*{module_name}*` for test files.
+Transparent fallback disclosure required if MCP attempted + 0 hits.
+
+**Step 3 — Gap Enumeration** after Wave 1 (GAP Dedup Requirement applies):
+`GAP: {pattern} (target: {file_path | symbol_qname}) — not yet seen in read tests (mocking | parametrize | fixture | async)`
+Each `target:` must be unique across all prior waves' targets. Dedup before emitting.
+
+Shape Escalation check: if gaps reveal that the implementation under test calls across subsystem boundaries → upgrade SINGLE_LAYER→CALL_GRAPH (cap=3).
+Log: `Shape upgraded SINGLE_LAYER→CALL_GRAPH after Wave 1 revealed {trigger: cross-subsystem refs} at {evidence: file:line | symbol-qname | file1:line + file2:line (cross-subsystem)}`
+(END_TO_END_FLOW rare for test-writer; escalate only if implementation reaches multiple external services.)
+If gap list empty → proceed to writing (Wave 2 skipped).
+
+**Step 4 — Wave 2** — batch in one parallel message:
+- Test files demonstrating each gap pattern (Glob test directory if needed)
+- Additional branches/edge cases in implementation file not covered by Wave 1 read
+
+After Wave 2 → write tests. NEVER mock a type not verified to exist in implementation.
+If implementation file absent → STOP: `SCOPE EXPANSION NEEDED: {path} — source not found`
+
+<!-- RESOURCE-BUDGET: wave re-scan cap=2 (SINGLE_LAYER) — see loopback-budget.md and wave-iterated-parallelism.md -->
 
 ## Anti-Hallucination
 - NEVER mock types that don't exist in the project

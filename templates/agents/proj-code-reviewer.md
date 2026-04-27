@@ -28,6 +28,7 @@ Before any task-specific work, Read these rule files (in parallel where possible
 - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
 - `.claude/rules/mcp-routing.md` (if present — MCP propagation rules + action→tool routing table; overrides any Grep/Glob/Read-first examples later in this file)
 - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
+- `.claude/rules/wave-iterated-parallelism.md` (if present — wave protocol + shape detection + GAP dedup)
 - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
 Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
@@ -75,6 +76,42 @@ MANDATORY before reporting ANY finding:
 8. For verification-related content: read `techniques/anti-hallucination.md`
 9. Read `.claude/skills/code-write/references/pipeline-traces.md` — verify all files in the trace are touched
 10. Read `.learnings/log.md` — extract recurring bug patterns
+
+### Wave Protocol (caller + shared module reads)
+
+After completing items 1–10 above (Wave 1), enumerate caller coverage.
+
+**Step 1 — Classify task shape:** review tasks = CALL_GRAPH by default (cap=3). Cap covers: changed files (Wave 1 items 1–10) + callers + shared modules. If review reveals changes span multiple subsystems → upgrade to END_TO_END_FLOW (adaptive min=5). Log escalation.
+Record: `TASK_SHAPE: CALL_GRAPH | WAVE_CAP: 3`
+
+**Step 2 — Gap Enumeration** after Wave 1 (items 1–10) (GAP Dedup Requirement applies):
+For each function/method/symbol MODIFIED in the target file:
+`GAP: {symbol} (target: {caller_file_path | caller_symbol_qname}) — has callers in {file(s)} not yet read`
+Each `target:` must be unique across all prior waves' targets. Dedup before emitting.
+
+Shape Escalation check: if callers exist in a different subsystem than the modified file →
+upgrade CALL_GRAPH→END_TO_END_FLOW (adaptive min=5).
+Log: `Shape upgraded CALL_GRAPH→END_TO_END_FLOW after Wave 1 revealed {trigger: cross-subsystem refs} at {evidence: file:line | symbol-qname | file1:line + file2:line (cross-subsystem)}`
+
+Tool routing per mcp-routing.md: `serena.find_referencing_symbols` is the canonical caller-discovery tool.
+No MCP available: Grep for symbol name in source directories.
+Transparent fallback disclosure required if MCP attempted + 0 hits.
+If no callers found OR all callers already in Wave 1 reads → Wave 2 skipped.
+
+**Step 3 — Wave 2** — batch in one parallel message:
+- Files that CALL the modified symbols (callers)
+- Shared modules referenced in target file not covered by Wave 1 items 1–10
+
+**Step 4 — Wave 3** (CALL_GRAPH cap=3; END_TO_END_FLOW adaptive):
+If Wave 2 gap enumeration reveals additional uncovered layers → batch reads for those layers.
+Apply GAP Dedup: no target from Wave 1 or Wave 2 may reappear.
+
+Report caller incompatibilities found in Wave 2/3 as `MUST FIX` items in review report.
+Wave findings feed directly into `## 3. Review Checklist` impact assessment.
+
+<!-- RESOURCE-BUDGET: ceiling=10 + CONVERGENCE-QUALITY: signal=new-layer-discovered -->
+<!-- For END_TO_END_FLOW escalated reviews. Default CALL_GRAPH (cap=3) uses pure RESOURCE-BUDGET.
+     See wave-iterated-parallelism.md. -->
 
 If a finding requires citing a rule → verify the rule text EXISTS before citing. If citing a line number → verify the line EXISTS after reading the file.
 

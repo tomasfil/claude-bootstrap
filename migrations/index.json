@@ -306,6 +306,24 @@
       "file": "051-quick-check-sonnet-upgrade.md",
       "description": "Upgrade proj-quick-check from haiku+xhigh INHERITED_DEFAULT to sonnet+medium SUBTLE_ERROR_RISK — field-observed self-contradictory findings on synthesis-shaped tasks motivated moving the load-bearing first-dispatch agent off the haiku reasoning tier while keeping its bounded single-question role (no findings file, no WebSearch, no multi-source synthesis). Medium effort matches peer SUBTLE_ERROR_RISK agents (proj-verifier, proj-consistency-checker). Patches agent frontmatter (model + effort + justification comment), rules row in .claude/rules/model-selection.md Agent Classification Table, and the two proj-quick-check references in .claude/references/techniques/agent-design.md (model table row + self-refusal gate rule). Three-tier detection with SKIP_ALREADY_APPLIED / safe-patch / SKIP_HAND_EDITED branches per step; Manual-Apply-Guide for each destructive step.",
       "breaking": false
+    },
+    {
+      "id": "052",
+      "file": "052-loopback-budget-composed-forms.md",
+      "description": "Append `## Composed Forms` section to .claude/rules/loopback-budget.md — defines BNF grammar for composing two canonical labels in a single retry/convergence annotation via the `+` operator (e.g., `<!-- RESOURCE-BUDGET: ceiling=10 + CONVERGENCE-QUALITY: signal=new-layer-discovered -->` for hybrid cost-ceiling + quality-extension loops). The `?` quantifier in the grammar limits composition to two labels (3+ forbidden); canonical-4 invariant preserved (RESOURCE-BUDGET / CONVERGENCE-QUALITY / FIXED-PASS / OPEN-EXPLORATION; no 5th label invented). Also updates two `## Usage` bullets via three-tier detection: bullet 1 explains composed-form usage (`Composing 2 canonical labels via ...`); bullet 2 references /audit-agents A8 scan contract (independent token detection — a comment may contain multiple canonical labels joined by `+`). Manual-Apply-Guide for both destructive bullet edits + Step-1 anchor-miss fallback. Prerequisite for migration 054.",
+      "breaking": false
+    },
+    {
+      "id": "053",
+      "file": "053-wave-iterated-parallelism-rule.md",
+      "description": "Install .claude/rules/wave-iterated-parallelism.md (~172 lines) — canonical wave-protocol doctrine for sub-agent dispatches: 4-shape Task Shape Detection (SOLVABLE_FACT cap=1 / SINGLE_LAYER cap=2 / CALL_GRAPH cap=3 / END_TO_END_FLOW adaptive min=5 ceiling=10), Adaptive Cap exceedable via composed annotation, Shape Escalation re-classify table with required log entry, GAP Dedup Requirement (every GAP item carries `(target:)` field), MCP-Agnostic Routing 3-state (full MCP / no MCP / partial MCP — abstract State 1/2/3, no project names), Composed Loopback Annotation pointer to loopback-budget.md `## Composed Forms`, Per-Agent Wave Protocol Block install pointer (cross-link to migration 054 for the agent-body installs), Enforcement clause for /audit-agents and /review. Appends `@import .claude/rules/wave-iterated-parallelism.md` to client CLAUDE.md after baseline `@import .claude/rules/main-thread-orchestrator.md` via three-tier detection. Manual-Apply-Guide for the CLAUDE.md hand-edited path + Step-1 manual file-recreation path.",
+      "breaking": false
+    },
+    {
+      "id": "054",
+      "file": "054-wave-protocol-agent-blocks.md",
+      "description": "Install wave-protocol blocks into 6 client agent body files: proj-researcher, proj-plan-writer, proj-debugger (TWO insertions — SOLVABLE-GATE + Wave Protocol), proj-code-reviewer, code-writer-* glob (SINGLE_LAYER default), test-writer-* glob (SINGLE_LAYER default). Per-agent insertion anchors verified verbatim text + line numbers from gap-resolution-7-Q § 1. Per-insertion three-tier detection (idempotency marker / anchor verbatim / SKIP_HAND_EDITED with .bak-054 + Manual-Apply-Guide pointer). 4-state file-level migration logic per gap-resolution-6-N (State 1: new sentinel present → SKIP; State 2: legacy `wave-gap-agent-body-installed` only → diff-apply + set new; State 3: neither → fresh install; State 4: legacy + `Tool routing per mcp-routing.md Lead-With Order` validation marker → validate + set new). 7 wave-block heredocs (RESEARCHER/PLAN_WRITER/CODE_WRITER/TEST_WRITER/DEBUGGER_WAVE/DEBUGGER_SOLVABLE_GATE/REVIEWER) with 9-U § 3 escalation-log-placeholder amendment applied to 6 of 7 (DEBUGGER_SOLVABLE_GATE has no shape-escalation logic). `verify_all_agents` post-install sweep with glob loops for code-writer-* and test-writer-*. Prerequisite check at start: `grep -q '^## Composed Forms' .claude/rules/loopback-budget.md` → exit 2 if absent (run migration 052 first). Sentinel: wave-gap-mcp-agnostic-installed. Manual-Apply-Guide section with verbatim block content for all 6 agent types.",
+      "breaking": false
     }
   ]
 }

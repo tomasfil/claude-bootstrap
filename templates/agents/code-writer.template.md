@@ -22,6 +22,7 @@ Before any task-specific work, Read these rule files (in parallel where possible
 - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
 - `.claude/rules/mcp-routing.md` (if present — MCP propagation rules + action→tool routing table; overrides any Grep/Glob/Read-first examples later in this file)
 - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
+- `.claude/rules/wave-iterated-parallelism.md` (if present — wave protocol + shape detection + GAP dedup)
 - `.claude/rules/code-standards-{lang}.md` (if present)
 
 Rationale: this sub-agent's body replaces the default system prompt. `CLAUDE.md` still loads, but rules reached through `@import` chains may not reliably surface. Explicit Read lands content as conversation context and guarantees the policy is in scope. If a referenced rule doesn't exist, note it in the final report and continue — don't stop.
@@ -55,6 +56,39 @@ Main reads file only if: needed for next dispatch | error in summary | verificat
 ## Before Writing (MANDATORY)
 1. If `.claude/rules/mcp-routing.md` action→tool table populated (MCP project): use MCP tools per routing table for code discovery BEFORE Grep/Read
 2. Read target file if modifying | 2-3 similar files if creating
+
+**Step 1 — Classify task shape:** code-writer shape = SINGLE_LAYER by default (cap=2). If task description mentions cross-layer impact (callers, shared module, interface change) → classify CALL_GRAPH (cap=3) immediately.
+Record: `TASK_SHAPE: {shape} | WAVE_CAP: {cap}`
+
+**Step 2 — Wave 1** — batch in one parallel message:
+- Target file (if modifying) OR 2–3 most similar files (if creating)
+- Direct imports/dependencies of the target file
+- `.claude/rules/code-standards-{lang}.md` if present
+- `.claude/skills/code-write/references/{lang}-analysis.md` for project patterns
+
+Tool routing per mcp-routing.md Lead-With Order: use cmm.get_code_snippet for target symbol; serena.find_referencing_symbols for callers.
+No MCP available: Read target file + 2–3 similar files + Grep for imports.
+Transparent fallback disclosure required if MCP attempted + 0 hits.
+
+**Step 3 — Gap Enumeration** after Wave 1 (GAP Dedup Requirement applies):
+`GAP: {import|type|method} (target: {file_path | symbol_qname}) — unresolved: not found in Wave 1 reads`
+Each `target:` must be unique across all prior waves' targets. Dedup before emitting.
+
+Shape Escalation check: if gaps reveal callers/callees/inheritance of changed symbols → upgrade SINGLE_LAYER→CALL_GRAPH (cap=3). If gaps cross subsystem boundary → upgrade to END_TO_END_FLOW (adaptive min=5).
+Log: `Shape upgraded {FROM}→{TO} after Wave 1 revealed {trigger: inheritance depth | cross-subsystem refs} at {evidence: file:line | symbol-qname | file1:line + file2:line (cross-subsystem)}`
+If gap list empty → proceed to writing (Wave 2 skipped).
+
+**Step 4 — Wave 2** — batch in one parallel message:
+- Transitive dependencies: files defining unresolved types/methods from Wave 1
+- Callers of function being modified (must remain compatible)
+
+After Wave 2 → write. If type/method still unresolved → STOP:
+`SCOPE EXPANSION NEEDED: {type/file} — cannot verify API without reading {path}`
+
+<!-- RESOURCE-BUDGET: ceiling=10 + CONVERGENCE-QUALITY: signal=new-layer-discovered -->
+<!-- For END_TO_END_FLOW only. SINGLE_LAYER (cap=2) and CALL_GRAPH (cap=3) use pure RESOURCE-BUDGET.
+     See wave-iterated-parallelism.md. -->
+
 3. Read `.claude/rules/code-standards-{lang}.md` if present
 4. Read `.claude/skills/code-write/references/{lang}-analysis.md` for project patterns
 5. Verify all referenced types/methods/imports actually exist

@@ -25,6 +25,7 @@ Before any task-specific work, Read these rule files (in parallel where possible
 - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
 - `.claude/rules/mcp-routing.md` (if present — MCP propagation rules + action→tool routing table; overrides any Grep/Glob/Read-first examples later in this file)
 - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
+- `.claude/rules/wave-iterated-parallelism.md` (if present — wave protocol + shape detection + GAP dedup)
 - `.claude/rules/open-questions-discipline.md` (if present — open questions surfacing + disposition vocabulary)
 - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
@@ -60,6 +61,56 @@ Main reads file only if: needed for next dispatch | error in summary | verificat
 4. Identify conventions: file naming, code style, framework idioms — cite `file:line` per convention
 5. **Framework-idiom guard**: for codebases using convention-over-configuration frameworks (FastEndpoints, Rails, Django, Spring, NestJS, Hono decorators, Azure Functions attributes, etc.) — BEFORE enumerating entities, locate the framework's resolution mechanism (`Configure()` bodies, route-table builder, DI registration, middleware pipeline). Read THAT mechanism's source. Never infer entity properties (routes, handlers, topics) from filenames or base-path constants. Filename-inference = fabrication (arxiv 2504.17550 HalluLens intrinsic-hallucination taxonomy)
 6. No hard cap on tool calls — `.claude/rules/max-quality.md` §1 governs. Run as many Reads/Greps/MCP queries as coverage requires. Parallel-batch per `<use_parallel_tool_calls>` for efficiency
+
+### Wave Protocol (codebase exploration)
+
+**Step 1 — Classify task shape** before reading (see wave-iterated-parallelism.md §Task Shape → Default Cap):
+
+| Shape | Prompt signal | Cap |
+|---|---|---|
+| SOLVABLE_FACT | "look up", "does X exist" | wave does not apply |
+| SINGLE_LAYER | "list all", "enumerate", "find all handlers" | 2 |
+| CALL_GRAPH | "who calls X", "callers of X" | 3 |
+| END_TO_END_FLOW | "trace full flow", "from UI to DB", "across layers" | adaptive min=5, ceiling=10 |
+| OPEN_INVESTIGATION | no explicit signal / generic investigation | 3 |
+
+Record shape + initial cap: `TASK_SHAPE: {shape} | WAVE_CAP: {cap}`
+
+**Step 2 — Wave 1** — batch ALL entry-point reads in one parallel message:
+- Framework resolution mechanism (Configure(), route-table, DI registration)
+- Primary module file + one representative file per detected architectural layer
+- Any file explicitly named in dispatch prompt
+
+Tool routing per mcp-routing.md Lead-With Order (cmm.search_graph → cmm.get_code_snippet → serena.find_referencing_symbols → serena.find_symbol).
+No MCP available: Read known paths directly + Glob for entry-point patterns.
+Transparent fallback disclosure required if MCP attempted + 0 hits.
+
+**Step 3 — Gap Enumeration** after Wave 1 (per wave-iterated-parallelism.md §Gap-Check Checkpoint):
+
+a) Emit structured gaps (GAP Dedup Requirement applies — see §GAP Dedup Requirement):
+   `GAP: {layer|subsystem|call-target} (target: {file_path | symbol_qname}) — {reason: zero reads | unresolved reference | cross-subsystem dependency}`
+   Each `target:` must be unique across all prior waves' targets. Dedup explicitly before emitting.
+
+b) Shape Escalation check (per wave-iterated-parallelism.md §Shape Escalation):
+   - SINGLE_LAYER gaps reference callers/callees/inheritance → upgrade to CALL_GRAPH (cap=3)
+   - SINGLE_LAYER or CALL_GRAPH gaps cross subsystem boundaries → upgrade to END_TO_END_FLOW (adaptive min=5)
+   - Log: `Shape upgraded {FROM}→{TO} after Wave 1 revealed {trigger} at {evidence: file:line | symbol-qname | file1:line + file2:line (cross-subsystem)}`
+   - END_TO_END_FLOW is terminal — no further upgrades
+
+c) If END_TO_END_FLOW: new layers discovered → update `WAVE_CAP: max(cap, waves_completed + 2)`
+d) If gap list empty → skip Wave 2
+
+**Step 4 — Wave N** (repeat until cap or no gaps) — batch reads targeting ONLY enumerated gaps:
+- Layers with zero reads (from gap list)
+- Unresolved call targets or referenced files not yet read
+- Cross-subsystem boundary files
+
+After each wave: re-apply gap enumeration (Steps 3a–3d).
+After cap reached → proceed to synthesis. Document unresolved gaps in `## Open Questions` with `disposition: AGENT_DECIDED`.
+
+<!-- RESOURCE-BUDGET: ceiling=10 + CONVERGENCE-QUALITY: signal=new-layer-discovered -->
+<!-- For END_TO_END_FLOW shape. Fixed-pass shapes (SINGLE_LAYER/CALL_GRAPH/OPEN_INVESTIGATION)
+     use pure RESOURCE-BUDGET (cost-driven exit at cap). See wave-iterated-parallelism.md. -->
 
 ### Web Research
 1. Plan all searches before executing — identify gaps first

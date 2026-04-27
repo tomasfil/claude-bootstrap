@@ -21,6 +21,7 @@ Before any task-specific work, Read these rule files (in parallel where possible
 - `.claude/rules/agent-scope-lock.md` (enforces strict batch-file scope — NO adjacent work)
 - `.claude/rules/mcp-routing.md` (if present — MCP propagation rules + action→tool routing table; overrides any Grep/Glob/Read-first examples later in this file)
 - `.claude/rules/max-quality.md` (doctrine — output completeness > token efficiency; full scope; calibrated effort)
+- `.claude/rules/wave-iterated-parallelism.md` (if present — wave protocol + shape detection + GAP dedup)
 - `.claude/rules/open-questions-discipline.md` (if present — open questions surfacing + disposition vocabulary)
 - `.claude/rules/code-standards-{your primary lang}.md` (if present)
 
@@ -58,6 +59,42 @@ Return ONLY: master plan path + summary <100 chars.
 ## Process
 1. Read spec file completely
 2. Scan codebase for affected files + patterns (Grep/Glob)
+
+### Wave Protocol (spec-to-codebase verification)
+
+**Step 1 — Classify task shape:** plan-writer shape = SINGLE_LAYER by default (cap=2) unless spec explicitly covers cross-layer flow, in which case → CALL_GRAPH (cap=3).
+Record: `TASK_SHAPE: SINGLE_LAYER | WAVE_CAP: 2`
+
+**Step 2 — Wave 1** — batch reads in one parallel message:
+- The spec file (collect all `## Components` entries)
+- Every file path listed in `## Components` that resolves to a concrete path
+
+Tool routing per mcp-routing.md Lead-With Order: verify symbol existence via cmm.search_graph before assuming a file contains what the spec claims.
+No MCP available: Glob for file paths listed in spec; Read each found file.
+Transparent fallback disclosure required if MCP attempted + 0 hits.
+
+**Step 3 — Gap Enumeration** after Wave 1 (GAP Dedup Requirement applies):
+`GAP: {component-name} (target: {file_path | symbol_qname}) — {reason: file-not-found | path-ambiguous | not-yet-read}`
+Each `target:` must be unique across all prior waves' targets. Dedup before emitting.
+
+Shape Escalation check: if gaps reveal cross-subsystem spec references not anticipated by
+SINGLE_LAYER classification → upgrade to CALL_GRAPH (cap=3).
+Log: `Shape upgraded {FROM}→{TO} after Wave 1 revealed {trigger: cross-subsystem refs} at {evidence: file:line | symbol-qname | file1:line + file2:line (cross-subsystem)}`
+# Doctrine note: plan-writer caps cross-subsystem at CALL_GRAPH (not END_TO_END_FLOW) because
+# spec components have a finite known list from Wave 1; the adaptive-extension trigger
+# ("new layers discovered") does not apply to spec-reading. See 8-S § Section 6 for rationale.
+If gap list empty → proceed to task breakdown (Wave 2 skipped).
+
+**Step 4 — Wave 2** — resolve gaps:
+- `file-not-found`: Glob to find actual file; if found → read; if not → `INSUFFICIENT_CONTEXT` in task
+- `path-ambiguous`: read most likely candidate + confirm matches component intent
+- `not-yet-read`: read the file
+
+NEVER write a task that references a file not read during Wave 1 or Wave 2.
+Unresolvable gaps → `INSUFFICIENT_CONTEXT` flag in task `#### Context` section.
+
+<!-- RESOURCE-BUDGET: wave re-scan cap=2 (SINGLE_LAYER) or cap=3 (CALL_GRAPH) — see loopback-budget.md and wave-iterated-parallelism.md -->
+
 3. Break into tasks — each independently completable + verifiable
 4. Order by dependency (data → API → UI)
 5. Classify every task → Tier Classification (below)

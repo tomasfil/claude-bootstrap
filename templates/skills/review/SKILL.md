@@ -65,6 +65,21 @@ Review: {.claude/reports/review-{timestamp}.md path}
 ```
 Detection: grep the review report for the phrases `scope-lock violation`, `outside listed scope`, `not listed in batch`, or `missing from plan`. Each match → one log entry keyed on the file path cited in the finding. Zero matches → skip this substep silently. Category `plan-quality` is shared with `/write-plan` post-dispatch-audit entries and `/execute-plan` batch-fail entries (see those skills for sibling entry formats). This means `/review` auto-logs scope-creep incidents during post-execution review, closing the planning → execution → review loop so the `/reflect` + `/consolidate` pipeline has ground-truth signal on scope discipline without manual triage.
 
+5.7 **Wave Protocol Discipline check** (per `.claude/rules/wave-iterated-parallelism.md` § Enforcement)
+
+Main thread performs this check after reviewer returns, before presenting results to user. Scope: every reviewed agent body containing `### Wave Protocol`.
+
+For each agent body in the review scope (`.claude/agents/*.md`) that contains `### Wave Protocol`:
+  (a) **Wave 1 parallelism** — verify Wave 1 reads were issued as one batched parallel message, not serial. Detection: scan the wave block for "Wave 1" + "batch ALL" / "in one parallel message" / "batch reads in one parallel message" instructional language; if Wave 1 instructions describe sequential reads ("Read A, then Read B"), flag as serial. WARNING: "Wave 1 in {agent} reads serially — must batch in one parallel message".
+  (b) **Shape declaration** — verify wave block contains explicit `TASK_SHAPE:` record line (e.g. `Record: TASK_SHAPE: SINGLE_LAYER | WAVE_CAP: 2`). Absent → WARNING: "wave block in {agent} missing TASK_SHAPE/WAVE_CAP record".
+  (c) **GAP item format** — if the wave block contains `GAP:` example lines: verify each carries `(target: ...)` field. Missing target field → WARNING: "GAP item in {agent} missing `(target:)` field — required by GAP Dedup Requirement".
+  (d) **Escalation log format** — if `Shape upgraded` appears in the wave block: verify both `{trigger:` AND `{evidence:` placeholder fields appear in the log line. Missing either → WARNING: "escalation log in {agent} missing `{trigger:}` or `{evidence:}` field — must use amended placeholder per wave-iterated-parallelism.md § Shape Escalation".
+
+Append findings to review report under heading `### Wave Protocol Discipline`. Zero findings → report `Wave protocol discipline: no issues detected`. No agent bodies in scope contain `### Wave Protocol` → skip this substep silently (greenfield review or content not yet retrofitted).
+
+Rationale: structural grep — not LLM judgment. Catches the drift pattern where wave block instructions describe `### Wave Protocol` heading but omit the parallel-batch instruction (Wave 1 shows multiple reads must be in ONE message), drop the shape declaration, or use the pre-amended condensed `{evidence}` form. `/review` is the enforcement layer per `.claude/rules/wave-iterated-parallelism.md` § Enforcement.
+<!-- Wave 1 shows multiple reads -->
+
 6. Present review results to user
 7. Issues found → fix → re-review
 
